@@ -1,0 +1,70 @@
+{
+  "ecs7": true,
+  "runtimeVersion": "7",
+  "display": {
+    "title": "Abducted! - They appear to be enjoying it",
+    "description": "Step inside the dome. The Knights of Antrom alien collection, the cow, the beam, and the music video playing all around you. Abducted! emotes on the Marketplace.",
+    "navmapThumbnail": "images/scene-thumbnail.png",
+    "favicon": "favicon_asset"
+  },
+  "owner": "",
+  "contact": {
+    "name": "Knights of Antrom",
+    "email": ""
+  },
+  "main": "bin/index.js",
+  "tags": [
+    "alien",
+    "ufo",
+    "abducted",
+    "koa",
+    "halloween",
+    "music",
+    "video",
+    "dome"
+  ],
+  "scene": {
+    "parcels": [
+      "57,-111"
+    ],
+    "base": "57,-111"
+  },
+  "spawnPoints": [
+    {
+      "name": "dome-entrance",
+      "default": true,
+      "position": {
+        "x": [
+          7.5,
+          8.5
+        ],
+        "y": [
+          0,
+          0
+        ],
+        "z": [
+          3,
+          4
+        ]
+      },
+      "cameraTarget": {
+        "x": 8,
+        "y": 2,
+        "z": 8
+      }
+    }
+  ],
+  "requiredPermissions": [
+    "ALLOW_MEDIA_HOSTNAMES",
+    "OPEN_EXTERNAL_LINK"
+  ],
+  "allowedMediaHostnames": [
+    "storage.googleapis.com",
+    "firebasestorage.googleapis.com"
+  ],
+  "featureToggles": {
+    "voiceChat": "enabled",
+    "portableExperiences": "enabled"
+  },
+  "authoritativeMultiplayer": false
+}

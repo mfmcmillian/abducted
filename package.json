@@ -1,0 +1,29 @@
+{
+  "name": "abducted-dome",
+  "version": "0.1.0",
+  "description": "Abducted! - They appear to be enjoying it. Video dome for the Knights of Antrom alien collection at 57,-111",
+  "scripts": {
+    "start": "sdk-commands start",
+    "deploy": "sdk-commands deploy",
+    "build": "sdk-commands build",
+    "build:dome": "node tools/build-dome.mjs",
+    "upgrade-sdk": "npm install --save-dev @dcl/sdk@latest",
+    "upgrade-sdk:next": "npm install --save-dev @dcl/sdk@next",
+    "server-logs": "sdk-commands sdk-server-logs"
+  },
+  "devDependencies": {
+    "@dcl/js-runtime": "7.25.1-30310486734.commit-5ffe873",
+    "@dcl/sdk": "7.25.1-30310486734.commit-5ffe873",
+    "@dcl/sdk-commands": "7.25.1-30310486734.commit-5ffe873"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=6.0.0"
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "printWidth": 120,
+    "trailingComma": "none"
+  }
+}
