@@ -152,7 +152,7 @@ export function createHeroCow(): Entity {
   })
 
   pointerEventsSystem.onPointerDown(
-    { entity: cow, opts: { button: InputAction.IA_POINTER, hoverText: 'Moo.', maxDistance: 10 } },
+    { entity: cow, opts: { button: InputAction.IA_POINTER, hoverText: 'Moo.', maxDistance: 40 } },
     () => {
       void openExternalUrl({ url: EMOTE_URL })
     }

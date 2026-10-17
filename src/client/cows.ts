@@ -114,7 +114,7 @@ function spawnCow(index: number): Cow {
     spin: 0
   }
   pointerEventsSystem.onPointerDown(
-    { entity, opts: { button: InputAction.IA_POINTER, hoverText: 'Moo?', maxDistance: 16 } },
+    { entity, opts: { button: InputAction.IA_POINTER, hoverText: 'Moo?', maxDistance: 80 } },
     () => abduct(cow)
   )
   return cow

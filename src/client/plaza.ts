@@ -451,7 +451,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
       opts: {
         button: InputAction.IA_POINTER,
         hoverText: kind === 'emote' ? 'Open selected emote on Marketplace' : 'Not for sale — earned in Dungeons of Antrom',
-        maxDistance: 14
+        maxDistance: 40
       }
     },
     () => {
