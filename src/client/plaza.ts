@@ -36,6 +36,7 @@ import {
   WORLD_DUNGEONS
 } from '../layout'
 import { music } from './music'
+import { toast } from './ui'
 
 /** Permanent night: 01:00. */
 export function createNightSky() {
@@ -306,6 +307,18 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   const cowGlow = engine.addEntity()
   Transform.create(cowGlow, { parent: marketCow, position: Vector3.create(0, -0.5, 0) })
   LightSource.create(cowGlow, { active: true, color: glowColor, intensity: 700, range: 7, shadow: false, type: LightSource.Type.Point({}) })
+  const cowAction = engine.addEntity()
+  Transform.create(cowAction, { parent: root, position: Vector3.create(3.8, 0.55, -3.45) })
+  TextShape.create(cowAction, {
+    text: kind === 'emote' ? 'CLICK COW TO OPEN\nMARKETPLACE ITEM' : 'NOT FOR SALE\nEARNED IN DUNGEONS OF ANTROM',
+    fontSize: kind === 'emote' ? 1.15 : 1.05,
+    font: Font.F_SANS_SERIF,
+    textColor: kind === 'emote' ? Color4.create(0.45, 0.95, 1, 1) : Color4.create(0.75, 1, 0.35, 1),
+    outlineColor: Color4.Black(),
+    outlineWidth: 0.14,
+    textAlign: TextAlignMode.TAM_MIDDLE_CENTER,
+    lineSpacing: 9
+  })
 
   const light = engine.addEntity()
   Transform.create(light, { parent: root, position: Vector3.create(0, 3.5, -2) })
@@ -337,8 +350,19 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   pointerEventsSystem.onPointerDown({ entity: hit, opts: cycleOptions }, cycle)
   pointerEventsSystem.onPointerDown({ entity: plinth, opts: cycleOptions }, cycle)
   pointerEventsSystem.onPointerDown(
-    { entity: marketCow, opts: { button: InputAction.IA_POINTER, hoverText: 'Floating cow: view current item', maxDistance: 14 } },
+    {
+      entity: marketCow,
+      opts: {
+        button: InputAction.IA_POINTER,
+        hoverText: kind === 'emote' ? 'Open selected emote on Marketplace' : 'Not for sale — earned in Dungeons of Antrom',
+        maxDistance: 14
+      }
+    },
     () => {
+      if (kind === 'costume') {
+        toast('Alien costumes are not for sale. Earn them in Dungeons of Antrom through the purple portal.', 7)
+        return
+      }
       const collection = kind === 'emote' ? EMOTE_COLLECTION : COSTUME_COLLECTION
       void openExternalUrl({ url: `https://decentraland.org/marketplace/contracts/${collection}/items/${display.index}` })
     }
