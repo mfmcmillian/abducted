@@ -1,20 +1,39 @@
 import { Vector3 } from '@dcl/sdk/math'
 
-/** 4 x 4 parcels: 64 m square, dome in the middle. Keep in sync with tools/build-*.mjs. */
-export const PLOT = 64
-export const CENTER = Vector3.create(32, 0, 32)
-export const DOME_RADIUS = 22
-export const DOME_WALL = 6
-/** The south door of the dome (dome centre minus radius along z). */
-export const DOOR = Vector3.create(32, 0, 32 - DOME_RADIUS)
+/** 8 x 8 parcels: 128 m square, closed dome in the middle. Keep in sync with tools/build-*.mjs. */
+export const PLOT = 128
+export const CENTER = Vector3.create(64, 0, 64)
+export const DOME_RADIUS = 46
+export const DOME_WALL = 8
+/** Where players arrive: inside the dome, south of the diorama, looking north at it. */
+export const SPAWN = Vector3.create(64, 0, 26)
 
-/** Crop-circle formation centres in scene space (plaza.glb is centred on CENTER). */
-export const FORMATION = {
-  NW: Vector3.create(CENTER.x - 23, 0, CENTER.z + 23),
-  NE: Vector3.create(CENTER.x + 23, 0, CENTER.z + 23),
-  SW: Vector3.create(CENTER.x - 23, 0, CENTER.z - 21),
-  SE: Vector3.create(CENTER.x + 23, 0, CENTER.z - 21)
+/** Height of the dome ceiling above a point at horizontal distance r from the centre. */
+export function ceilingAt(r: number) {
+  const c = Math.min(r, DOME_RADIUS - 0.5)
+  return DOME_WALL + Math.sqrt(DOME_RADIUS * DOME_RADIUS - c * c)
 }
+
+/** Crop-circle formation centres in scene space (plaza.glb is centred on CENTER). All inside the dome. */
+export const FORMATION = {
+  NW: Vector3.create(CENTER.x - 26, 0, CENTER.z + 24),
+  NE: Vector3.create(CENTER.x + 26, 0, CENTER.z + 24),
+  SW: Vector3.create(CENTER.x - 30, 0, CENTER.z - 14),
+  SE: Vector3.create(CENTER.x + 30, 0, CENTER.z - 14)
+}
+
+/** The launch pad: stand here 3 s and the saucer takes you to the cow game. */
+export const LAUNCH_PAD = Vector3.create(CENTER.x - 12, 0, CENTER.z - 28)
+/** Where the saucer drops you back after a round. */
+export const LANDING = Vector3.create(CENTER.x - 5, 0, CENTER.z - 30)
+/** Leaderboard panel next to the pad. */
+export const LEADERBOARD = Vector3.create(CENTER.x - 21, 0, CENTER.z - 32)
+
+/** The sky pasture where the cow game is played: a 100 m square floating above the dome. */
+export const ARENA_Y = 64
+export const ARENA_SIZE = 100
+export const ARENA_FLY_HEIGHT = 11 // player (as the saucer) hovers this far above the pasture
+export const ROUND_SECONDS = 180
 
 // "They appear to be enjoying it" music video, 720p30, hosted on the KOA Firebase project bucket.
 export const VIDEO_URL = 'https://storage.googleapis.com/koa-db-media/alien-dome/enjoying-720p.mp4'

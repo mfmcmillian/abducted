@@ -13,24 +13,30 @@ import {
   VisibilityComponent
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { CENTER, DOME_RADIUS, flatDistance, FORMATION, PLOT } from '../layout'
+import { CENTER, DOME_RADIUS, flatDistance, FORMATION, LAUNCH_PAD, LEADERBOARD, SPAWN } from '../layout'
 
 /**
- * A herd of the emote's cows wandering the night field. Click one and the saucer
+ * A herd of the emote's cows wandering the dome floor. Click one and the saucer
  * comes over, drops its beam and takes it. A while later the cow is returned,
- * dropped from the sky somewhere else, apparently none the worse for it.
+ * dropped from the ceiling somewhere else, apparently none the worse for it.
  */
 
-const HERD = 10
+const HERD = 12
 const COW_SCALE = 1.5
 const WALK_SPEED = 1.4
-const KEEP_OUT_DOME = DOME_RADIUS + 3
+const KEEP_IN_RADIUS = DOME_RADIUS - 4 // stay off the wall
+const KEEP_OUT_CENTER = 18 // diorama, floor ring, dancers
 const KEEP_OUT_FORMATION = 10
-const EDGE = 3
+const KEEP_OUT_SPOTS: Array<[Vector3, number]> = [
+  [LAUNCH_PAD, 7],
+  [LEADERBOARD, 6],
+  [SPAWN, 7]
+]
 
-const UFO_IDLE = Vector3.create(CENTER.x + 12, 16, CENTER.z - 30)
+const UFO_IDLE = Vector3.create(CENTER.x + 20, 22, CENTER.z - 18)
 const UFO_SCALE = 3
-const BEAM_HEIGHT = 14 // beam cylinder height when deployed
+const BEAM_HEIGHT = 16 // beam cylinder height when deployed
+const DROP_HEIGHT = 22 // returned cows fall from here (ceiling is >= 26 m within the keep-in radius)
 
 type CowState = 'walk' | 'graze' | 'abducted' | 'gone' | 'falling'
 
@@ -67,9 +73,10 @@ function randomBetween(a: number, b: number) {
 }
 
 function isOpenGround(p: Vector3) {
-  if (p.x < EDGE || p.x > PLOT - EDGE || p.z < EDGE || p.z > PLOT - EDGE) return false
-  if (flatDistance(p, CENTER) < KEEP_OUT_DOME) return false
+  const r = flatDistance(p, CENTER)
+  if (r > KEEP_IN_RADIUS || r < KEEP_OUT_CENTER) return false
   for (const f of Object.values(FORMATION)) if (flatDistance(p, f) < KEEP_OUT_FORMATION) return false
+  for (const [spot, keep] of KEEP_OUT_SPOTS) if (flatDistance(p, spot) < keep) return false
   return true
 }
 
@@ -77,10 +84,10 @@ function randomOpenPoint(near?: Vector3, radius = 14): Vector3 {
   for (let i = 0; i < 40; i++) {
     const p = near
       ? Vector3.create(near.x + randomBetween(-radius, radius), 0, near.z + randomBetween(-radius, radius))
-      : Vector3.create(randomBetween(EDGE, PLOT - EDGE), 0, randomBetween(EDGE, PLOT - EDGE))
+      : Vector3.create(CENTER.x + randomBetween(-KEEP_IN_RADIUS, KEEP_IN_RADIUS), 0, CENTER.z + randomBetween(-KEEP_IN_RADIUS, KEEP_IN_RADIUS))
     if (isOpenGround(p)) return p
   }
-  return Vector3.create(10, 0, 8)
+  return Vector3.create(CENTER.x + 10, 0, CENTER.z + 30)
 }
 
 function spawnCow(index: number): Cow {
@@ -251,7 +258,7 @@ function cowSystem(dt: number) {
           cow.pos = randomOpenPoint()
           cow.state = 'falling'
           cow.timer = 0
-          t.position = Vector3.create(cow.pos.x, 24, cow.pos.z)
+          t.position = Vector3.create(cow.pos.x, DROP_HEIGHT, cow.pos.z)
           t.rotation = Quaternion.fromEulerDegrees(0, Math.random() * 360, 0)
           VisibilityComponent.createOrReplace(cow.entity, { visible: true })
         }
@@ -259,7 +266,7 @@ function cowSystem(dt: number) {
       }
       case 'falling': {
         cow.timer += dt
-        const y = 24 - 0.5 * 22 * cow.timer * cow.timer // soft gravity
+        const y = DROP_HEIGHT - 0.5 * 22 * cow.timer * cow.timer // soft gravity
         if (y <= 0) {
           t.position.y = 0
           cow.state = 'graze'

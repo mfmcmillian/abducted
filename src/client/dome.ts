@@ -19,7 +19,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { openExternalUrl } from '~system/RestrictedActions'
-import { CENTER, COSTUME_URL, DOME_RADIUS, DOOR, EMOTE_URL, VIDEO_URL } from '../layout'
+import { CENTER, COSTUME_URL, EMOTE_URL, SPAWN, VIDEO_URL } from '../layout'
 import { music } from './music'
 
 /** Single looping VideoPlayer; every screen in the scene samples this entity. */
@@ -101,7 +101,7 @@ export function createDiorama(): Entity {
   Transform.create(props, {
     position: CENTER,
     rotation: Quaternion.fromEulerDegrees(0, 180, 0),
-    scale: Vector3.create(2.5, 2.5, 2.5)
+    scale: Vector3.create(3.5, 3.5, 3.5)
   })
   GltfContainer.create(props, {
     src: 'models/abducted_props.glb',
@@ -113,7 +113,7 @@ export function createDiorama(): Entity {
   })
 
   pointerEventsSystem.onPointerDown(
-    { entity: props, opts: { button: InputAction.IA_POINTER, hoverText: 'They appear to be enjoying it', maxDistance: 24 } },
+    { entity: props, opts: { button: InputAction.IA_POINTER, hoverText: 'They appear to be enjoying it', maxDistance: 30 } },
     () => {
       void openExternalUrl({ url: COSTUME_URL })
     }
@@ -126,8 +126,8 @@ export function createDiorama(): Entity {
 export function createHeroCow(): Entity {
   const cow = engine.addEntity()
   Transform.create(cow, {
-    position: Vector3.create(DOOR.x + 4.2, 0, DOOR.z + 2.5),
-    rotation: Quaternion.fromEulerDegrees(0, -135, 0),
+    position: Vector3.create(SPAWN.x + 5, 0, SPAWN.z + 3),
+    rotation: Quaternion.fromEulerDegrees(0, -120, 0),
     scale: Vector3.create(2, 2, 2)
   })
   GltfContainer.create(cow, {
@@ -158,7 +158,7 @@ const PALETTE = [
  * that follow the music (bass drives intensity, the hue walks on every beat).
  */
 export function createInterior() {
-  const ringRadius = 11
+  const ringRadius = 15
   const tiles: Entity[] = []
   const TILE_COUNT = 16
   for (let i = 0; i < TILE_COUNT; i++) {
@@ -167,7 +167,7 @@ export function createInterior() {
     Transform.create(tile, {
       position: Vector3.create(CENTER.x + ringRadius * Math.sin(a), 0.06, CENTER.z + ringRadius * Math.cos(a)),
       rotation: Quaternion.fromEulerDegrees(0, (a * 180) / Math.PI, 0),
-      scale: Vector3.create(2.6, 0.08, 1.4)
+      scale: Vector3.create(3.4, 0.08, 1.6)
     })
     MeshRenderer.setBox(tile)
     Material.setPbrMaterial(tile, {
@@ -183,26 +183,26 @@ export function createInterior() {
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4
     const light = engine.addEntity()
-    Transform.create(light, { position: Vector3.create(CENTER.x + 8 * Math.sin(a), 7, CENTER.z + 8 * Math.cos(a)) })
+    Transform.create(light, { position: Vector3.create(CENTER.x + 12 * Math.sin(a), 10, CENTER.z + 12 * Math.cos(a)) })
     LightSource.create(light, {
       active: true,
       color: PALETTE[i],
-      intensity: 600,
-      range: 18,
+      intensity: 1200,
+      range: 32,
       shadow: false,
       type: LightSource.Type.Point({})
     })
     lights.push(light)
   }
 
-  // Blue fill at the door so the entrance reads from outside.
+  // Blue fill over the spawn circle.
   const door = engine.addEntity()
-  Transform.create(door, { position: Vector3.create(DOOR.x, 4, DOOR.z - 1) })
+  Transform.create(door, { position: Vector3.create(SPAWN.x, 5, SPAWN.z) })
   LightSource.create(door, {
     active: true,
     color: Color3.create(0.45, 0.6, 1),
-    intensity: 400,
-    range: 10,
+    intensity: 500,
+    range: 14,
     shadow: false,
     type: LightSource.Type.Point({})
   })
@@ -215,7 +215,7 @@ export function createInterior() {
     // Lights every frame (cheap), tiles at ~12 Hz.
     for (let i = 0; i < lights.length; i++) {
       const l = LightSource.getMutable(lights[i])
-      l.intensity = 250 + 1400 * music.bass
+      l.intensity = 500 + 2600 * music.bass
       l.color = PALETTE[(i + hueStep) % PALETTE.length]
     }
     if (tick < 1 / 12) return
@@ -229,6 +229,3 @@ export function createInterior() {
     }
   })
 }
-
-/** Dome radius guard used by the plaza wander logic. */
-export const DOME_CLEARANCE = DOME_RADIUS + 2.5

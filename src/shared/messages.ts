@@ -2,9 +2,8 @@ import { Schemas } from '@dcl/sdk/ecs'
 import { registerMessages } from '@dcl/sdk/network'
 
 /**
- * Client <-> server messages. The only server-side feature is the Antrom Guildstone
- * Ring claim, which must run on the authoritative server so the Rewards campaign
- * key never leaves it.
+ * Client <-> server messages. The server handles the Antrom Guildstone Ring claim
+ * (so the Rewards key never leaves it) and keeps the cow game leaderboard.
  */
 export const Messages = {
   /** client -> server: "tell me whether this wallet already claimed its ring" */
@@ -16,6 +15,15 @@ export const Messages = {
     claimed: Schemas.Boolean,
     ok: Schemas.Boolean,
     text: Schemas.String
+  }),
+
+  /** client -> server: a finished cow round */
+  scoreSubmit: Schemas.Map({ score: Schemas.Int, name: Schemas.String }),
+  /** client -> server: send me the board */
+  leaderboardGet: Schemas.Map({ v: Schemas.Int }),
+  /** server -> clients: top scores, best first */
+  leaderboard: Schemas.Map({
+    entries: Schemas.Array(Schemas.Map({ name: Schemas.String, score: Schemas.Int }))
   })
 }
 

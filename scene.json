@@ -3,7 +3,7 @@
   "runtimeVersion": "7",
   "display": {
     "title": "Abducted! - They appear to be enjoying it",
-    "description": "A 64 m night field with a giant video dome at its heart: the Abducted! music video wrapping all around you, cows to beam up, alien dancers, portals to Dungeons of Antrom and the Kingdom of Antrom, and one Antrom Guildstone Ring to claim per wallet.",
+    "description": "Sealed inside a 92 m video dome: the Abducted! music video all around you, cows to beam up, alien dancers, portals to Dungeons of Antrom and the Kingdom of Antrom, one Antrom Guildstone Ring per wallet, and a launch pad to the cow game: 3 minutes catching cows as a saucer on the sky pasture.",
     "navmapThumbnail": "images/scene-thumbnail.png",
     "favicon": "favicon_asset"
   },
@@ -24,7 +24,9 @@
     "dome",
     "world",
     "crop circles",
-    "night"
+    "night",
+    "game",
+    "cows"
   ],
   "scene": {
     "parcels": [
@@ -32,49 +34,98 @@
       "57,-110",
       "57,-109",
       "57,-108",
+      "57,-107",
+      "57,-106",
+      "57,-105",
+      "57,-104",
       "58,-111",
       "58,-110",
       "58,-109",
       "58,-108",
+      "58,-107",
+      "58,-106",
+      "58,-105",
+      "58,-104",
       "59,-111",
       "59,-110",
       "59,-109",
       "59,-108",
+      "59,-107",
+      "59,-106",
+      "59,-105",
+      "59,-104",
       "60,-111",
       "60,-110",
       "60,-109",
-      "60,-108"
+      "60,-108",
+      "60,-107",
+      "60,-106",
+      "60,-105",
+      "60,-104",
+      "61,-111",
+      "61,-110",
+      "61,-109",
+      "61,-108",
+      "61,-107",
+      "61,-106",
+      "61,-105",
+      "61,-104",
+      "62,-111",
+      "62,-110",
+      "62,-109",
+      "62,-108",
+      "62,-107",
+      "62,-106",
+      "62,-105",
+      "62,-104",
+      "63,-111",
+      "63,-110",
+      "63,-109",
+      "63,-108",
+      "63,-107",
+      "63,-106",
+      "63,-105",
+      "63,-104",
+      "64,-111",
+      "64,-110",
+      "64,-109",
+      "64,-108",
+      "64,-107",
+      "64,-106",
+      "64,-105",
+      "64,-104"
     ],
     "base": "57,-111"
   },
   "spawnPoints": [
     {
-      "name": "field-south",
+      "name": "dome-south",
       "default": true,
       "position": {
         "x": [
-          31,
-          33
+          62,
+          66
         ],
         "y": [
           0,
           0
         ],
         "z": [
-          2,
-          4
+          25,
+          27
         ]
       },
       "cameraTarget": {
-        "x": 32,
-        "y": 8,
-        "z": 32
+        "x": 64,
+        "y": 6,
+        "z": 64
       }
     }
   ],
   "requiredPermissions": [
     "ALLOW_MEDIA_HOSTNAMES",
-    "OPEN_EXTERNAL_LINK"
+    "OPEN_EXTERNAL_LINK",
+    "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE"
   ],
   "allowedMediaHostnames": [
     "storage.googleapis.com",

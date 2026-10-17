@@ -1,11 +1,11 @@
-// Generates models/dome.glb: an inside-out video dome for the 4x4 World build.
+// Generates models/dome.glb: a closed, inside-out video dome for the 8x8 World build.
 //
-// Geometry is centred on the local origin; the scene places it at (32, 0, 32).
+// Geometry is centred on the local origin; the scene places it at (64, 0, 64).
 // Nodes (all root level, so GltfNodeModifiers paths are just the names):
 //   DomeInner  - shell facing inward, video plays on it
 //   DomeOuter  - slightly larger shell facing outward, video plays on it too
-//   DoorFrame  - dark jambs + lintel closing the gap between shells at the door
-//   Floor      - dark disc
+//   DoorFrame  - only when CLOSED is false: dark jambs + lintel around the door
+//   Floor      - dark grass disc
 //
 // UV layout on both shells: u runs 0..1 twice around the dome (one video copy per
 // half, seam at north and south), v runs 0 at the floor to 1 at the apex along the
@@ -22,14 +22,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'models', 'dome.glb')
 
 // ---- parameters -----------------------------------------------------------
-export const RADIUS = 22 // inner radius (m); dome spans 10..54 on the 64 m plot
+export const RADIUS = 46 // inner radius (m); dome spans 18..110 on the 128 m plot
 const SHELL_GAP = 0.08 // outer shell = RADIUS + SHELL_GAP
-export const WALL_HEIGHT = 6 // vertical wall before the hemispherical cap (apex at 28 m, cap is 81 m for 16 parcels)
-const SEGMENTS = 96 // around (must be even: two video wraps)
-const WALL_RINGS = 6 // 1 m each
-const CAP_RINGS = 18
+export const WALL_HEIGHT = 8 // vertical wall before the hemispherical cap (apex at 54 m, cap is 120 m for 64 parcels)
+const SEGMENTS = 128 // around (must be even: two video wraps)
+const WALL_RINGS = 8 // 1 m each
+const CAP_RINGS = 24
+const CLOSED = true // no door: once you are in, you are in
 const DOOR_AZIMUTH_DEG = 180 // south, toward the spawn
-const DOOR_QUADS = 4 // 4 x 3.75 deg => ~5.7 m wide chord
+const DOOR_QUADS = CLOSED ? 0 : 4
 const DOOR_RINGS = 4 // 4 m tall (wall rings are 1 m)
 const FLOOR_Y = 0.03
 
@@ -152,21 +153,25 @@ const materials = [
   {
     name: 'DomeDark',
     pbrMetallicRoughness: { baseColorFactor: [0.03, 0.03, 0.04, 1], metallicFactor: 0.2, roughnessFactor: 0.9 }
+  },
+  {
+    name: 'Grass',
+    pbrMetallicRoughness: { baseColorFactor: [0.05, 0.095, 0.05, 1], metallicFactor: 0, roughnessFactor: 1 }
   }
 ]
 
 const inner = buildShell('DomeInner', RADIUS, true)
 const outer = buildShell('DomeOuter', RADIUS + SHELL_GAP, false)
-const frame = buildDoorFrame()
 const floor = buildFloor()
+floor.material = 2
+const parts = CLOSED ? [inner, outer, floor] : [inner, outer, buildDoorFrame(), floor]
 
-const glb = buildGlb([inner, outer, frame, floor], materials, 'Dome', 'abducted-dome build-dome.mjs')
+const glb = buildGlb(parts, materials, 'Dome', 'abducted-dome build-dome.mjs')
 mkdirSync(dirname(OUT), { recursive: true })
 writeFileSync(OUT, glb)
 
-const total = inner.triCount + outer.triCount + frame.triCount + floor.triCount
+const total = parts.reduce((n, p) => n + p.triCount, 0)
 console.log(`wrote ${OUT} (${(glb.length / 1024).toFixed(1)} KB)`)
-console.log(`tris: inner ${inner.triCount}, outer ${outer.triCount}, frame ${frame.triCount}, floor ${floor.triCount} => ${total}`)
-console.log(
-  `door: cols ${doorStart}..${doorEnd - 1} (${((DOOR_QUADS / SEGMENTS) * 360).toFixed(1)} deg, ~${(2 * RADIUS * Math.sin((DOOR_QUADS / SEGMENTS) * Math.PI)).toFixed(2)} m wide, ${(DOOR_RINGS / WALL_RINGS) * WALL_HEIGHT} m tall), apex y=${(WALL_HEIGHT + RADIUS).toFixed(2)}`
-)
+console.log(`tris: ${parts.map((p) => `${p.name} ${p.triCount}`).join(', ')} => ${total}`)
+if (!CLOSED) console.log(`door: cols ${doorStart}..${doorEnd - 1}, ${(DOOR_RINGS / WALL_RINGS) * WALL_HEIGHT} m tall`)
+console.log(`apex y=${(WALL_HEIGHT + RADIUS).toFixed(2)}`)

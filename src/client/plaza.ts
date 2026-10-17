@@ -53,19 +53,17 @@ const RIM_COLORS = [
   Color3.create(1, 0.35, 0.6)
 ]
 
-/** 24 light pylons hugging the dome, a 360 degree equalizer driven by the music bands. */
+/** 32 light pylons along the inner wall, a 360 degree equalizer driven by the music bands. */
 export function createRimPylons() {
-  const COUNT = 24
-  const radius = DOME_RADIUS + 1.4
+  const COUNT = 32
+  const radius = DOME_RADIUS - 2.2
   const pylons: Entity[] = []
   for (let i = 0; i < COUNT; i++) {
     const a = (i / COUNT) * Math.PI * 2
-    // leave the door (south, a = PI) clear
-    if (Math.abs(a - Math.PI) < 0.2) continue
     const pylon = engine.addEntity()
     Transform.create(pylon, {
       position: Vector3.create(CENTER.x + radius * Math.sin(a), 1.5, CENTER.z + radius * Math.cos(a)),
-      scale: Vector3.create(0.35, 3, 0.35)
+      scale: Vector3.create(0.5, 3, 0.5)
     })
     MeshRenderer.setBox(pylon)
     Material.setPbrMaterial(pylon, {
@@ -86,7 +84,7 @@ export function createRimPylons() {
     tick = 0
     for (let i = 0; i < pylons.length; i++) {
       const band = music.bands[i % 8]
-      const height = 1.2 + 4.5 * band
+      const height = 1.5 + 6.5 * band
       const t = Transform.getMutable(pylons[i])
       t.scale.y = height
       t.position.y = height / 2
@@ -231,35 +229,38 @@ export function createKiosk() {
   createExhibit(Vector3.create(c.x + 3, 0, c.z), 'models/ufo.glb', 1.1, 1.3, 'ALIEN COSTUMES', 'Alien costumes on the Marketplace', COSTUME_COLLECTION_URL)
 }
 
-/** Pumpkins and gravestones from the emote, scattered in the dark field. */
+/** Pumpkins and gravestones from the emote, scattered around the dome floor (dome-centred offsets). */
 export function createDecor() {
-  const place = (model: string, x: number, z: number, rot: number, scale: number) => {
+  const place = (model: string, dx: number, dz: number, rot: number, scale: number) => {
     const e = engine.addEntity()
     Transform.create(e, {
-      position: Vector3.create(x, 0, z),
+      position: Vector3.create(CENTER.x + dx, 0, CENTER.z + dz),
       rotation: Quaternion.fromEulerDegrees(0, rot, 0),
       scale: Vector3.create(scale, scale, scale)
     })
     GltfContainer.create(e, { src: model, visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
   }
   const graves: Array<[number, number, number]> = [
-    [4, 36, 80],
-    [6, 30, 100],
-    [60, 34, -80],
-    [58, 40, -70],
-    [14, 60, 20],
-    [50, 61, -30]
+    [-40, 6, 80],
+    [-38, -4, 100],
+    [40, 4, -80],
+    [38, -8, -70],
+    [-8, 40, 20],
+    [10, 41, -30],
+    [-36, 20, 50],
+    [34, 22, -50]
   ]
   for (const [x, z, r] of graves) place('models/grave.glb', x, z, r, 2.2)
   const pumpkins: Array<[number, number, number]> = [
-    [24, 4, 20],
-    [40, 5, -40],
-    [3, 50, 60],
-    [61, 52, -60],
-    [14, 6, 120],
-    [55, 12, 200],
-    [38, 60, 30],
-    [26, 61, -20]
+    [-20, 36, 20],
+    [22, 34, -40],
+    [-42, -14, 60],
+    [42, -16, -60],
+    [-24, -36, 120],
+    [20, -38, 200],
+    [0, 42, 30],
+    [-14, -22, -20],
+    [16, -24, 70]
   ]
   for (const [x, z, r] of pumpkins) place('models/pumpkin.glb', x, z, r, 2.5)
 }
