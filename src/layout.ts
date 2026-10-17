@@ -5,8 +5,8 @@ export const PLOT = 128
 export const CENTER = Vector3.create(64, 0, 64)
 export const DOME_RADIUS = 46
 export const DOME_WALL = 8
-/** Where players arrive: inside the dome, south of the diorama, looking north at it. */
-export const SPAWN = Vector3.create(64, 0, 26)
+/** Where players arrive: in the middle of the dome, directly under the diorama's ship. */
+export const SPAWN = Vector3.create(64, 0, 64)
 
 /** Height of the dome ceiling above a point at horizontal distance r from the centre. */
 export function ceilingAt(r: number) {
@@ -49,7 +49,6 @@ export const ABDUCTED_EMOTE_URN = `urn:decentraland:matic:collections-v2:${EMOTE
 export const COSTUME_URNS = [0, 1, 2, 3].map((i) => `urn:decentraland:matic:collections-v2:${COSTUME_COLLECTION}:${i}`)
 
 export const WORLD_DUNGEONS = 'dungeons.dcl.eth'
-export const WORLD_KOA = 'KoA.dcl.eth'
 
 /** Horizontal distance between two points. */
 export function flatDistance(a: Vector3, b: Vector3) {

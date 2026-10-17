@@ -22,6 +22,8 @@ import {
   PointerEventType,
   TextAlignMode,
   TextShape,
+  TextureFilterMode,
+  TextureWrapMode,
   Transform,
   TriggerArea,
   triggerAreaEventsSystem,
@@ -952,55 +954,47 @@ function gameSystem(dt: number) {
 // Leaderboard panel in the dome
 
 function createLeaderboard() {
-  const yaw = (Math.atan2(LAUNCH_PAD.x - LEADERBOARD.x, LAUNCH_PAD.z - LEADERBOARD.z) * 180) / Math.PI
+  // Plane/Text fronts face local -Z, so turn that side toward the launch pad.
+  const yaw = (Math.atan2(LAUNCH_PAD.x - LEADERBOARD.x, LAUNCH_PAD.z - LEADERBOARD.z) * 180) / Math.PI + 180
   const root = engine.addEntity()
   Transform.create(root, { position: Vector3.clone(LEADERBOARD), rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
 
   const panel = engine.addEntity()
-  Transform.create(panel, { parent: root, position: Vector3.create(0, 4, 0), scale: Vector3.create(7.5, 7, 0.3) })
-  MeshRenderer.setBox(panel)
+  Transform.create(panel, { parent: root, position: Vector3.create(0, 5.25, 0), scale: Vector3.create(8, 10.5, 0.2) })
+  MeshRenderer.setPlane(panel)
   MeshCollider.setBox(panel, ColliderLayer.CL_PHYSICS)
-  Material.setPbrMaterial(panel, { albedoColor: Color4.create(0.03, 0.05, 0.06, 1), emissiveColor: Color3.create(0.1, 0.3, 0.35), emissiveIntensity: 0.6, metallic: 0.3, roughness: 0.5 })
-  for (const side of [-1, 1]) {
-    const post = engine.addEntity()
-    Transform.create(post, { parent: root, position: Vector3.create(side * 3.9, 2.5, 0), scale: Vector3.create(0.3, 5, 0.3) })
-    MeshRenderer.setBox(post)
-    Material.setPbrMaterial(post, { albedoColor: Color4.create(0.05, 0.05, 0.07, 1), emissiveColor: Color3.create(0.3, 0.9, 1), emissiveIntensity: 1.5 })
-  }
+  Material.setBasicMaterial(panel, {
+    texture: Material.Texture.Common({
+      src: 'images/cow-catchers-scoreboard.jpg',
+      wrapMode: TextureWrapMode.TWM_CLAMP,
+      filterMode: TextureFilterMode.TFM_BILINEAR
+    }),
+    diffuseColor: Color4.White(),
+    castShadows: false
+  })
 
-  const title = engine.addEntity()
-  Transform.create(title, { parent: root, position: Vector3.create(0, 6.9, 0.2) })
-  TextShape.create(title, {
-    text: 'COW CATCHERS',
-    fontSize: 4,
-    font: Font.F_SANS_SERIF,
-    textColor: Color4.create(0.5, 0.95, 1, 1),
-    outlineColor: Color4.Black(),
-    outlineWidth: 0.12,
-    textAlign: TextAlignMode.TAM_MIDDLE_CENTER
-  })
-  const subtitle = engine.addEntity()
-  Transform.create(subtitle, { parent: root, position: Vector3.create(0, 6.25, 0.2) })
-  TextShape.create(subtitle, {
-    text: 'best round per visitor  ·  community board, not verified',
-    fontSize: 1.2,
-    font: Font.F_SANS_SERIF,
-    textColor: Color4.create(0.7, 0.85, 0.95, 1),
-    outlineColor: Color4.Black(),
-    outlineWidth: 0.1,
-    textAlign: TextAlignMode.TAM_MIDDLE_CENTER
-  })
   boardText = engine.addEntity()
-  Transform.create(boardText, { parent: root, position: Vector3.create(0, 3.5, 0.2) })
+  Transform.create(boardText, { parent: root, position: Vector3.create(0, 4.4, -0.08) })
   TextShape.create(boardText, {
     text: 'no rounds yet\nstand on the pad',
-    fontSize: 2,
+    fontSize: 1.8,
     font: Font.F_SANS_SERIF,
     textColor: Color4.White(),
     outlineColor: Color4.Black(),
-    outlineWidth: 0.08,
+    outlineWidth: 0.12,
     textAlign: TextAlignMode.TAM_MIDDLE_CENTER,
-    lineSpacing: 10
+    lineSpacing: 12
+  })
+  const note = engine.addEntity()
+  Transform.create(note, { parent: root, position: Vector3.create(0, 0.9, -0.08) })
+  TextShape.create(note, {
+    text: 'best round per visitor  ·  community board',
+    fontSize: 1,
+    font: Font.F_SANS_SERIF,
+    textColor: Color4.create(0.65, 0.9, 1, 1),
+    outlineColor: Color4.Black(),
+    outlineWidth: 0.1,
+    textAlign: TextAlignMode.TAM_MIDDLE_CENTER
   })
 
   room.onMessage('leaderboard', (data) => {

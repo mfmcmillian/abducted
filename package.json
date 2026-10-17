@@ -1,7 +1,7 @@
 {
   "name": "abducted-dome",
   "version": "0.1.0",
-  "description": "Abducted! - They appear to be enjoying it. A 4x4 World: giant video dome, cow herd, alien dancers, portals and the Antrom Guildstone Ring claim",
+  "description": "Abducted! - They appear to be enjoying it. An 8x8 World with a giant video dome, cow-catching game, DoA alien-suit portal, dancers and the Antrom Guildstone Ring claim",
   "scripts": {
     "start": "sdk-commands start",
     "deploy": "sdk-commands deploy",

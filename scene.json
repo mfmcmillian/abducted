@@ -3,7 +3,7 @@
   "runtimeVersion": "7",
   "display": {
     "title": "Abducted! - They appear to be enjoying it",
-    "description": "Sealed inside a 92 m video dome: the Abducted! music video all around you, cows to beam up, alien dancers, portals to Dungeons of Antrom and the Kingdom of Antrom, one Antrom Guildstone Ring per wallet, and a launch pad to the cow game: 3 minutes catching cows as a saucer on the sky pasture.",
+    "description": "Spawn under the ship inside a sealed 92 m video dome: the Abducted! music video all around you, cows to beam up, alien dancers showing the suits available in Dungeons of Antrom, one Antrom Guildstone Ring per wallet, and a launch pad to the three-minute cow-catching game.",
     "navmapThumbnail": "images/scene-thumbnail.png",
     "favicon": "favicon_asset"
   },
@@ -99,7 +99,7 @@
   },
   "spawnPoints": [
     {
-      "name": "dome-south",
+      "name": "under-the-ship",
       "default": true,
       "position": {
         "x": [
@@ -111,14 +111,14 @@
           0
         ],
         "z": [
-          25,
-          27
+          62,
+          66
         ]
       },
       "cameraTarget": {
         "x": 64,
         "y": 6,
-        "z": 64
+        "z": 76
       }
     }
   ],

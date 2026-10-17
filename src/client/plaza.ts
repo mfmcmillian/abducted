@@ -16,6 +16,8 @@ import {
   SkyboxTime,
   TextAlignMode,
   TextShape,
+  TextureFilterMode,
+  TextureWrapMode,
   Transform,
   TransitionMode,
   TriggerArea,
@@ -26,7 +28,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { changeRealm, openExternalUrl } from '~system/RestrictedActions'
-import { CENTER, COSTUME_COLLECTION_URL, DOME_RADIUS, EMOTE_COLLECTION_URL, FORMATION, WORLD_DUNGEONS, WORLD_KOA } from '../layout'
+import { CENTER, COSTUME_COLLECTION_URL, DOME_RADIUS, EMOTE_COLLECTION_URL, FORMATION, WORLD_DUNGEONS } from '../layout'
 import { music } from './music'
 
 /** Permanent night: 01:00. */
@@ -118,20 +120,33 @@ function label(parent: Entity, text: string, y: number, color: Color4, fontSize 
   return e
 }
 
-/** A gate to another World. Walk through the disc (or click it) and the explorer asks to travel. */
-function createPortal(position: Vector3, world: string, title: string, subtitle: string) {
+/** Illustrated gate to another World. Walk through or click it to travel. */
+function createPortal(position: Vector3, world: string, title: string, texture: string) {
   const portal = engine.addEntity()
-  Transform.create(portal, { position, rotation: facingCenter(position) })
-  GltfContainer.create(portal, {
-    src: 'models/portal.glb',
-    visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER,
-    invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
+  // Plane/Text fronts face local -Z. Rotate the portal's back toward the centre so its
+  // illustrated front is what players approaching from the dome centre see.
+  const facing = facingCenter(position)
+  Transform.create(portal, {
+    position,
+    rotation: Quaternion.multiply(facing, Quaternion.fromEulerDegrees(0, 180, 0))
   })
-  label(portal, title, 6.9, Color4.create(0.85, 0.7, 1, 1), 4)
-  label(portal, subtitle, 6.1, Color4.create(0.7, 0.6, 0.9, 1), 2)
+
+  const artwork = engine.addEntity()
+  Transform.create(artwork, { parent: portal, position: Vector3.create(0, 5, 0), scale: Vector3.create(7.5, 10, 0.12) })
+  MeshRenderer.setPlane(artwork)
+  MeshCollider.setBox(artwork, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
+  Material.setBasicMaterial(artwork, {
+    texture: Material.Texture.Common({
+      src: texture,
+      wrapMode: TextureWrapMode.TWM_CLAMP,
+      filterMode: TextureFilterMode.TFM_BILINEAR
+    }),
+    diffuseColor: Color4.White(),
+    castShadows: false
+  })
 
   const glow = engine.addEntity()
-  Transform.create(glow, { parent: portal, position: Vector3.create(0, 3.1, 0) })
+  Transform.create(glow, { parent: portal, position: Vector3.create(0, 4.5, -1) })
   LightSource.create(glow, {
     active: true,
     color: Color3.create(0.6, 0.3, 1),
@@ -145,13 +160,13 @@ function createPortal(position: Vector3, world: string, title: string, subtitle:
     void changeRealm({ realm: world, message: `Travel to ${title}?` })
   }
   pointerEventsSystem.onPointerDown(
-    { entity: portal, opts: { button: InputAction.IA_POINTER, hoverText: `Enter ${title}`, maxDistance: 12 } },
+    { entity: artwork, opts: { button: InputAction.IA_POINTER, hoverText: `Enter ${title} — get the alien suit`, maxDistance: 14 } },
     go
   )
 
-  // Walk-through trigger: a thin box in the disc plane.
+  // Walk-through trigger in front of the illustrated portal.
   const trigger = engine.addEntity()
-  Transform.create(trigger, { parent: portal, position: Vector3.create(0, 2.5, 0), scale: Vector3.create(4.2, 4.6, 1.2) })
+  Transform.create(trigger, { parent: portal, position: Vector3.create(0, 3, -1), scale: Vector3.create(5.5, 6, 2) })
   TriggerArea.setBox(trigger)
   let armed = true
   triggerAreaEventsSystem.onTriggerEnter(trigger, () => {
@@ -167,8 +182,7 @@ function createPortal(position: Vector3, world: string, title: string, subtitle:
 }
 
 export function createPortals() {
-  createPortal(FORMATION.NW, WORLD_DUNGEONS, 'Dungeons of Antrom', 'dungeons.dcl.eth')
-  createPortal(FORMATION.NE, WORLD_KOA, 'Kingdom of Antrom', 'KoA.dcl.eth')
+  createPortal(FORMATION.NW, WORLD_DUNGEONS, 'Dungeons of Antrom', 'images/doa-alien-suit-portal.jpg')
 }
 
 /** A pedestal with a slowly spinning exhibit on top; click to open a Marketplace page. */

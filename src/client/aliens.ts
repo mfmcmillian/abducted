@@ -1,17 +1,16 @@
 import { AvatarShape, engine, Entity, InputAction, MeshCollider, pointerEventsSystem, ColliderLayer, Transform } from '@dcl/sdk/ecs'
 import { Quaternion, Vector3 } from '@dcl/sdk/math'
 import { openExternalUrl } from '~system/RestrictedActions'
-import { ABDUCTED_EMOTE_URN, CENTER, COSTUME_COLLECTION, COSTUME_URNS } from '../layout'
+import { ABDUCTED_EMOTE_URN, CENTER, COSTUME_COLLECTION, COSTUME_URNS, FORMATION } from '../layout'
 
 /**
- * Four NPC avatars in the alien costumes dancing around the diorama, one of them
- * getting abducted on repeat. Click one to see its costume on the Marketplace.
+ * Eight NPC avatars in the alien costumes dance in front of the Dungeons of Antrom
+ * portal, making it clear where the suits come from. Click one to see its costume.
  */
 
 const BASE = 'urn:decentraland:off-chain:base-avatars'
 const DANCES = ['dance', 'disco', 'tektonik', 'robot', 'handsair', 'tik', 'hammer', 'dab', 'fistpump', 'shrug']
-const NAMES = ['Zorp', 'Blee', 'Gleep', 'Xanthe']
-const RING = 7.5
+const NAMES = ['Zorp', 'Blee', 'Gleep', 'Xanthe', 'Mox', 'Luma', 'Quib', 'Vexa']
 
 interface Dancer {
   entity: Entity
@@ -22,17 +21,28 @@ interface Dancer {
 const dancers: Dancer[] = []
 
 function createDancer(index: number): Dancer {
-  const a = (index / 4) * Math.PI * 2 + Math.PI / 4
-  const position = Vector3.create(CENTER.x + RING * Math.sin(a), 0, CENTER.z + RING * Math.cos(a))
+  const portal = FORMATION.NW
+  const dx = CENTER.x - portal.x
+  const dz = CENTER.z - portal.z
+  const length = Math.sqrt(dx * dx + dz * dz)
+  const forwardX = dx / length
+  const forwardZ = dz / length
+  const rightX = forwardZ
+  const rightZ = -forwardX
+  const row = Math.floor(index / 4)
+  const across = (index % 4 - 1.5) * 2.4
+  const depth = 5 + row * 3
+  const position = Vector3.create(portal.x + forwardX * depth + rightX * across, 0, portal.z + forwardZ * depth + rightZ * across)
   const entity = engine.addEntity()
-  // Face the diorama in the middle.
+  const costume = index % COSTUME_URNS.length
+  // Face visitors approaching from the middle of the dome.
   const yaw = (Math.atan2(CENTER.x - position.x, CENTER.z - position.z) * 180) / Math.PI
   Transform.create(entity, { position, rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
   AvatarShape.create(entity, {
     id: `alien-${index}`,
     name: NAMES[index],
     bodyShape: index % 2 === 0 ? `${BASE}:BaseMale` : `${BASE}:BaseFemale`,
-    wearables: [COSTUME_URNS[index], `${BASE}:eyes_00`, `${BASE}:eyebrows_00`, `${BASE}:mouth_00`],
+    wearables: [COSTUME_URNS[costume], `${BASE}:eyes_00`, `${BASE}:eyebrows_00`, `${BASE}:mouth_00`],
     emotes: [ABDUCTED_EMOTE_URN],
     skinColor: { r: 0.45, g: 0.85, b: 0.5 },
     hairColor: { r: 0.1, g: 0.1, b: 0.12 },
@@ -48,7 +58,7 @@ function createDancer(index: number): Dancer {
   pointerEventsSystem.onPointerDown(
     { entity: hit, opts: { button: InputAction.IA_POINTER, hoverText: `${NAMES[index]}'s costume`, maxDistance: 10 } },
     () => {
-      void openExternalUrl({ url: `https://decentraland.org/marketplace/contracts/${COSTUME_COLLECTION}/items/${index}` })
+      void openExternalUrl({ url: `https://decentraland.org/marketplace/contracts/${COSTUME_COLLECTION}/items/${costume}` })
     }
   )
 
@@ -56,7 +66,7 @@ function createDancer(index: number): Dancer {
 }
 
 export function createAliens() {
-  for (let i = 0; i < 4; i++) dancers.push(createDancer(i))
+  for (let i = 0; i < NAMES.length; i++) dancers.push(createDancer(i))
 
   engine.addSystem((dt) => {
     for (const d of dancers) {
