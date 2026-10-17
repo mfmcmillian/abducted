@@ -3,7 +3,7 @@
   "runtimeVersion": "7",
   "display": {
     "title": "Abducted! - They appear to be enjoying it",
-    "description": "Step inside the dome. The Knights of Antrom alien collection, the cow, the beam, and the music video playing all around you. Abducted! emotes on the Marketplace.",
+    "description": "A 64 m night field with a giant video dome at its heart: the Abducted! music video wrapping all around you, cows to beam up, alien dancers, portals to Dungeons of Antrom and the Kingdom of Antrom, and one Antrom Guildstone Ring to claim per wallet.",
     "navmapThumbnail": "images/scene-thumbnail.png",
     "favicon": "favicon_asset"
   },
@@ -21,36 +21,54 @@
     "halloween",
     "music",
     "video",
-    "dome"
+    "dome",
+    "world",
+    "crop circles",
+    "night"
   ],
   "scene": {
     "parcels": [
-      "57,-111"
+      "57,-111",
+      "57,-110",
+      "57,-109",
+      "57,-108",
+      "58,-111",
+      "58,-110",
+      "58,-109",
+      "58,-108",
+      "59,-111",
+      "59,-110",
+      "59,-109",
+      "59,-108",
+      "60,-111",
+      "60,-110",
+      "60,-109",
+      "60,-108"
     ],
     "base": "57,-111"
   },
   "spawnPoints": [
     {
-      "name": "dome-entrance",
+      "name": "field-south",
       "default": true,
       "position": {
         "x": [
-          7.5,
-          8.5
+          31,
+          33
         ],
         "y": [
           0,
           0
         ],
         "z": [
-          3,
+          2,
           4
         ]
       },
       "cameraTarget": {
-        "x": 8,
-        "y": 2,
-        "z": 8
+        "x": 32,
+        "y": 8,
+        "z": 32
       }
     }
   ],
@@ -69,5 +87,8 @@
     "voiceChat": "enabled",
     "portableExperiences": "enabled"
   },
-  "authoritativeMultiplayer": false
+  "authoritativeMultiplayer": true,
+  "logsPermissions": [
+    "0xfe2d424af0df49bb3316cb2e9f574b0d09cf98ad"
+  ]
 }
