@@ -199,8 +199,10 @@ interface Showcase {
   kind: 'emote' | 'costume'
   avatar: Entity
   status: Entity
+  marketCow: Entity
   index: number
   replay: number
+  cowPhase: number
 }
 
 const showcases: Showcase[] = []
@@ -288,34 +290,28 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
     textAlign: TextAlignMode.TAM_MIDDLE_CENTER
   })
 
-  const marketButton = engine.addEntity()
-  Transform.create(marketButton, { parent: root, position: Vector3.create(3.8, 0.65, -3.4), scale: Vector3.create(2.8, 0.8, 1.1) })
-  MeshRenderer.setBox(marketButton)
-  MeshCollider.setBox(marketButton, ColliderLayer.CL_POINTER)
-  Material.setPbrMaterial(marketButton, {
-    albedoColor: Color4.create(0.04, 0.04, 0.08, 1),
-    emissiveColor: glowColor,
-    emissiveIntensity: 1.4,
-    metallic: 0.4,
-    roughness: 0.3
+  // The Marketplace control is an anti-gravity cow, not a UI-looking box.
+  const marketCow = engine.addEntity()
+  Transform.create(marketCow, {
+    parent: root,
+    position: Vector3.create(3.8, 1.7, -3.4),
+    rotation: Quaternion.fromEulerDegrees(-8, 0, 10),
+    scale: Vector3.create(1.15, 1.15, 1.15)
   })
-  const marketText = engine.addEntity()
-  Transform.create(marketText, { parent: root, position: Vector3.create(3.8, 1.2, -3.4), rotation: Quaternion.fromEulerDegrees(-90, 0, 0) })
-  TextShape.create(marketText, {
-    text: 'VIEW ITEM',
-    fontSize: 1.3,
-    font: Font.F_SANS_SERIF,
-    textColor: Color4.White(),
-    outlineColor: Color4.Black(),
-    outlineWidth: 0.1,
-    textAlign: TextAlignMode.TAM_MIDDLE_CENTER
+  GltfContainer.create(marketCow, {
+    src: 'models/cow.glb',
+    visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+    invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
   })
+  const cowGlow = engine.addEntity()
+  Transform.create(cowGlow, { parent: marketCow, position: Vector3.create(0, -0.5, 0) })
+  LightSource.create(cowGlow, { active: true, color: glowColor, intensity: 700, range: 7, shadow: false, type: LightSource.Type.Point({}) })
 
   const light = engine.addEntity()
   Transform.create(light, { parent: root, position: Vector3.create(0, 3.5, -2) })
   LightSource.create(light, { active: true, color: glowColor, intensity: 1500, range: 14, shadow: false, type: LightSource.Type.Point({}) })
 
-  const display: Showcase = { kind, avatar, status, index: 0, replay: 8 }
+  const display: Showcase = { kind, avatar, status, marketCow, index: 0, replay: 8, cowPhase: kind === 'emote' ? 0 : Math.PI }
   showcases.push(display)
 
   const cycle = () => {
@@ -341,7 +337,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   pointerEventsSystem.onPointerDown({ entity: hit, opts: cycleOptions }, cycle)
   pointerEventsSystem.onPointerDown({ entity: plinth, opts: cycleOptions }, cycle)
   pointerEventsSystem.onPointerDown(
-    { entity: marketButton, opts: { button: InputAction.IA_POINTER, hoverText: 'View current item on Marketplace', maxDistance: 14 } },
+    { entity: marketCow, opts: { button: InputAction.IA_POINTER, hoverText: 'Floating cow: view current item', maxDistance: 14 } },
     () => {
       const collection = kind === 'emote' ? EMOTE_COLLECTION : COSTUME_COLLECTION
       void openExternalUrl({ url: `https://decentraland.org/marketplace/contracts/${collection}/items/${display.index}` })
@@ -356,13 +352,24 @@ export function createKiosk() {
 
   engine.addSystem((dt) => {
     for (const display of showcases) {
-      if (display.kind !== 'emote') continue
-      display.replay -= dt
-      if (display.replay > 0) continue
-      const shape = AvatarShape.getMutable(display.avatar)
-      shape.expressionTriggerId = EMOTE_URNS[display.index]
-      shape.expressionTriggerTimestamp = Date.now()
-      display.replay = 8
+      display.cowPhase += dt
+      const cow = Transform.getMutable(display.marketCow)
+      cow.position.y = 1.7 + Math.sin(display.cowPhase * 1.6) * 0.35
+      cow.rotation = Quaternion.fromEulerDegrees(
+        -8 + Math.sin(display.cowPhase * 1.1) * 6,
+        display.cowPhase * 32,
+        10 + Math.cos(display.cowPhase * 1.3) * 7
+      )
+
+      if (display.kind === 'emote') {
+        display.replay -= dt
+        if (display.replay <= 0) {
+          const shape = AvatarShape.getMutable(display.avatar)
+          shape.expressionTriggerId = EMOTE_URNS[display.index]
+          shape.expressionTriggerTimestamp = Date.now()
+          display.replay = 8
+        }
+      }
     }
   })
 }
