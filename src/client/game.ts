@@ -45,7 +45,8 @@ const COUNTDOWN = 3
 const COW_COUNT = 18
 const CATCH_RADIUS = 4.2
 const BEAM_COOLDOWN = 1.0
-const FLEE_RADIUS = 9
+const FLEE_RADIUS = 6
+const MAX_RANGE = 32 // how far from the saucer the beam can reach
 const EDGE = ARENA_SIZE / 2 - 4
 const ARENA_CENTER = Vector3.create(CENTER.x, ARENA_Y, CENTER.z)
 const FLY_Y = ARENA_Y + ARENA_FLY_HEIGHT
@@ -74,6 +75,7 @@ let spinAngle = 0
 let playerUfo: Entity
 let playerBeam: Entity
 let playerLight: Entity
+let aimMarker: Entity
 let beamShown = 0
 
 interface GameCow {
@@ -298,7 +300,7 @@ function createArena() {
     modifiers: [AvatarModifierType.AMT_HIDE_AVATARS, AvatarModifierType.AMT_DISABLE_PASSPORTS],
     excludeIds: []
   })
-  CameraModeArea.create(mods, { area: Vector3.create(ARENA_SIZE + 4, 14, ARENA_SIZE + 4), mode: CameraType.CT_THIRD_PERSON })
+  CameraModeArea.create(mods, { area: Vector3.create(ARENA_SIZE + 4, 14, ARENA_SIZE + 4), mode: CameraType.CT_FIRST_PERSON })
 
   // Light over the pasture.
   const moon = engine.addEntity()
@@ -307,7 +309,7 @@ function createArena() {
 
   // The player's saucer: follows the (hidden) avatar.
   playerUfo = engine.addEntity()
-  Transform.create(playerUfo, { position: Vector3.create(ARENA_CENTER.x, FLY_Y, ARENA_CENTER.z), scale: Vector3.create(2.4, 2.4, 2.4) })
+  Transform.create(playerUfo, { position: Vector3.create(ARENA_CENTER.x, FLY_Y, ARENA_CENTER.z), scale: Vector3.create(1.6, 1.6, 1.6) })
   GltfContainer.create(playerUfo, { src: 'models/ufo.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
   VisibilityComponent.create(playerUfo, { visible: false })
   playerBeam = engine.addEntity()
@@ -330,6 +332,19 @@ function createArena() {
     shadow: false,
     type: LightSource.Type.Spot({ innerAngle: 25, outerAngle: 50 })
   })
+
+  // Target ring on the grass where the beam will land.
+  aimMarker = engine.addEntity()
+  Transform.create(aimMarker, { position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 0.08, ARENA_CENTER.z), scale: Vector3.create(CATCH_RADIUS * 2, 0.06, CATCH_RADIUS * 2) })
+  MeshRenderer.setCylinder(aimMarker, 1, 0.9)
+  Material.setPbrMaterial(aimMarker, {
+    albedoColor: Color4.create(0.4, 1, 0.7, 0.7),
+    emissiveColor: Color3.create(0.4, 1, 0.7),
+    emissiveIntensity: 3,
+    transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
+    castShadows: false
+  })
+  VisibilityComponent.create(aimMarker, { visible: false })
 
   for (let i = 0; i < COW_COUNT; i++) cows.push(createGameCow())
   setCowsVisible(false)
@@ -441,6 +456,7 @@ function startRound() {
   hud.bannerSub = ''
   arrived = false
   VisibilityComponent.createOrReplace(playerUfo, { visible: true })
+  VisibilityComponent.createOrReplace(aimMarker, { visible: true })
   setCowsVisible(true)
   resetCows(ARENA_CENTER.x, ARENA_CENTER.z)
   LightSource.getMutable(playerLight).active = true
@@ -456,6 +472,7 @@ function endRound() {
   hud.banner = `ROUND OVER: ${score} COW${score === 1 ? '' : 'S'}`
   hud.bannerSub = 'the saucer is taking you back down'
   Transform.getMutable(playerBeam).scale = Vector3.Zero()
+  VisibilityComponent.createOrReplace(aimMarker, { visible: false })
   LightSource.getMutable(playerLight).active = false
   const name = getPlayer()?.name || 'Visitor'
   room.send('scoreSubmit', { score, name })
@@ -465,12 +482,41 @@ function returnToDome() {
   hud.visible = false
   hud.banner = ''
   VisibilityComponent.createOrReplace(playerUfo, { visible: false })
+  VisibilityComponent.createOrReplace(aimMarker, { visible: false })
   setCowsVisible(false)
   void movePlayerTo({ newRelativePosition: Vector3.create(LANDING.x, 0.2, LANDING.z), cameraTarget: Vector3.create(CENTER.x, 3, CENTER.z) })
   toast(`You caught ${score} cow${score === 1 ? '' : 's'}. They appear to be enjoying it.`, 8)
   phase = 'idle'
   phaseTime = 0
   setPadText('STAND HERE TO FLY')
+}
+
+/**
+ * Where the beam will land: the point on the pasture you are looking at, within range.
+ * Looking level or up falls back to straight below the saucer.
+ */
+function aimPoint(px: number, pz: number) {
+  const cam = Transform.getOrNull(engine.CameraEntity)
+  let x = px
+  let z = pz
+  if (cam) {
+    const fwd = Vector3.rotate(Vector3.Forward(), cam.rotation)
+    if (fwd.y < -0.05) {
+      const t = (ARENA_Y - cam.position.y) / fwd.y
+      x = cam.position.x + fwd.x * t
+      z = cam.position.z + fwd.z * t
+    }
+  }
+  const dx = x - px
+  const dz = z - pz
+  const d = Math.sqrt(dx * dx + dz * dz)
+  if (d > MAX_RANGE) {
+    x = px + (dx / d) * MAX_RANGE
+    z = pz + (dz / d) * MAX_RANGE
+  }
+  x = Math.max(ARENA_CENTER.x - EDGE, Math.min(ARENA_CENTER.x + EDGE, x))
+  z = Math.max(ARENA_CENTER.z - EDGE, Math.min(ARENA_CENTER.z + EDGE, z))
+  return { x, z }
 }
 
 function fireBeam(px: number, pz: number) {
@@ -560,10 +606,15 @@ function gameSystem(dt: number) {
 
   // Saucer follows the hidden avatar.
   const ut = Transform.getMutable(playerUfo)
-  ut.position = Vector3.lerp(ut.position, Vector3.create(px, player.position.y + 0.9, pz), Math.min(1, dt * 12))
+  // Under your feet: in first person you see its rim when you look down, and the pasture past it.
+  ut.position = Vector3.lerp(ut.position, Vector3.create(px, player.position.y - 2.2, pz), Math.min(1, dt * 12))
   ut.rotation = Quaternion.fromEulerDegrees(0, phaseTime * 60, 0)
+  const aim = aimPoint(px, pz)
   const lt = Transform.getMutable(playerLight)
-  lt.position = Vector3.create(px, player.position.y - 0.5, pz)
+  lt.position = Vector3.create(aim.x, FLY_Y - 1, aim.z)
+  const mt = Transform.getMutable(aimMarker)
+  mt.position = Vector3.create(aim.x, ARENA_Y + 0.08, aim.z)
+  mt.rotation = Quaternion.fromEulerDegrees(0, phaseTime * 90, 0)
 
   if (phase === 'playing') {
     if (!arrived) {
@@ -576,6 +627,7 @@ function gameSystem(dt: number) {
         toast('The saucer lost its grip. Try the pad again.', 6)
         hud.visible = false
         VisibilityComponent.createOrReplace(playerUfo, { visible: false })
+  VisibilityComponent.createOrReplace(aimMarker, { visible: false })
         setCowsVisible(false)
         phase = 'idle'
         phaseTime = 0
@@ -591,7 +643,7 @@ function gameSystem(dt: number) {
       (inputSystem.isTriggered(InputAction.IA_POINTER, PointerEventType.PET_DOWN) ||
         inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN))
     ) {
-      fireBeam(px, pz)
+      fireBeam(aim.x, aim.z)
     }
     // Fell off somehow, or the round ran out.
     if (roundLeft <= 0 || player.position.y < ARENA_Y - 2) endRound()

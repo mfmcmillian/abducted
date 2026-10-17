@@ -81,7 +81,7 @@ function Hud() {
         <Label value={formatTime(hud.secondsLeft)} fontSize={26} color={hud.secondsLeft < 15 ? Color4.create(1, 0.45, 0.4, 1) : Color4.White()} />
       </UiEntity>
       <UiEntity uiTransform={{ height: 6 }} />
-      <Label value="click or E: drop the beam" fontSize={14} color={Color4.create(0.7, 0.8, 0.9, 0.9)} />
+      <Label value="look at a cow, click or E to drop the beam" fontSize={14} color={Color4.create(0.7, 0.8, 0.9, 0.9)} />
       {hud.banner ? (
         <UiEntity
           uiTransform={{
