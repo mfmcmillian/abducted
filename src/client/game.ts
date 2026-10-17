@@ -40,8 +40,9 @@ import { hud, toast, type BeamState } from './ui'
 /**
  * The cow game (TheCowCatchingGame PRD v1.0, P0).
  *
- * The dome is the lobby: stand on the launch pad for three seconds and a saucer comes
- * down, beams you up and drops you on the sky pasture above the dome. Up there you ARE
+ * The dome is the lobby: approach the launch pad to call a saucer, then walk into its
+ * narrow guide beam. The beam widens, lifts you into the ship and drops you on the sky
+ * pasture above the dome. Up there you ARE
  * the saucer (first person, saucer under your feet). First visit gets a practice cow with
  * no clock; then 3-2-1-GO and a 180 second round. The beam is a committed drop:
  * Ready -> Charging -> Active -> Cooldown. A cow has to sit in the footprint for a
@@ -49,9 +50,10 @@ import { hud, toast, type BeamState } from './ui'
  * resets. Results, play again or back down to the dome.
  */
 
-type Phase = 'idle' | 'padHold' | 'pickup' | 'arriving' | 'practice' | 'countdown' | 'playing' | 'finalizing' | 'results'
+type Phase = 'idle' | 'summon' | 'boarding' | 'pickup' | 'arriving' | 'practice' | 'countdown' | 'playing' | 'finalizing' | 'results'
 
-const PAD_HOLD = 3
+const SUMMON_SECONDS = 2.4
+const BOARDING_TIMEOUT = 18
 const HALF = GAME.fieldSize / 2
 const ARENA_CENTER = Vector3.create(CENTER.x, ARENA_Y, CENTER.z)
 const FLY_Y = ARENA_Y + ARENA_FLY_HEIGHT
@@ -61,7 +63,7 @@ const COW_SCALE = 1.6
 
 let phase: Phase = 'idle'
 let phaseTime = 0
-let onPad = false
+let insideBeam = false
 let pickupMoved = false
 let practiced = false
 let sessionBest = 0
@@ -132,22 +134,36 @@ function dist2(ax: number, az: number, bx: number, bz: number) {
 // Launch pad in the dome (the lobby's Play interaction)
 
 function createLaunchPad() {
-  const trigger = engine.addEntity()
-  Transform.create(trigger, { position: Vector3.create(LAUNCH_PAD.x, 1.5, LAUNCH_PAD.z), scale: Vector3.create(4.5, 3, 4.5) })
-  TriggerArea.setBox(trigger)
-  triggerAreaEventsSystem.onTriggerEnter(trigger, () => {
-    onPad = true
+  // Broad call zone: approaching the pad brings the UFO down before the player
+  // reaches the narrow beam in the middle.
+  const callZone = engine.addEntity()
+  Transform.create(callZone, { position: Vector3.create(LAUNCH_PAD.x, 1.5, LAUNCH_PAD.z), scale: Vector3.create(10, 3, 10) })
+  TriggerArea.setBox(callZone)
+  triggerAreaEventsSystem.onTriggerEnter(callZone, () => {
     if (phase === 'idle') {
-      phase = 'padHold'
+      phase = 'summon'
       phaseTime = 0
+      setPadText('UFO INBOUND...')
+      toast('A saucer heard the call.', 3)
     }
   })
-  triggerAreaEventsSystem.onTriggerExit(trigger, () => {
-    onPad = false
-    if (phase === 'padHold') {
-      phase = 'idle'
-      setPadText('STAND HERE TO FLY')
+
+  // Small boarding zone at the centre. Walking into the thin guide beam expands it
+  // and starts the lift; being merely near the pad is not enough.
+  const beamZone = engine.addEntity()
+  Transform.create(beamZone, { position: Vector3.create(LAUNCH_PAD.x, 1.5, LAUNCH_PAD.z), scale: Vector3.create(2.4, 3, 2.4) })
+  TriggerArea.setBox(beamZone)
+  triggerAreaEventsSystem.onTriggerEnter(beamZone, () => {
+    insideBeam = true
+    if (phase === 'boarding') {
+      phase = 'pickup'
+      phaseTime = 0
+      pickupMoved = false
+      setPadText('ABDUCTION IN PROGRESS')
     }
+  })
+  triggerAreaEventsSystem.onTriggerExit(beamZone, () => {
+    insideBeam = false
   })
 
   padDisc = engine.addEntity()
@@ -193,7 +209,7 @@ function createLaunchPad() {
   padText = engine.addEntity()
   Transform.create(padText, { position: Vector3.create(LAUNCH_PAD.x, 6.2, LAUNCH_PAD.z) })
   TextShape.create(padText, {
-    text: 'STAND HERE TO FLY',
+    text: 'APPROACH TO CALL UFO',
     fontSize: 3,
     font: Font.F_SANS_SERIF,
     textColor: Color4.create(0.5, 0.95, 1, 1),
@@ -808,7 +824,7 @@ function returnToDome(message: string) {
   if (message) toast(message, 8)
   phase = 'idle'
   phaseTime = 0
-  setPadText('STAND HERE TO FLY')
+  setPadText('APPROACH TO CALL UFO')
 }
 
 // ---------------------------------------------------------------------------
@@ -816,48 +832,64 @@ function returnToDome(message: string) {
 function gameSystem(dt: number) {
   phaseTime += dt
 
-  // --- pad hold and pickup ---------------------------------------------------
-  if (phase === 'padHold') {
-    const left = Math.ceil(PAD_HOLD - phaseTime)
-    setPadText(onPad ? `HOLD STILL...  ${Math.max(1, left)}` : 'STAND HERE TO FLY')
-    if (phaseTime >= PAD_HOLD) {
-      phase = 'pickup'
-      phaseTime = 0
-      pickupMoved = false
-      setPadText('')
-      toast('They are coming for you.', 4)
-    }
-  }
-
-  const progress = phase === 'padHold' ? Math.min(1, phaseTime / PAD_HOLD) : phase === 'pickup' ? 1 : 0
-  const spin = phase === 'padHold' ? 40 + progress * 260 : phase === 'pickup' ? 360 : 40
+  // --- summon, enter the narrow beam, then get lifted -----------------------
+  const summonProgress = phase === 'summon' ? Math.min(1, phaseTime / SUMMON_SECONDS) : phase === 'boarding' || phase === 'pickup' ? 1 : 0
+  const spin = phase === 'summon' ? 80 + summonProgress * 220 : phase === 'boarding' || phase === 'pickup' ? 360 : 40
   spinAngle += spin * dt
   for (let i = 0; i < padRings.length; i++) {
     const t = Transform.getMutable(padRings[i])
     t.rotation = Quaternion.fromEulerDegrees(0, spinAngle * (i % 2 === 0 ? 1 : -1), 0)
     const base = [1.6, 3.0, 4.4][i]
-    t.position.y = base + Math.sin(spinAngle * 0.02 + i) * 0.15 + progress * (liftDown.y - 2 - base) * 0.6
+    t.position.y = base + Math.sin(spinAngle * 0.02 + i) * 0.15 + summonProgress * (liftDown.y - 2 - base) * 0.6
   }
-  const fillH = progress * (liftDown.y - 1.5)
+  // The old countdown column would compete visually with the real UFO beam.
   const fillT = Transform.getMutable(padFill)
-  fillT.scale = progress > 0 ? Vector3.create(5.6, fillH, 5.6) : Vector3.Zero()
-  fillT.position.y = 0.3 + fillH / 2
+  fillT.scale = Vector3.Zero()
   const discM = Material.getMutable(padDisc)
-  if (discM.material?.$case === 'pbr') discM.material.pbr.emissiveIntensity = 1.2 + progress * 3 + Math.sin(phaseTime * 3) * 0.3
+  if (discM.material?.$case === 'pbr') discM.material.pbr.emissiveIntensity = 1.2 + summonProgress * 3 + Math.sin(phaseTime * 3) * 0.3
 
   const ufoT = Transform.getMutable(liftUfo)
   const beamT = Transform.getMutable(liftBeam)
-  if (phase === 'pickup') {
-    const k = Math.min(1, phaseTime / 1.6)
+  if (phase === 'summon') {
+    const k = Math.min(1, phaseTime / SUMMON_SECONDS)
     ufoT.position = Vector3.lerp(liftIdle, liftDown, easeInOut(k))
-    const beamOn = phaseTime > 1.4
-    beamT.scale = beamOn ? Vector3.create(1, liftDown.y, 1) : Vector3.Zero()
-    LightSource.getMutable(liftLight).active = beamOn
-    if (phaseTime > 1.8 && !pickupMoved) {
-      pickupMoved = true
-      void movePlayerTo({ newRelativePosition: Vector3.create(LAUNCH_PAD.x, liftDown.y - 2.5, LAUNCH_PAD.z), duration: 1.3 })
+    // A narrow guide beam fades on while the ship descends.
+    const thin = Math.max(0, Math.min(1, (phaseTime - 0.45) / 0.65))
+    beamT.scale = thin > 0 ? Vector3.create(0.16 * thin, liftDown.y, 0.16 * thin) : Vector3.Zero()
+    LightSource.getMutable(liftLight).active = thin > 0
+    if (phaseTime >= SUMMON_SECONDS) {
+      phase = 'boarding'
+      phaseTime = 0
+      setPadText('WALK INTO THE BEAM')
     }
-    if (phaseTime > 3.4) {
+  } else if (phase === 'boarding') {
+    ufoT.position = Vector3.create(liftDown.x, liftDown.y + Math.sin(phaseTime * 1.8) * 0.18, liftDown.z)
+    beamT.scale = Vector3.create(0.16, liftDown.y, 0.16)
+    LightSource.getMutable(liftLight).active = true
+    // If the player reached the centre while the ship was still descending, board now.
+    if (insideBeam) {
+      phase = 'pickup'
+      phaseTime = 0
+      pickupMoved = false
+      setPadText('ABDUCTION IN PROGRESS')
+    } else if (phaseTime > BOARDING_TIMEOUT) {
+      phase = 'idle'
+      phaseTime = 0
+      setPadText('APPROACH TO CALL UFO')
+      LightSource.getMutable(liftLight).active = false
+    }
+  } else if (phase === 'pickup') {
+    ufoT.position = Vector3.create(liftDown.x, liftDown.y + Math.sin(phaseTime * 1.8) * 0.12, liftDown.z)
+    // The guide beam blooms from 16% to full catch width as it takes hold.
+    const widen = Math.min(1, phaseTime / 0.8)
+    const width = 0.16 + easeInOut(widen) * 0.84
+    beamT.scale = Vector3.create(width, liftDown.y, width)
+    LightSource.getMutable(liftLight).active = true
+    if (phaseTime > 0.7 && !pickupMoved) {
+      pickupMoved = true
+      void movePlayerTo({ newRelativePosition: Vector3.create(LAUNCH_PAD.x, liftDown.y - 2.5, LAUNCH_PAD.z), duration: 1.45 })
+    }
+    if (phaseTime > 2.45) {
       phase = 'arriving'
       phaseTime = 0
       beamT.scale = Vector3.Zero()
@@ -870,11 +902,12 @@ function gameSystem(dt: number) {
   } else {
     ufoT.position = Vector3.lerp(ufoT.position, Vector3.create(liftIdle.x + Math.sin(phaseTime * 0.4) * 2, liftIdle.y + Math.sin(phaseTime * 0.9) * 0.6, liftIdle.z), Math.min(1, dt * 1.5))
     beamT.scale = Vector3.Zero()
+    LightSource.getMutable(liftLight).active = false
   }
   ufoT.rotation = Quaternion.fromEulerDegrees(Math.sin(phaseTime * 1.3) * 3, phaseTime * 35, Math.cos(phaseTime * 1.1) * 3)
 
   // --- up on the pasture ------------------------------------------------------
-  if (phase === 'idle' || phase === 'padHold' || phase === 'pickup') return
+  if (phase === 'idle' || phase === 'summon' || phase === 'boarding' || phase === 'pickup') return
   const player = Transform.getOrNull(engine.PlayerEntity)
   if (!player) return
   const px = player.position.x
@@ -976,7 +1009,7 @@ function createLeaderboard() {
   boardText = engine.addEntity()
   Transform.create(boardText, { parent: root, position: Vector3.create(0, 4.4, -0.08) })
   TextShape.create(boardText, {
-    text: 'no rounds yet\nstand on the pad',
+    text: 'no rounds yet\ncall the UFO',
     fontSize: 1.8,
     font: Font.F_SANS_SERIF,
     textColor: Color4.White(),
@@ -999,7 +1032,7 @@ function createLeaderboard() {
 
   room.onMessage('leaderboard', (data) => {
     const lines = data.entries.map((e, i) => `${i + 1}.  ${e.name}   ${e.score}   (${e.cows} cow${e.cows === 1 ? '' : 's'})`)
-    TextShape.getMutable(boardText).text = lines.length ? lines.join('\n') : 'no rounds yet\nstand on the pad'
+    TextShape.getMutable(boardText).text = lines.length ? lines.join('\n') : 'no rounds yet\ncall the UFO'
   })
   room.send('leaderboardGet', { v: 1 })
 }
