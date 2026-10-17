@@ -59,11 +59,17 @@ let roundLeft = 0
 let pickupMoved = false
 
 let padText: Entity
+let padDisc: Entity
+let padFill: Entity
+const padRings: Entity[] = []
 let liftUfo: Entity
 let liftBeam: Entity
 let liftLight: Entity
-const liftIdle = Vector3.create(LAUNCH_PAD.x, 30, LAUNCH_PAD.z)
-const liftDown = Vector3.create(LAUNCH_PAD.x, 13, LAUNCH_PAD.z)
+const liftIdle = Vector3.create(LAUNCH_PAD.x, 17, LAUNCH_PAD.z)
+const liftDown = Vector3.create(LAUNCH_PAD.x, 12, LAUNCH_PAD.z)
+/** Set once the explorer has actually put us on the pasture; guards the fall check. */
+let arrived = false
+let spinAngle = 0
 
 let playerUfo: Entity
 let playerBeam: Entity
@@ -111,8 +117,51 @@ function createLaunchPad() {
     }
   })
 
+  // The pad itself: a raised glowing disc you can see from across the dome.
+  padDisc = engine.addEntity()
+  Transform.create(padDisc, { position: Vector3.create(LAUNCH_PAD.x, 0.12, LAUNCH_PAD.z), scale: Vector3.create(6.4, 0.24, 6.4) })
+  MeshRenderer.setCylinder(padDisc, 1, 1)
+  MeshCollider.setCylinder(padDisc, 1, 1, ColliderLayer.CL_PHYSICS)
+  Material.setPbrMaterial(padDisc, {
+    albedoColor: Color4.create(0.03, 0.08, 0.1, 1),
+    emissiveColor: Color3.create(0.4, 0.9, 1),
+    emissiveIntensity: 1.2,
+    metallic: 0.5,
+    roughness: 0.3
+  })
+  // Three rings hovering over the pad, spinning: the tractor column, waiting.
+  const ringSpecs: Array<[number, number]> = [
+    [2.8, 1.6],
+    [2.2, 3.0],
+    [1.6, 4.4]
+  ]
+  for (const [radius, y] of ringSpecs) {
+    const ring = engine.addEntity()
+    Transform.create(ring, { position: Vector3.create(LAUNCH_PAD.x, y, LAUNCH_PAD.z), scale: Vector3.create(radius * 2, 0.08, radius * 2) })
+    MeshRenderer.setCylinder(ring, 1, 0.92)
+    Material.setPbrMaterial(ring, {
+      albedoColor: Color4.create(0.4, 0.9, 1, 0.55),
+      emissiveColor: Color3.create(0.4, 0.9, 1),
+      emissiveIntensity: 2,
+      transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
+      castShadows: false
+    })
+    padRings.push(ring)
+  }
+  // Countdown column: grows from the pad up to the saucer while you hold still.
+  padFill = engine.addEntity()
+  Transform.create(padFill, { position: Vector3.create(LAUNCH_PAD.x, 0.3, LAUNCH_PAD.z), scale: Vector3.Zero() })
+  MeshRenderer.setCylinder(padFill, 1, 1)
+  Material.setPbrMaterial(padFill, {
+    albedoColor: Color4.create(0.4, 0.9, 1, 0.22),
+    emissiveColor: Color3.create(0.4, 0.9, 1),
+    emissiveIntensity: 1.2,
+    transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
+    castShadows: false
+  })
+
   padText = engine.addEntity()
-  Transform.create(padText, { position: Vector3.create(LAUNCH_PAD.x, 4.2, LAUNCH_PAD.z) })
+  Transform.create(padText, { position: Vector3.create(LAUNCH_PAD.x, 6.2, LAUNCH_PAD.z) })
   TextShape.create(padText, {
     text: 'STAND HERE TO FLY',
     fontSize: 3,
@@ -124,7 +173,7 @@ function createLaunchPad() {
   })
   Billboard.create(padText, { billboardMode: BillboardMode.BM_Y })
   const sub = engine.addEntity()
-  Transform.create(sub, { position: Vector3.create(LAUNCH_PAD.x, 3.5, LAUNCH_PAD.z) })
+  Transform.create(sub, { position: Vector3.create(LAUNCH_PAD.x, 5.5, LAUNCH_PAD.z) })
   TextShape.create(sub, {
     text: 'the cow game: 3 minutes, catch cows as a saucer',
     fontSize: 1.5,
@@ -152,7 +201,7 @@ function createLaunchPad() {
   Transform.create(liftUfo, { position: Vector3.clone(liftIdle), scale: Vector3.create(3.5, 3.5, 3.5) })
   GltfContainer.create(liftUfo, { src: 'models/ufo.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
   liftBeam = engine.addEntity()
-  Transform.create(liftBeam, { position: Vector3.create(LAUNCH_PAD.x, 6.5, LAUNCH_PAD.z), scale: Vector3.Zero() })
+  Transform.create(liftBeam, { position: Vector3.create(LAUNCH_PAD.x, liftDown.y / 2, LAUNCH_PAD.z), scale: Vector3.Zero() })
   MeshRenderer.setCylinder(liftBeam, 3.2, 1.2)
   Material.setPbrMaterial(liftBeam, {
     albedoColor: Color4.create(0.4, 0.9, 1, 0.3),
@@ -390,6 +439,7 @@ function startRound() {
   hud.secondsLeft = roundLeft
   hud.banner = ''
   hud.bannerSub = ''
+  arrived = false
   VisibilityComponent.createOrReplace(playerUfo, { visible: true })
   setCowsVisible(true)
   resetCows(ARENA_CENTER.x, ARENA_CENTER.z)
@@ -457,18 +507,35 @@ function gameSystem(dt: number) {
     }
   }
 
+  // Pad visuals: rings spin (faster while counting down), the column fills with the countdown.
+  const progress = phase === 'countdown' ? Math.min(1, phaseTime / COUNTDOWN) : phase === 'pickup' ? 1 : 0
+  const spin = phase === 'countdown' ? 40 + progress * 260 : phase === 'pickup' ? 360 : 40
+  spinAngle += spin * dt
+  for (let i = 0; i < padRings.length; i++) {
+    const t = Transform.getMutable(padRings[i])
+    t.rotation = Quaternion.fromEulerDegrees(0, spinAngle * (i % 2 === 0 ? 1 : -1), 0)
+    const base = [1.6, 3.0, 4.4][i]
+    t.position.y = base + Math.sin(spinAngle * 0.02 + i) * 0.15 + progress * (liftDown.y - 2 - base) * 0.6
+  }
+  const fillH = progress * (liftDown.y - 1.5)
+  const fillT = Transform.getMutable(padFill)
+  fillT.scale = progress > 0 ? Vector3.create(5.6, fillH, 5.6) : Vector3.Zero()
+  fillT.position.y = 0.3 + fillH / 2
+  const discM = Material.getMutable(padDisc)
+  if (discM.material?.$case === 'pbr') discM.material.pbr.emissiveIntensity = 1.2 + progress * 3 + Math.sin(phaseTime * 3) * 0.3
+
   const ufoT = Transform.getMutable(liftUfo)
   const beamT = Transform.getMutable(liftBeam)
   if (phase === 'pickup') {
     const k = Math.min(1, phaseTime / 1.6)
     ufoT.position = Vector3.lerp(liftIdle, liftDown, easeInOut(k))
     const beamOn = phaseTime > 1.4
-    beamT.scale = beamOn ? Vector3.create(1, 13, 1) : Vector3.Zero()
+    beamT.scale = beamOn ? Vector3.create(1, liftDown.y, 1) : Vector3.Zero()
     LightSource.getMutable(liftLight).active = beamOn
     if (phaseTime > 1.8 && !pickupMoved) {
       pickupMoved = true
       // Rise in the beam, then off to the pasture.
-      void movePlayerTo({ newRelativePosition: Vector3.create(LAUNCH_PAD.x, 10, LAUNCH_PAD.z), duration: 1.3 })
+      void movePlayerTo({ newRelativePosition: Vector3.create(LAUNCH_PAD.x, liftDown.y - 2.5, LAUNCH_PAD.z), duration: 1.3 })
     }
     if (phaseTime > 3.4) {
       phase = 'playing'
@@ -499,6 +566,23 @@ function gameSystem(dt: number) {
   lt.position = Vector3.create(px, player.position.y - 0.5, pz)
 
   if (phase === 'playing') {
+    if (!arrived) {
+      // The explorer takes a moment to apply movePlayerTo; the clock starts when we are up there.
+      if (player.position.y > ARENA_Y + 2) {
+        arrived = true
+        phaseTime = 0
+      } else if (phaseTime > 8) {
+        // Never made it (move refused?). Back to the dome without a score.
+        toast('The saucer lost its grip. Try the pad again.', 6)
+        hud.visible = false
+        VisibilityComponent.createOrReplace(playerUfo, { visible: false })
+        setCowsVisible(false)
+        phase = 'idle'
+        phaseTime = 0
+        setPadText('STAND HERE TO FLY')
+      }
+      return
+    }
     roundLeft -= dt
     hud.secondsLeft = roundLeft
     beamCooldown = Math.max(0, beamCooldown - dt)
