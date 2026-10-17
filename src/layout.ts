@@ -45,7 +45,8 @@ export const EMOTE_URL = `https://decentraland.org/marketplace/contracts/${EMOTE
 export const COSTUME_URL = `https://decentraland.org/marketplace/contracts/${COSTUME_COLLECTION}/items/0`
 export const EMOTE_COLLECTION_URL = `https://decentraland.org/marketplace/collections/${EMOTE_COLLECTION}`
 export const COSTUME_COLLECTION_URL = `https://decentraland.org/marketplace/collections/${COSTUME_COLLECTION}`
-export const ABDUCTED_EMOTE_URN = `urn:decentraland:matic:collections-v2:${EMOTE_COLLECTION}:2`
+export const EMOTE_URNS = [0, 1, 2, 3].map((i) => `urn:decentraland:matic:collections-v2:${EMOTE_COLLECTION}:${i}`)
+export const ABDUCTED_EMOTE_URN = EMOTE_URNS[2]
 export const COSTUME_URNS = [0, 1, 2, 3].map((i) => `urn:decentraland:matic:collections-v2:${COSTUME_COLLECTION}:${i}`)
 
 export const WORLD_DUNGEONS = 'dungeons.dcl.eth'

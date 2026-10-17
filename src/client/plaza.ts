@@ -1,8 +1,8 @@
 import {
+  AvatarShape,
   Billboard,
   BillboardMode,
   ColliderLayer,
-  EasingFunction,
   engine,
   Entity,
   Font,
@@ -21,14 +21,20 @@ import {
   Transform,
   TransitionMode,
   TriggerArea,
-  triggerAreaEventsSystem,
-  Tween,
-  TweenLoop,
-  TweenSequence
+  triggerAreaEventsSystem
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { changeRealm, openExternalUrl } from '~system/RestrictedActions'
-import { CENTER, COSTUME_COLLECTION_URL, DOME_RADIUS, EMOTE_COLLECTION_URL, FORMATION, WORLD_DUNGEONS } from '../layout'
+import {
+  CENTER,
+  COSTUME_COLLECTION,
+  COSTUME_URNS,
+  DOME_RADIUS,
+  EMOTE_COLLECTION,
+  EMOTE_URNS,
+  FORMATION,
+  WORLD_DUNGEONS
+} from '../layout'
 import { music } from './music'
 
 /** Permanent night: 01:00. */
@@ -185,62 +191,180 @@ export function createPortals() {
   createPortal(FORMATION.NW, WORLD_DUNGEONS, 'Dungeons of Antrom', 'images/doa-alien-suit-portal.jpg')
 }
 
-/** A pedestal with a slowly spinning exhibit on top; click to open a Marketplace page. */
-function createExhibit(position: Vector3, model: string, modelScale: number, modelY: number, title: string, hover: string, url: string) {
+const BASE_AVATAR = 'urn:decentraland:off-chain:base-avatars'
+const EMOTE_NAMES = ['RED', 'PURPLE', 'GREEN', 'CYAN']
+const COSTUME_NAMES = ['ALIEN 01', 'ALIEN 02', 'ALIEN 03', 'ALIEN 04']
+
+interface Showcase {
+  kind: 'emote' | 'costume'
+  avatar: Entity
+  status: Entity
+  index: number
+  replay: number
+}
+
+const showcases: Showcase[] = []
+
+/**
+ * A real AvatarShape collection display. The illustrated panel is the backdrop, the
+ * glowing pedestal/avatar cycles the four collection items, and a separate button opens
+ * the currently displayed item on Marketplace.
+ */
+function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, texture: string, glowColor: Color3) {
+  const root = engine.addEntity()
+  const towardCentre = facingCenter(position)
+  Transform.create(root, {
+    position,
+    // Plane/Text fronts face local -Z.
+    rotation: Quaternion.multiply(towardCentre, Quaternion.fromEulerDegrees(0, 180, 0))
+  })
+
+  const backdrop = engine.addEntity()
+  Transform.create(backdrop, { parent: root, position: Vector3.create(0, 4.5, 0), scale: Vector3.create(11, 8.25, 0.15) })
+  MeshRenderer.setPlane(backdrop)
+  MeshCollider.setBox(backdrop, ColliderLayer.CL_PHYSICS)
+  Material.setBasicMaterial(backdrop, {
+    texture: Material.Texture.Common({
+      src: texture,
+      wrapMode: TextureWrapMode.TWM_CLAMP,
+      filterMode: TextureFilterMode.TFM_BILINEAR
+    }),
+    diffuseColor: Color4.White(),
+    castShadows: false
+  })
+
   const plinth = engine.addEntity()
-  Transform.create(plinth, { position: Vector3.create(position.x, 0.5, position.z), scale: Vector3.create(2.2, 1, 2.2) })
+  Transform.create(plinth, { parent: root, position: Vector3.create(0, 0.3, -2), scale: Vector3.create(4.4, 0.6, 4.4) })
   MeshRenderer.setCylinder(plinth, 1, 0.9)
   MeshCollider.setCylinder(plinth, 1, 0.9, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
   Material.setPbrMaterial(plinth, {
-    albedoColor: Color4.create(0.08, 0.08, 0.1, 1),
-    emissiveColor: Color3.create(0.3, 0.9, 1),
-    emissiveIntensity: 0.6,
+    albedoColor: Color4.create(0.025, 0.035, 0.055, 1),
+    emissiveColor: glowColor,
+    emissiveIntensity: 2.2,
+    metallic: 0.65,
+    roughness: 0.25
+  })
+
+  const avatar = engine.addEntity()
+  Transform.create(avatar, { parent: root, position: Vector3.create(0, 0.6, -2), rotation: Quaternion.fromEulerDegrees(0, 180, 0) })
+  AvatarShape.create(avatar, {
+    id: `${kind}-showcase`,
+    name: kind === 'emote' ? 'Abducted! Emote' : 'Alien Costume',
+    bodyShape: `${BASE_AVATAR}:BaseMale`,
+    wearables:
+      kind === 'costume'
+        ? [COSTUME_URNS[0], `${BASE_AVATAR}:eyes_00`, `${BASE_AVATAR}:eyebrows_00`, `${BASE_AVATAR}:mouth_00`]
+        : [
+            `${BASE_AVATAR}:eyes_00`,
+            `${BASE_AVATAR}:eyebrows_00`,
+            `${BASE_AVATAR}:mouth_00`,
+            `${BASE_AVATAR}:blue_tshirt`,
+            `${BASE_AVATAR}:brown_pants`,
+            `${BASE_AVATAR}:classic_shoes`,
+            `${BASE_AVATAR}:short_hair`
+          ],
+    emotes: kind === 'emote' ? EMOTE_URNS : [],
+    skinColor: { r: 0.55, g: 0.9, b: 0.62 },
+    hairColor: { r: 0.08, g: 0.08, b: 0.1 },
+    eyeColor: { r: 0.08, g: 0.08, b: 0.1 },
+    expressionTriggerId: kind === 'emote' ? EMOTE_URNS[0] : 'dance',
+    expressionTriggerTimestamp: Date.now()
+  })
+
+  // AvatarShape has no pointer collider.
+  const hit = engine.addEntity()
+  Transform.create(hit, { parent: avatar, position: Vector3.create(0, 1.2, 0), scale: Vector3.create(1.4, 2.5, 1.4) })
+  MeshCollider.setBox(hit, ColliderLayer.CL_POINTER)
+
+  const status = engine.addEntity()
+  Transform.create(status, { parent: root, position: Vector3.create(0, 1.15, -3.65) })
+  TextShape.create(status, {
+    text: kind === 'emote' ? 'RED  ·  1 / 4' : 'ALIEN 01  ·  1 / 4',
+    fontSize: 2,
+    font: Font.F_SANS_SERIF,
+    textColor: kind === 'emote' ? Color4.create(0.3, 0.95, 1, 1) : Color4.create(0.7, 1, 0.35, 1),
+    outlineColor: Color4.Black(),
+    outlineWidth: 0.15,
+    textAlign: TextAlignMode.TAM_MIDDLE_CENTER
+  })
+
+  const marketButton = engine.addEntity()
+  Transform.create(marketButton, { parent: root, position: Vector3.create(3.8, 0.65, -3.4), scale: Vector3.create(2.8, 0.8, 1.1) })
+  MeshRenderer.setBox(marketButton)
+  MeshCollider.setBox(marketButton, ColliderLayer.CL_POINTER)
+  Material.setPbrMaterial(marketButton, {
+    albedoColor: Color4.create(0.04, 0.04, 0.08, 1),
+    emissiveColor: glowColor,
+    emissiveIntensity: 1.4,
     metallic: 0.4,
-    roughness: 0.4
+    roughness: 0.3
+  })
+  const marketText = engine.addEntity()
+  Transform.create(marketText, { parent: root, position: Vector3.create(3.8, 1.2, -3.4), rotation: Quaternion.fromEulerDegrees(-90, 0, 0) })
+  TextShape.create(marketText, {
+    text: 'VIEW ITEM',
+    fontSize: 1.3,
+    font: Font.F_SANS_SERIF,
+    textColor: Color4.White(),
+    outlineColor: Color4.Black(),
+    outlineWidth: 0.1,
+    textAlign: TextAlignMode.TAM_MIDDLE_CENTER
   })
 
-  const exhibit = engine.addEntity()
-  Transform.create(exhibit, {
-    position: Vector3.create(position.x, modelY, position.z),
-    scale: Vector3.create(modelScale, modelScale, modelScale)
-  })
-  GltfContainer.create(exhibit, {
-    src: model,
-    visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
-    invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
-  })
-  Tween.create(exhibit, {
-    mode: Tween.Mode.Rotate({ start: Quaternion.fromEulerDegrees(0, 0, 0), end: Quaternion.fromEulerDegrees(0, 180, 0) }),
-    duration: 6000,
-    easingFunction: EasingFunction.EF_LINEAR
-  })
-  TweenSequence.create(exhibit, {
-    sequence: [
-      {
-        mode: Tween.Mode.Rotate({ start: Quaternion.fromEulerDegrees(0, 180, 0), end: Quaternion.fromEulerDegrees(0, 360, 0) }),
-        duration: 6000,
-        easingFunction: EasingFunction.EF_LINEAR
-      }
-    ],
-    loop: TweenLoop.TL_RESTART
-  })
+  const light = engine.addEntity()
+  Transform.create(light, { parent: root, position: Vector3.create(0, 3.5, -2) })
+  LightSource.create(light, { active: true, color: glowColor, intensity: 1500, range: 14, shadow: false, type: LightSource.Type.Point({}) })
 
-  const anchor = engine.addEntity()
-  Transform.create(anchor, { position: Vector3.create(position.x, 0, position.z) })
-  label(anchor, title, 4.2, Color4.create(0.6, 1, 0.8, 1), 3)
+  const display: Showcase = { kind, avatar, status, index: 0, replay: 8 }
+  showcases.push(display)
 
-  const open = () => {
-    void openExternalUrl({ url })
+  const cycle = () => {
+    display.index = (display.index + 1) % 4
+    display.replay = 8
+    const shape = AvatarShape.getMutable(display.avatar)
+    if (kind === 'emote') {
+      shape.emotes = EMOTE_URNS
+      shape.expressionTriggerId = EMOTE_URNS[display.index]
+    } else {
+      shape.wearables = [
+        COSTUME_URNS[display.index],
+        `${BASE_AVATAR}:eyes_00`,
+        `${BASE_AVATAR}:eyebrows_00`,
+        `${BASE_AVATAR}:mouth_00`
+      ]
+      shape.expressionTriggerId = 'dance'
+    }
+    shape.expressionTriggerTimestamp = Date.now()
+    TextShape.getMutable(status).text = `${kind === 'emote' ? EMOTE_NAMES[display.index] : COSTUME_NAMES[display.index]}  ·  ${display.index + 1} / 4`
   }
-  pointerEventsSystem.onPointerDown({ entity: plinth, opts: { button: InputAction.IA_POINTER, hoverText: hover, maxDistance: 10 } }, open)
-  pointerEventsSystem.onPointerDown({ entity: exhibit, opts: { button: InputAction.IA_POINTER, hoverText: hover, maxDistance: 10 } }, open)
+  const cycleOptions = { button: InputAction.IA_POINTER, hoverText: `Next ${kind}`, maxDistance: 14 }
+  pointerEventsSystem.onPointerDown({ entity: hit, opts: cycleOptions }, cycle)
+  pointerEventsSystem.onPointerDown({ entity: plinth, opts: cycleOptions }, cycle)
+  pointerEventsSystem.onPointerDown(
+    { entity: marketButton, opts: { button: InputAction.IA_POINTER, hoverText: 'View current item on Marketplace', maxDistance: 14 } },
+    () => {
+      const collection = kind === 'emote' ? EMOTE_COLLECTION : COSTUME_COLLECTION
+      void openExternalUrl({ url: `https://decentraland.org/marketplace/contracts/${collection}/items/${display.index}` })
+    }
+  )
 }
 
-/** Marketplace corner: the Abducted! emotes and the alien costumes. */
+/** Separate interactive collection areas: emotes northeast, costumes southeast. */
 export function createKiosk() {
-  const c = FORMATION.SE
-  createExhibit(Vector3.create(c.x - 3, 0, c.z), 'models/cow.glb', 1.3, 1.05, 'ABDUCTED! EMOTES', 'Abducted! emotes on the Marketplace', EMOTE_COLLECTION_URL)
-  createExhibit(Vector3.create(c.x + 3, 0, c.z), 'models/ufo.glb', 1.1, 1.3, 'ALIEN COSTUMES', 'Alien costumes on the Marketplace', COSTUME_COLLECTION_URL)
+  createAvatarShowcase('emote', FORMATION.NE, 'images/abducted-emote-showcase.jpg', Color3.create(0.15, 0.85, 1))
+  createAvatarShowcase('costume', FORMATION.SE, 'images/alien-costume-showcase.jpg', Color3.create(0.65, 0.25, 1))
+
+  engine.addSystem((dt) => {
+    for (const display of showcases) {
+      if (display.kind !== 'emote') continue
+      display.replay -= dt
+      if (display.replay > 0) continue
+      const shape = AvatarShape.getMutable(display.avatar)
+      shape.expressionTriggerId = EMOTE_URNS[display.index]
+      shape.expressionTriggerTimestamp = Date.now()
+      display.replay = 8
+    }
+  })
 }
 
 /** Pumpkins and gravestones from the emote, scattered around the dome floor (dome-centred offsets). */
