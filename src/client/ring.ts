@@ -96,10 +96,46 @@ function createAltar(): Entity {
   })
   Billboard.create(sub, { billboardMode: BillboardMode.BM_Y })
 
+  // Giant glowing call-to-action above everything, pulsing between two neon greens.
+  const makeBig = (text: string, y: number, size: number) => {
+    const e = engine.addEntity()
+    Transform.create(e, { parent: anchor, position: Vector3.create(0, y, 0) })
+    TextShape.create(e, {
+      text,
+      fontSize: size,
+      font: Font.F_SANS_SERIF,
+      textColor: Color4.create(0.55, 1, 0.45, 1),
+      outlineColor: Color4.create(0.05, 0.35, 0.1, 1),
+      outlineWidth: 0.2,
+      textAlign: TextAlignMode.TAM_MIDDLE_CENTER
+    })
+    Billboard.create(e, { billboardMode: BillboardMode.BM_Y })
+    return e
+  }
+  const cta1 = makeBig('FREE TO CLAIM', 9.6, 9)
+  const cta2 = makeBig('CLICK ME!', 7.4, 9)
+  const ctaLight = engine.addEntity()
+  Transform.create(ctaLight, { parent: anchor, position: Vector3.create(0, 8.5, 0) })
+  LightSource.create(ctaLight, {
+    active: true,
+    color: Color3.create(0.45, 1, 0.4),
+    intensity: 500,
+    range: 16,
+    shadow: false,
+    type: LightSource.Type.Point({})
+  })
+
   // Spin and float.
   let clock = 0
   engine.addSystem((dt) => {
     clock += dt
+    const glow = 0.5 + Math.sin(clock * 3) * 0.5 // 0..1
+    for (const e of [cta1, cta2]) {
+      const ts = TextShape.getMutable(e)
+      ts.textColor = Color4.create(0.35 + glow * 0.4, 1, 0.3 + glow * 0.5, 1)
+      Transform.getMutable(e).scale = Vector3.create(1 + glow * 0.05, 1 + glow * 0.05, 1)
+    }
+    LightSource.getMutable(ctaLight).intensity = 350 + glow * 350
     const t = Transform.getMutable(ring)
     t.rotation = Quaternion.fromEulerDegrees(0, clock * 45, 0)
     t.position.y = 2.5 + Math.sin(clock * 1.3) * 0.15
