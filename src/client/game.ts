@@ -1,8 +1,6 @@
 import {
   AvatarModifierArea,
   AvatarModifierType,
-  Billboard,
-  BillboardMode,
   CameraModeArea,
   CameraType,
   ColliderLayer,
@@ -100,8 +98,6 @@ interface GameCow {
 }
 const cows: GameCow[] = []
 
-let padText: Entity
-let padSub: Entity
 let liftUfo: Entity
 let liftBeam: Entity
 let liftLight: Entity
@@ -147,7 +143,6 @@ function createLaunchPad() {
     if (phase === 'idle') {
       phase = 'summon'
       phaseTime = 0
-      setPadText('UFO INBOUND...')
       toast('A saucer heard the call.', 3)
     }
   })
@@ -163,39 +158,11 @@ function createLaunchPad() {
       phase = 'pickup'
       phaseTime = 0
       pickupMoved = false
-      setPadText('ABDUCTION IN PROGRESS')
     }
   })
   triggerAreaEventsSystem.onTriggerExit(beamZone, () => {
     insideBeam = false
   })
-
-  padText = engine.addEntity()
-  Transform.create(padText, { position: Vector3.create(LAUNCH_PAD.x, 6.2, LAUNCH_PAD.z) })
-  TextShape.create(padText, {
-    text: 'ENTER THE PULSING BEAM',
-    fontSize: 3,
-    font: Font.F_SANS_SERIF,
-    textColor: Color4.create(0.5, 0.95, 1, 1),
-    outlineColor: Color4.Black(),
-    outlineWidth: 0.15,
-    textAlign: TextAlignMode.TAM_MIDDLE_CENTER
-  })
-  Billboard.create(padText, { billboardMode: BillboardMode.BM_Y })
-  padSub = engine.addEntity()
-  Transform.create(padSub, { position: Vector3.create(LAUNCH_PAD.x, 5.3, LAUNCH_PAD.z) })
-  TextShape.create(padSub, {
-    text: '',
-    fontSize: 1.4,
-    font: Font.F_SANS_SERIF,
-    textColor: Color4.create(0.7, 0.85, 0.95, 1),
-    outlineColor: Color4.Black(),
-    outlineWidth: 0.12,
-    textAlign: TextAlignMode.TAM_MIDDLE_CENTER,
-    lineSpacing: 10
-  })
-  Billboard.create(padSub, { billboardMode: BillboardMode.BM_Y })
-  updatePadSub()
 
   const glow = engine.addEntity()
   Transform.create(glow, { position: Vector3.create(LAUNCH_PAD.x, 3, LAUNCH_PAD.z) })
@@ -224,15 +191,6 @@ function createLaunchPad() {
     shadow: false,
     type: LightSource.Type.Spot({ innerAngle: 20, outerAngle: 40 })
   })
-}
-
-function setPadText(text: string) {
-  TextShape.getMutable(padText).text = text
-}
-
-function updatePadSub() {
-  const best = sessionBest > 0 ? `\nbest this session: ${sessionBest}` : ''
-  TextShape.getMutable(padSub).text = `the cow game: fly a saucer over the pasture, drop the beam on cows\n3 minute rounds  ·  WASD to fly  ·  click or E drops the beam${best}`
 }
 
 // ---------------------------------------------------------------------------
@@ -754,7 +712,6 @@ function showResults() {
   phaseTime = 0
   const isBest = run.score > sessionBest
   if (isBest) sessionBest = run.score
-  updatePadSub()
   hud.results = {
     score: run.score,
     cows: run.cows,
@@ -788,7 +745,6 @@ function returnToDome(message: string) {
   if (message) toast(message, 8)
   phase = 'idle'
   phaseTime = 0
-  setPadText('ENTER THE PULSING BEAM')
 }
 
 // ---------------------------------------------------------------------------
@@ -808,7 +764,6 @@ function gameSystem(dt: number) {
     if (phaseTime >= SUMMON_SECONDS) {
       phase = 'boarding'
       phaseTime = 0
-      setPadText('WALK INTO THE BEAM')
     }
   } else if (phase === 'boarding') {
     ufoT.position = Vector3.create(liftDown.x, liftDown.y + Math.sin(phaseTime * 1.8) * 0.18, liftDown.z)
@@ -820,11 +775,9 @@ function gameSystem(dt: number) {
       phase = 'pickup'
       phaseTime = 0
       pickupMoved = false
-      setPadText('ABDUCTION IN PROGRESS')
     } else if (phaseTime > BOARDING_TIMEOUT) {
       phase = 'idle'
       phaseTime = 0
-      setPadText('ENTER THE PULSING BEAM')
       LightSource.getMutable(liftLight).active = false
     }
   } else if (phase === 'pickup') {
