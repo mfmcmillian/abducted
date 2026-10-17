@@ -7,8 +7,9 @@
 //   DoorFrame  - only when CLOSED is false: dark jambs + lintel around the door
 //   Floor      - dark grass disc
 //
-// UV layout on both shells: u runs 0..1 twice around the dome (one video copy per
-// half, seam at north and south), v runs 0 at the floor to 1 at the apex along the
+// UV layout on both shells: u runs 0..1 on the east half and 1..0 (mirrored) on the
+// west half, so the two video copies meet edge-to-edge with no visible seam at north or
+// south, v runs 0 at the floor to 1 at the apex along the
 // arc length, so the picture climbs the wall and pinches at the top.
 //
 // Run: node tools/build-dome.mjs
@@ -76,7 +77,8 @@ function buildShell(name, radius, inward) {
       const theta = (col / SEGMENTS) * TAU
       const sx = Math.sin(theta)
       const cz = Math.cos(theta)
-      const u = j / HALF
+      // Second half is mirrored (u runs 1..0) so both seams join identical picture edges.
+      const u = h === 0 ? j / HALF : 1 - j / HALF
       const colVerts = []
       for (let k = 0; k <= RING_COUNT; k++) {
         const { r, y, v } = profile(k, radius)

@@ -14,10 +14,13 @@ import {
   pointerEventsSystem,
   TextAlignMode,
   TextShape,
-  Transform
+  TextureFilterMode,
+  TextureWrapMode,
+  Transform,
+  VideoPlayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { FORMATION } from '../layout'
+import { CENTER, FORMATION, RING_VIDEO_URL } from '../layout'
 import { room } from '../shared/messages'
 import { toast } from './ui'
 
@@ -120,8 +123,125 @@ function createAltar(): Entity {
   return plinth
 }
 
-export function createRingAltar() {
+const POSTER_W = 3.6 // 9:16 portrait, same as the explainer video
+const POSTER_H = 6.4
+const RING_VIDEO_SECONDS = 27.6
+const MUSIC_VOLUME = 0.8 // what dome.ts starts the music video at
+const DUCKED_VOLUME = 0.12
+
+/**
+ * Poster behind the altar (further from the dome centre, facing it). Click it and the
+ * poster becomes a screen playing the ring explainer; the music ducks meanwhile and the
+ * poster comes back when the clip ends (or when clicked again).
+ */
+function createPoster(domeVideo: Entity) {
+  const c = FORMATION.SW
+  const dx = c.x - CENTER.x
+  const dz = c.z - CENTER.z
+  const len = Math.hypot(dx, dz)
+  const position = Vector3.create(c.x + (dx / len) * 7, 0, c.z + (dz / len) * 7)
+  const yaw = (Math.atan2(CENTER.x - position.x, CENTER.z - position.z) * 180) / Math.PI
+  // Plane fronts face local -Z, so add 180 to look toward the centre.
+  const facing = Quaternion.fromEulerDegrees(0, yaw + 180, 0)
+
+  const root = engine.addEntity()
+  Transform.create(root, { position, rotation: facing })
+
+  // Dark frame with a soft gold rim behind the poster.
+  const frame = engine.addEntity()
+  Transform.create(frame, {
+    parent: root,
+    position: Vector3.create(0, POSTER_H / 2 + 0.3, 0.08),
+    scale: Vector3.create(POSTER_W + 0.5, POSTER_H + 0.5, 0.12)
+  })
+  MeshRenderer.setBox(frame)
+  MeshCollider.setBox(frame, ColliderLayer.CL_PHYSICS)
+  Material.setPbrMaterial(frame, {
+    albedoColor: Color4.create(0.05, 0.04, 0.03, 1),
+    emissiveColor: Color3.create(1, 0.75, 0.25),
+    emissiveIntensity: 0.35,
+    metallic: 0.7,
+    roughness: 0.4
+  })
+
+  const screen = engine.addEntity()
+  Transform.create(screen, {
+    parent: root,
+    position: Vector3.create(0, POSTER_H / 2 + 0.3, 0),
+    scale: Vector3.create(POSTER_W, POSTER_H, 1)
+  })
+  MeshRenderer.setPlane(screen)
+  MeshCollider.setPlane(screen, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
+
+  const player = engine.addEntity()
+  Transform.create(player, { parent: root, position: Vector3.create(0, 2.5, 0) })
+  VideoPlayer.create(player, { src: RING_VIDEO_URL, playing: false, loop: false, volume: 1 })
+
+  const posterTexture = Material.Texture.Common({
+    src: 'images/ring-poster.jpg',
+    wrapMode: TextureWrapMode.TWM_CLAMP,
+    filterMode: TextureFilterMode.TFM_BILINEAR
+  })
+  const videoTexture = Material.Texture.Video({
+    videoPlayerEntity: player,
+    wrapMode: TextureWrapMode.TWM_CLAMP,
+    filterMode: TextureFilterMode.TFM_BILINEAR
+  })
+  const showPoster = () =>
+    Material.setPbrMaterial(screen, {
+      texture: posterTexture,
+      emissiveTexture: posterTexture,
+      emissiveColor: Color3.White(),
+      emissiveIntensity: 0.6,
+      roughness: 1,
+      metallic: 0,
+      specularIntensity: 0
+    })
+  const showVideo = () => Material.setBasicMaterial(screen, { texture: videoTexture, diffuseColor: Color4.White() })
+  showPoster()
+
+  const light = engine.addEntity()
+  Transform.create(light, { parent: root, position: Vector3.create(0, POSTER_H / 2 + 0.3, -1.6) })
+  LightSource.create(light, {
+    active: true,
+    color: Color3.create(1, 0.85, 0.55),
+    intensity: 350,
+    range: 9,
+    shadow: false,
+    type: LightSource.Type.Point({})
+  })
+
+  let remaining = 0 // seconds of clip left, 0 = showing the poster
+  const stop = () => {
+    remaining = 0
+    const v = VideoPlayer.getMutable(player)
+    v.playing = false
+    v.position = 0
+    VideoPlayer.getMutable(domeVideo).volume = MUSIC_VOLUME
+    showPoster()
+  }
+  const play = () => {
+    remaining = RING_VIDEO_SECONDS + 1
+    const v = VideoPlayer.getMutable(player)
+    v.position = 0
+    v.playing = true
+    VideoPlayer.getMutable(domeVideo).volume = DUCKED_VOLUME
+    showVideo()
+  }
+  pointerEventsSystem.onPointerDown(
+    { entity: screen, opts: { button: InputAction.IA_POINTER, hoverText: 'Watch: how the Guildstone Ring works', maxDistance: 14 } },
+    () => (remaining > 0 ? stop() : play())
+  )
+  engine.addSystem((dt) => {
+    if (remaining <= 0) return
+    remaining -= dt
+    if (remaining <= 0) stop()
+  })
+}
+
+export function createRingAltar(domeVideo: Entity) {
   createAltar()
+  createPoster(domeVideo)
 
   room.onMessage('ringStatus', (data) => {
     claimed = data.claimed

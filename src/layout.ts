@@ -37,6 +37,8 @@ export const ROUND_SECONDS = 180
 
 // "They appear to be enjoying it" music video, 720p30, hosted on the KOA Firebase project bucket.
 export const VIDEO_URL = 'https://storage.googleapis.com/koa-db-media/alien-dome/enjoying-720p.mp4'
+// 28 s portrait (9x16) explainer for the Antrom Guildstone Ring, shown on the poster by the altar.
+export const RING_VIDEO_URL = 'https://storage.googleapis.com/koa-db-media/alien-dome/ring-explainer-720.mp4'
 
 // Abducted! emote collection (Red / Purple / Green / Cyan) and the alien costume wearables.
 export const EMOTE_COLLECTION = '0x95e2e9e7e8796e79fd7ebeff5b7ddc9879fbbc88'

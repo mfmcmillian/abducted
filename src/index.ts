@@ -46,7 +46,7 @@ function initClient() {
   createHerd()
   createPortals()
   createKiosk()
-  createRingAltar()
+  createRingAltar(video)
   createDecor()
   createCowGame()
 }
