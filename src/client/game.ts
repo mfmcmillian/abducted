@@ -10,6 +10,7 @@ import {
   Entity,
   Font,
   GltfContainer,
+  GltfNodeModifiers,
   InputAction,
   InputModifier,
   inputSystem,
@@ -322,7 +323,8 @@ function createArena() {
 
   playerBeam = engine.addEntity()
   Transform.create(playerBeam, { position: Vector3.create(ARENA_CENTER.x, ARENA_Y + BEAM_H / 2, ARENA_CENTER.z), scale: Vector3.Zero() })
-  MeshRenderer.setCylinder(playerBeam, 0.6, GAME.beamRadius)
+  // (radiusBottom, radiusTop): wide where it meets the grass, narrow up at the saucer
+  MeshRenderer.setCylinder(playerBeam, GAME.beamRadius, 0.6)
   Material.setPbrMaterial(playerBeam, {
     albedoColor: Color4.create(0.4, 1, 0.7, 0.3),
     emissiveColor: Color3.create(0.4, 1, 0.7),
@@ -341,18 +343,12 @@ function createArena() {
     type: LightSource.Type.Spot({ innerAngle: 25, outerAngle: 50 })
   })
 
-  // Target ring on the grass: where the beam will land, coloured by beam state.
+  // Target ring on the grass (unit radius GLB: ring, ticks, centre dot), coloured by beam state.
   aimMarker = engine.addEntity()
-  Transform.create(aimMarker, { position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 0.08, ARENA_CENTER.z), scale: Vector3.create(GAME.beamRadius * 2, 0.06, GAME.beamRadius * 2) })
-  MeshRenderer.setCylinder(aimMarker, 1, 0.86)
-  Material.setPbrMaterial(aimMarker, {
-    albedoColor: Color4.create(0.4, 1, 0.7, 0.7),
-    emissiveColor: Color3.create(0.4, 1, 0.7),
-    emissiveIntensity: 3,
-    transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
-    castShadows: false
-  })
+  Transform.create(aimMarker, { position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 0.08, ARENA_CENTER.z), scale: Vector3.create(GAME.beamRadius, 1, GAME.beamRadius) })
+  GltfContainer.create(aimMarker, { src: 'models/marker.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
   VisibilityComponent.create(aimMarker, { visible: false })
+  tintMarker('ready')
 
   for (let i = 0; i < GAME.cowCount; i++) {
     const entity = engine.addEntity()
@@ -657,21 +653,42 @@ function drawBeam(aim: { x: number; z: number }) {
   mt.position = Vector3.create(x, ARENA_Y + 0.08, z)
   mt.rotation = Quaternion.fromEulerDegrees(0, phaseTime * 90, 0)
   const pulse = beam.state === 'charging' ? 1 + Math.sin(beam.time * 40) * 0.08 : 1
-  mt.scale = Vector3.create(GAME.beamRadius * 2 * pulse, 0.06, GAME.beamRadius * 2 * pulse)
-  const colour: Record<BeamState, Color3> = {
-    ready: Color3.create(0.4, 1, 0.7),
-    charging: Color3.create(1, 0.9, 0.4),
-    active: Color3.create(0.5, 0.95, 1),
-    cooldown: Color3.create(0.5, 0.5, 0.55)
-  }
-  const m = Material.getMutable(aimMarker)
-  if (m.material?.$case === 'pbr') {
-    m.material.pbr.emissiveColor = colour[beam.state]
-    m.material.pbr.albedoColor = Color4.create(colour[beam.state].r, colour[beam.state].g, colour[beam.state].b, 0.7)
-    m.material.pbr.emissiveIntensity = beam.state === 'cooldown' ? 1 : 3
-  }
+  mt.scale = Vector3.create(GAME.beamRadius * pulse, 1, GAME.beamRadius * pulse)
+  if (beam.state !== tintedState) tintMarker(beam.state)
   const lt = Transform.getMutable(playerLight)
   lt.position = Vector3.create(x, FLY_Y - 1, z)
+}
+
+const MARKER_COLOUR: Record<BeamState, Color3> = {
+  ready: Color3.create(0.4, 1, 0.7),
+  charging: Color3.create(1, 0.9, 0.4),
+  active: Color3.create(0.5, 0.95, 1),
+  cooldown: Color3.create(0.5, 0.5, 0.55)
+}
+let tintedState: BeamState | '' = ''
+
+/** Recolour the marker GLB for the beam state (label in the HUD says the same thing). */
+function tintMarker(state: BeamState) {
+  tintedState = state
+  const c = MARKER_COLOUR[state]
+  const material = {
+    material: {
+      $case: 'pbr' as const,
+      pbr: {
+        albedoColor: Color4.create(c.r, c.g, c.b, state === 'cooldown' ? 0.5 : 0.85),
+        emissiveColor: c,
+        emissiveIntensity: state === 'cooldown' ? 1 : 3,
+        transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
+        castShadows: false
+      }
+    }
+  }
+  GltfNodeModifiers.createOrReplace(aimMarker, {
+    modifiers: [
+      { path: 'Ring', material, castShadows: false },
+      { path: 'Dot', material, castShadows: false }
+    ]
+  })
 }
 
 // ---------------------------------------------------------------------------

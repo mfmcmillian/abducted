@@ -9,7 +9,7 @@
     "upgrade-sdk": "npm install --save-dev @dcl/sdk@latest",
     "upgrade-sdk:next": "npm install --save-dev @dcl/sdk@next",
     "server-logs": "sdk-commands sdk-server-logs",
-    "build:models": "node tools/build-dome.mjs && node tools/build-plaza.mjs && node tools/build-portal.mjs"
+    "build:models": "node tools/build-dome.mjs && node tools/build-plaza.mjs && node tools/build-portal.mjs && node tools/build-marker.mjs"
   },
   "devDependencies": {
     "@dcl/js-runtime": "7.25.1-30310486734.commit-5ffe873",
