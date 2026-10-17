@@ -24,6 +24,7 @@ import {
   triggerAreaEventsSystem
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
+import { executeTask } from '@dcl/sdk/ecs'
 import { changeRealm, openExternalUrl } from '~system/RestrictedActions'
 import {
   CENTER,
@@ -195,18 +196,62 @@ export function createPortals() {
 const BASE_AVATAR = 'urn:decentraland:off-chain:base-avatars'
 const EMOTE_NAMES = ['RED', 'PURPLE', 'GREEN', 'CYAN']
 const COSTUME_NAMES = ['ALIEN 01', 'ALIEN 02', 'ALIEN 03', 'ALIEN 04']
+const EMOTE_THUMBS = ['images/emote-red.png', 'images/emote-purple.png', 'images/emote-green.png', 'images/emote-cyan.png']
+
+/** Price line per emote item. Starts from the last known Marketplace listing, refreshed live. */
+const EMOTE_PRICES: { mana: number; onSale: boolean; available: number }[] = [
+  { mana: 0, onSale: false, available: 0 },
+  { mana: 5, onSale: true, available: 96 },
+  { mana: 15, onSale: true, available: 8 },
+  { mana: 0.5, onSale: true, available: 970 }
+]
+const priceLabel = (i: number) => {
+  const p = EMOTE_PRICES[i]
+  if (!p.onSale) return 'NOT FOR SALE'
+  if (p.available <= 0) return 'SOLD OUT'
+  return `${p.mana} MANA\n${p.available} LEFT`
+}
 
 interface Showcase {
   kind: 'emote' | 'costume'
   avatar: Entity
   status: Entity
   marketCow: Entity
+  buyText?: Entity
+  tiles?: Entity[]
+  prices?: Entity[]
+  highlight?: Entity
   index: number
   replay: number
   cowPhase: number
 }
 
 const showcases: Showcase[] = []
+
+/** Pull current listing prices from the Marketplace API; keeps the baked values on failure. */
+function refreshEmotePrices() {
+  executeTask(async () => {
+    try {
+      const res = await fetch(`https://marketplace-api.decentraland.org/v1/items?contractAddress=${EMOTE_COLLECTION}`)
+      const body = (await res.json()) as { data?: { itemId: string; price: string; isOnSale: boolean; available: string | number }[] }
+      for (const it of body.data ?? []) {
+        const i = Number(it.itemId)
+        if (!(i >= 0 && i < 4)) continue
+        // price is wei as a decimal string; 18 digits of fraction.
+        const wei = it.price.padStart(19, '0')
+        const mana = Number(`${wei.slice(0, -18)}.${wei.slice(-18)}`)
+        EMOTE_PRICES[i] = { mana: Math.round(mana * 100) / 100, onSale: !!it.isOnSale, available: Number(it.available) }
+      }
+      for (const d of showcases) d.prices?.forEach((e, i) => (TextShape.getMutable(e).text = priceLabel(i)))
+    } catch (e) {
+      console.log('[plaza] marketplace prices unavailable', e)
+    }
+  })
+}
+
+const TILE = 1.7
+const TILE_Y = 4.35
+const TILE_GAP = 2.35
 
 /**
  * A real AvatarShape collection display. The illustrated panel is the backdrop, the
@@ -327,8 +372,57 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   const display: Showcase = { kind, avatar, status, marketCow, index: 0, replay: 8, cowPhase: kind === 'emote' ? 0 : Math.PI }
   showcases.push(display)
 
-  const cycle = () => {
-    display.index = (display.index + 1) % 4
+  if (kind === 'emote') {
+    // 3D "BUY HERE" floating over the Marketplace cow (built by tools/build-text.mjs, reads from -Z).
+    const buyText = engine.addEntity()
+    Transform.create(buyText, { parent: root, position: Vector3.create(3.8, 3.4, -3.4), scale: Vector3.create(0.7, 0.7, 0.7) })
+    GltfContainer.create(buyText, { src: 'models/text-buy.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
+    Billboard.create(buyText, { billboardMode: BillboardMode.BM_Y })
+    display.buyText = buyText
+
+    // Row of the four item thumbnails on the backdrop with the Marketplace price under each.
+    // Clicking one shows that emote; the glowing frame marks the one on the pedestal.
+    const highlight = engine.addEntity()
+    Transform.create(highlight, { parent: root, position: Vector3.create(-1.5 * TILE_GAP, TILE_Y, -0.06), scale: Vector3.create(TILE + 0.22, TILE + 0.22, 1) })
+    MeshRenderer.setPlane(highlight)
+    Material.setPbrMaterial(highlight, { albedoColor: Color4.create(0.1, 0.5, 0.6, 1), emissiveColor: glowColor, emissiveIntensity: 1.6, roughness: 1, metallic: 0 })
+    display.highlight = highlight
+    display.tiles = []
+    display.prices = []
+    for (let i = 0; i < 4; i++) {
+      const x = (i - 1.5) * TILE_GAP
+      const tile = engine.addEntity()
+      Transform.create(tile, { parent: root, position: Vector3.create(x, TILE_Y, -0.1), scale: Vector3.create(TILE, TILE, 1) })
+      MeshRenderer.setPlane(tile)
+      MeshCollider.setPlane(tile, ColliderLayer.CL_POINTER)
+      Material.setBasicMaterial(tile, {
+        texture: Material.Texture.Common({ src: EMOTE_THUMBS[i], wrapMode: TextureWrapMode.TWM_CLAMP, filterMode: TextureFilterMode.TFM_BILINEAR }),
+        diffuseColor: Color4.White(),
+        castShadows: false
+      })
+      const price = engine.addEntity()
+      Transform.create(price, { parent: root, position: Vector3.create(x, TILE_Y - TILE / 2 - 0.42, -0.1) })
+      TextShape.create(price, {
+        text: priceLabel(i),
+        fontSize: 1.25,
+        font: Font.F_SANS_SERIF,
+        textColor: Color4.create(1, 0.9, 0.45, 1),
+        outlineColor: Color4.Black(),
+        outlineWidth: 0.15,
+        textAlign: TextAlignMode.TAM_TOP_CENTER,
+        lineSpacing: 9
+      })
+      pointerEventsSystem.onPointerDown(
+        { entity: tile, opts: { button: InputAction.IA_POINTER, hoverText: `Show ${EMOTE_NAMES[i].toLowerCase()} emote`, maxDistance: 16 } },
+        () => show(i)
+      )
+      display.tiles.push(tile)
+      display.prices.push(price)
+    }
+  }
+
+  const show = (index: number) => {
+    display.index = index
     display.replay = 8
     const shape = AvatarShape.getMutable(display.avatar)
     if (kind === 'emote') {
@@ -345,7 +439,9 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
     }
     shape.expressionTriggerTimestamp = Date.now()
     TextShape.getMutable(status).text = `${kind === 'emote' ? EMOTE_NAMES[display.index] : COSTUME_NAMES[display.index]}  ·  ${display.index + 1} / 4`
+    if (display.highlight) Transform.getMutable(display.highlight).position.x = (display.index - 1.5) * TILE_GAP
   }
+  const cycle = () => show((display.index + 1) % 4)
   const cycleOptions = { button: InputAction.IA_POINTER, hoverText: `Next ${kind}`, maxDistance: 14 }
   pointerEventsSystem.onPointerDown({ entity: hit, opts: cycleOptions }, cycle)
   pointerEventsSystem.onPointerDown({ entity: plinth, opts: cycleOptions }, cycle)
@@ -373,12 +469,14 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
 export function createKiosk() {
   createAvatarShowcase('emote', FORMATION.NE, 'images/abducted-emote-showcase.jpg', Color3.create(0.15, 0.85, 1))
   createAvatarShowcase('costume', FORMATION.SE, 'images/alien-costume-showcase.jpg', Color3.create(0.65, 0.25, 1))
+  refreshEmotePrices()
 
   engine.addSystem((dt) => {
     for (const display of showcases) {
       display.cowPhase += dt
       const cow = Transform.getMutable(display.marketCow)
       cow.position.y = 1.7 + Math.sin(display.cowPhase * 1.6) * 0.35
+      if (display.buyText) Transform.getMutable(display.buyText).position.y = cow.position.y + 1.6
       cow.rotation = Quaternion.fromEulerDegrees(
         -8 + Math.sin(display.cowPhase * 1.1) * 6,
         display.cowPhase * 32,

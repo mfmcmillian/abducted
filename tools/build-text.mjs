@@ -1,4 +1,4 @@
-// Generates models/text-claim.glb: real extruded 3D letters ("FREE TO CLAIM" / "CLICK ME!")
+// Generates extruded 3D lettering GLBs (models/text-*.glb, see the buildText calls at the end)
 // for the sign above the ring altar. Glyph outlines come from the OFL-licensed Bangers font
 // (tools/fonts), are triangulated with earcut and extruded along Z.
 //
@@ -16,7 +16,6 @@ import earcut from 'earcut'
 import { MeshBuf, buildGlb } from './glb.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const OUT = resolve(__dirname, '..', 'models', 'text-claim.glb')
 const FONT = resolve(__dirname, 'fonts', 'Bangers-Regular.ttf')
 
 const LINES = ['FREE TO CLAIM', 'CLICK ME!']
@@ -113,8 +112,8 @@ function shapesOf(contours) {
   return shapes
 }
 
-const face = new MeshBuf('Face', 0)
-const side = new MeshBuf('Side', 1)
+let face
+let side
 const hz = DEPTH / 2
 
 function extrudeShape({ outer, holes }, ox, oy) {
@@ -186,25 +185,36 @@ function layoutLine(text, baselineY) {
   return width
 }
 
-const widths = []
-for (let i = 0; i < LINES.length; i++) widths.push(layoutLine(LINES[i], (LINES.length - 1 - i) * LINE_GAP))
+/** Face/side materials from one glow colour (0..1 rgb). */
+function materialsFor([r, g, b]) {
+  return [
+    {
+      name: 'Face',
+      pbrMetallicRoughness: { baseColorFactor: [r * 0.45, g * 0.45, b * 0.45, 1], metallicFactor: 0, roughnessFactor: 0.7 },
+      emissiveFactor: [r * 0.85, g * 0.85, b * 0.85],
+      extensions: { KHR_materials_emissive_strength: { emissiveStrength: 0.7 } }
+    },
+    {
+      name: 'Side',
+      pbrMetallicRoughness: { baseColorFactor: [r * 0.12, g * 0.12, b * 0.12, 1], metallicFactor: 0.2, roughnessFactor: 0.6 },
+      emissiveFactor: [r * 0.2, g * 0.2, b * 0.2],
+      extensions: { KHR_materials_emissive_strength: { emissiveStrength: 0.4 } }
+    }
+  ]
+}
 
-const materials = [
-  {
-    name: 'Face',
-    pbrMetallicRoughness: { baseColorFactor: [0.1, 0.45, 0.12, 1], metallicFactor: 0, roughnessFactor: 0.7 },
-    emissiveFactor: [0.25, 0.85, 0.2],
-    extensions: { KHR_materials_emissive_strength: { emissiveStrength: 0.7 } }
-  },
-  {
-    name: 'Side',
-    pbrMetallicRoughness: { baseColorFactor: [0.02, 0.12, 0.03, 1], metallicFactor: 0.2, roughnessFactor: 0.6 },
-    emissiveFactor: [0.04, 0.2, 0.05],
-    extensions: { KHR_materials_emissive_strength: { emissiveStrength: 0.4 } }
-  }
-]
+function buildText(fileName, lines, color) {
+  face = new MeshBuf('Face', 0)
+  side = new MeshBuf('Side', 1)
+  const widths = []
+  for (let i = 0; i < lines.length; i++) widths.push(layoutLine(lines[i], (lines.length - 1 - i) * LINE_GAP))
+  const out = resolve(__dirname, '..', 'models', fileName)
+  mkdirSync(dirname(out), { recursive: true })
+  writeFileSync(out, buildGlb([face, side], materialsFor(color), 'Text'))
+  console.log(
+    `wrote ${out} (${(readFileSync(out).length / 1024).toFixed(1)} KB) tris: Face ${face.triCount}, Side ${side.triCount}; widths (em): ${widths.map((w) => w.toFixed(2)).join(', ')}`
+  )
+}
 
-mkdirSync(dirname(OUT), { recursive: true })
-writeFileSync(OUT, buildGlb([face, side], materials, 'TextClaim'))
-console.log(`wrote ${OUT} (${(readFileSync(OUT).length / 1024).toFixed(1)} KB)`)
-console.log(`tris: Face ${face.triCount}, Side ${side.triCount}; line widths (em): ${widths.map((w) => w.toFixed(2)).join(', ')}`)
+buildText('text-claim.glb', LINES, [0.3, 1, 0.25]) // neon green, above the ring altar
+buildText('text-buy.glb', ['BUY HERE'], [0.3, 0.9, 1]) // cyan, above the emote Marketplace cow
