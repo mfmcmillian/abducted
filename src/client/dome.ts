@@ -137,6 +137,43 @@ export function createDiorama(): Entity {
   return props
 }
 
+/**
+ * Mothership parked under the apex: hides the pinch where the video UVs collapse to a point
+ * and gives the room a ceiling piece. Slow spin, slight hover, lights pointing down.
+ */
+export function createApexUfo(): Entity {
+  const SCALE = 12 // ufo.glb is 2.2 m across, 1.23 m tall, origin at the bottom
+  const BASE_Y = 46 // bottom of the hull; the dome apex is at 54
+  const ufo = engine.addEntity()
+  Transform.create(ufo, { position: Vector3.create(CENTER.x, BASE_Y, CENTER.z), scale: Vector3.create(SCALE, SCALE, SCALE) })
+  GltfContainer.create(ufo, {
+    src: 'models/ufo.glb',
+    visibleMeshesCollisionMask: ColliderLayer.CL_NONE,
+    invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
+  })
+
+  const glow = engine.addEntity()
+  Transform.create(glow, { position: Vector3.create(CENTER.x, BASE_Y - 1, CENTER.z) })
+  LightSource.create(glow, {
+    active: true,
+    color: Color3.create(0.45, 1, 0.55),
+    intensity: 2500,
+    range: 40,
+    shadow: false,
+    type: LightSource.Type.Point({})
+  })
+
+  let clock = 0
+  engine.addSystem((dt) => {
+    clock += dt
+    const t = Transform.getMutable(ufo)
+    t.rotation = Quaternion.fromEulerDegrees(Math.sin(clock * 0.5) * 1.5, clock * 6, Math.cos(clock * 0.4) * 1.5)
+    t.position.y = BASE_Y + Math.sin(clock * 0.6) * 0.6
+    LightSource.getMutable(glow).intensity = 2200 + Math.sin(clock * 1.7) * 500
+  })
+  return ufo
+}
+
 /** Fan-favourite cow, standing by the door and greeting whoever walks in. */
 export function createHeroCow(): Entity {
   const cow = engine.addEntity()

@@ -4,7 +4,7 @@ import { initLeaderboardServer } from './server/leaderboardServer'
 import { initRingServer } from './server/ringServer'
 import { createAliens } from './client/aliens'
 import { createHerd } from './client/cows'
-import { createDiorama, createDome, createHeroCow, createInterior, createVideoPlayer } from './client/dome'
+import { createApexUfo, createDiorama, createDome, createHeroCow, createInterior, createVideoPlayer } from './client/dome'
 import { createCowGame } from './client/game'
 import { initMusic } from './client/music'
 import { createDecor, createGround, createKiosk, createNightSky, createPortals, createRimPylons } from './client/plaza'
@@ -38,6 +38,7 @@ function initClient() {
   initMusic(video)
   createDome(video)
   createDiorama()
+  createApexUfo()
   createInterior()
   createHeroCow()
   createAliens()
