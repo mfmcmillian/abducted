@@ -96,24 +96,21 @@ function createAltar(): Entity {
   })
   Billboard.create(sub, { billboardMode: BillboardMode.BM_Y })
 
-  // Giant glowing call-to-action above everything, pulsing between two neon greens.
-  const makeBig = (text: string, y: number, size: number) => {
-    const e = engine.addEntity()
-    Transform.create(e, { parent: anchor, position: Vector3.create(0, y, 0) })
-    TextShape.create(e, {
-      text,
-      fontSize: size,
-      font: Font.F_SANS_SERIF,
-      textColor: Color4.create(0.55, 1, 0.45, 1),
-      outlineColor: Color4.create(0.05, 0.35, 0.1, 1),
-      outlineWidth: 0.2,
-      textAlign: TextAlignMode.TAM_MIDDLE_CENTER
-    })
-    Billboard.create(e, { billboardMode: BillboardMode.BM_Y })
-    return e
-  }
-  const cta1 = makeBig('FREE TO CLAIM', 9.6, 9)
-  const cta2 = makeBig('CLICK ME!', 7.4, 9)
+  // Giant extruded 3D letters ("FREE TO CLAIM" / "CLICK ME!", models/text-claim.glb, built by
+  // tools/build-text.mjs at em = 1, readable side -Z like TextShape) hovering above everything.
+  const CTA_SCALE = 3.2 // em -> metres; the model is ~4.7 em wide, 1.9 em tall
+  const cta = engine.addEntity()
+  Transform.create(cta, {
+    parent: anchor,
+    position: Vector3.create(0, 6.6, 0),
+    scale: Vector3.create(CTA_SCALE, CTA_SCALE, CTA_SCALE)
+  })
+  GltfContainer.create(cta, {
+    src: 'models/text-claim.glb',
+    visibleMeshesCollisionMask: ColliderLayer.CL_NONE,
+    invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
+  })
+  Billboard.create(cta, { billboardMode: BillboardMode.BM_Y })
   const ctaLight = engine.addEntity()
   Transform.create(ctaLight, { parent: anchor, position: Vector3.create(0, 8.5, 0) })
   LightSource.create(ctaLight, {
@@ -130,11 +127,10 @@ function createAltar(): Entity {
   engine.addSystem((dt) => {
     clock += dt
     const glow = 0.5 + Math.sin(clock * 3) * 0.5 // 0..1
-    for (const e of [cta1, cta2]) {
-      const ts = TextShape.getMutable(e)
-      ts.textColor = Color4.create(0.35 + glow * 0.4, 1, 0.3 + glow * 0.5, 1)
-      Transform.getMutable(e).scale = Vector3.create(1 + glow * 0.05, 1 + glow * 0.05, 1)
-    }
+    const ct = Transform.getMutable(cta)
+    const s = CTA_SCALE * (1 + glow * 0.04)
+    ct.scale = Vector3.create(s, s, s)
+    ct.position.y = 6.6 + Math.sin(clock * 0.9) * 0.25
     LightSource.getMutable(ctaLight).intensity = 350 + glow * 350
     const t = Transform.getMutable(ring)
     t.rotation = Quaternion.fromEulerDegrees(0, clock * 45, 0)
