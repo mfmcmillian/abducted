@@ -19,7 +19,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { openExternalUrl } from '~system/RestrictedActions'
-import { CENTER, COSTUME_URL, EMOTE_URL, SPAWN, VIDEO_URL } from '../layout'
+import { CENTER, EMOTE_URL, SPAWN, VIDEO_URL } from '../layout'
 import { music } from './music'
 
 /** Single looping VideoPlayer; every screen in the scene samples this entity. */
@@ -124,21 +124,15 @@ export function createDiorama(): Entity {
     rotation: Quaternion.fromEulerDegrees(0, 180, 0),
     scale: Vector3.create(3.5, 3.5, 3.5)
   })
+  // Purely decorative: no colliders, so it is neither clickable nor blocks the player.
   GltfContainer.create(props, {
     src: 'models/abducted_props.glb',
-    visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
+    visibleMeshesCollisionMask: ColliderLayer.CL_NONE,
     invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
   })
   Animator.create(props, {
     states: [{ clip: 'Abducted_Prop', playing: true, loop: true, speed: 1 }]
   })
-
-  pointerEventsSystem.onPointerDown(
-    { entity: props, opts: { button: InputAction.IA_POINTER, hoverText: 'They appear to be enjoying it', maxDistance: 30 } },
-    () => {
-      void openExternalUrl({ url: COSTUME_URL })
-    }
-  )
 
   return props
 }
