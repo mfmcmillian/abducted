@@ -81,11 +81,32 @@ export function createDome(video: Entity): Entity {
     }
   }
 
+  // Floor: a quiet alien-terrain tile. The Floor node has planar UVs (one tile per 6 m);
+  // MIRROR wrap guarantees no visible seams even if the tile is not perfectly seamless.
+  const floorMaterial = {
+    material: {
+      $case: 'pbr' as const,
+      pbr: {
+        texture: Material.Texture.Common({
+          src: 'images/dome-floor-tile.jpg',
+          wrapMode: TextureWrapMode.TWM_MIRROR,
+          filterMode: TextureFilterMode.TFM_TRILINEAR
+        }),
+        albedoColor: Color4.create(0.85, 1, 0.9, 1),
+        metallic: 0,
+        roughness: 1,
+        specularIntensity: 0,
+        castShadows: false
+      }
+    }
+  }
+
   // Node paths match the node names written by tools/build-dome.mjs.
   GltfNodeModifiers.create(dome, {
     modifiers: [
       { path: 'DomeInner', material: screenMaterial, castShadows: false },
-      { path: 'DomeOuter', material: screenMaterial, castShadows: false }
+      { path: 'DomeOuter', material: screenMaterial, castShadows: false },
+      { path: 'Floor', material: floorMaterial, castShadows: false }
     ]
   })
 

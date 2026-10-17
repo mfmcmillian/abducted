@@ -137,9 +137,34 @@ function buildDoorFrame() {
   return m
 }
 
+// Floor disc with planar UVs (one texture tile per FLOOR_TILE metres) so the scene can
+// drop a tiling ground texture onto the 'Floor' node with GltfNodeModifiers.
+const FLOOR_TILE = 6
 function buildFloor() {
   const m = new MeshBuf('Floor', 1)
-  m.annulus(0, 0, 0, RADIUS, FLOOR_Y, SEGMENTS)
+  const TAU = Math.PI * 2
+  const uvAt = (x, z) => [x / FLOOR_TILE, z / FLOOR_TILE]
+  // 4 concentric rings so the long slivers of a single fan do not stretch the texture filtering.
+  const RINGS = 4
+  const ring = []
+  for (let r = 0; r <= RINGS; r++) {
+    const rad = (r / RINGS) * RADIUS
+    const row = []
+    for (let i = 0; i <= SEGMENTS; i++) {
+      const t = (i / SEGMENTS) * TAU
+      const x = rad * Math.sin(t)
+      const z = rad * Math.cos(t)
+      row.push(m.vertex([x, FLOOR_Y, z], [0, 1, 0], uvAt(x, z)))
+    }
+    ring.push(row)
+  }
+  for (let r = 0; r < RINGS; r++) {
+    for (let i = 0; i < SEGMENTS; i++) {
+      const a = ring[r][i], b = ring[r + 1][i], c = ring[r + 1][i + 1], d = ring[r][i + 1]
+      m.tri(a, b, c)
+      if (r > 0) m.tri(a, c, d)
+    }
+  }
   return m
 }
 
