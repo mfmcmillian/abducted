@@ -108,7 +108,6 @@ let playerUfo: Entity
 let playerBeam: Entity
 let playerLight: Entity
 let aimMarker: Entity
-let boardText: Entity
 
 function easeInOut(t: number) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
@@ -906,7 +905,7 @@ function createLeaderboard() {
   Transform.create(root, { position: Vector3.clone(LEADERBOARD), rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
 
   const panel = engine.addEntity()
-  Transform.create(panel, { parent: root, position: Vector3.create(0, 5.25, 0), scale: Vector3.create(8, 10.5, 0.2) })
+  Transform.create(panel, { parent: root, position: Vector3.create(0, 6.75, 0), scale: Vector3.create(10.5, 13.5, 0.2) })
   MeshRenderer.setPlane(panel)
   MeshCollider.setBox(panel, ColliderLayer.CL_PHYSICS)
   Material.setBasicMaterial(panel, {
@@ -919,23 +918,67 @@ function createLeaderboard() {
     castShadows: false
   })
 
-  boardText = engine.addEntity()
-  Transform.create(boardText, { parent: root, position: Vector3.create(0, 4.4, -0.08) })
-  TextShape.create(boardText, {
-    text: 'no rounds yet\ncall the UFO',
-    fontSize: 1.8,
-    font: Font.F_SANS_SERIF,
-    textColor: Color4.White(),
-    outlineColor: Color4.Black(),
-    outlineWidth: 0.12,
-    textAlign: TextAlignMode.TAM_MIDDLE_CENTER,
-    lineSpacing: 12
-  })
+  const makeText = (x: number, y: number, text: string, align: TextAlignMode, size: number, color: Color4, font = Font.F_MONOSPACE) => {
+    const entity = engine.addEntity()
+    Transform.create(entity, { parent: root, position: Vector3.create(x, y, -0.1) })
+    TextShape.create(entity, {
+      text,
+      fontSize: size,
+      font,
+      textColor: color,
+      outlineColor: Color4.Black(),
+      outlineWidth: 0.13,
+      textAlign: align
+    })
+    return entity
+  }
+
+  const headerColor = Color4.create(0.4, 0.95, 1, 1)
+  makeText(-4.35, 9.15, 'RANK', TextAlignMode.TAM_MIDDLE_LEFT, 1.05, headerColor)
+  makeText(-3.15, 9.15, 'PILOT', TextAlignMode.TAM_MIDDLE_LEFT, 1.05, headerColor)
+  makeText(2.65, 9.15, 'SCORE', TextAlignMode.TAM_MIDDLE_RIGHT, 1.05, headerColor)
+  makeText(4.35, 9.15, 'COWS', TextAlignMode.TAM_MIDDLE_RIGHT, 1.05, headerColor)
+
+  const rankColors = [
+    Color4.create(1, 0.82, 0.25, 1),
+    Color4.create(0.82, 0.9, 1, 1),
+    Color4.create(0.9, 0.56, 0.28, 1)
+  ]
+  const rows: Array<{ rank: Entity; name: Entity; score: Entity; cows: Entity }> = []
+  for (let i = 0; i < 10; i++) {
+    const y = 8.35 - i * 0.72
+    const strip = engine.addEntity()
+    Transform.create(strip, { parent: root, position: Vector3.create(0, y, -0.055), scale: Vector3.create(9.2, 0.58, 0.025) })
+    MeshRenderer.setBox(strip)
+    const stripColor =
+      i === 0
+        ? Color4.create(0.8, 0.58, 0.08, 0.2)
+        : i === 1
+          ? Color4.create(0.45, 0.65, 0.8, 0.15)
+          : i === 2
+            ? Color4.create(0.72, 0.34, 0.12, 0.16)
+            : Color4.create(0.04, 0.3, 0.38, i % 2 === 0 ? 0.1 : 0.055)
+    Material.setPbrMaterial(strip, {
+      albedoColor: stripColor,
+      emissiveColor: Color3.create(stripColor.r, stripColor.g, stripColor.b),
+      emissiveIntensity: i < 3 ? 0.8 : 0.25,
+      transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
+      castShadows: false
+    })
+    const rowColor = rankColors[i] ?? Color4.White()
+    rows.push({
+      rank: makeText(-4.2, y, '', TextAlignMode.TAM_MIDDLE_LEFT, 1.15, rowColor),
+      name: makeText(-3.15, y, '', TextAlignMode.TAM_MIDDLE_LEFT, 1.08, rowColor),
+      score: makeText(2.65, y, '', TextAlignMode.TAM_MIDDLE_RIGHT, 1.15, rowColor),
+      cows: makeText(4.25, y, '', TextAlignMode.TAM_MIDDLE_RIGHT, 1.1, rowColor)
+    })
+  }
+
   const note = engine.addEntity()
-  Transform.create(note, { parent: root, position: Vector3.create(0, 0.9, -0.08) })
+  Transform.create(note, { parent: root, position: Vector3.create(0, 0.72, -0.1) })
   TextShape.create(note, {
-    text: 'best round per visitor  ·  community board',
-    fontSize: 1,
+    text: 'BEST ROUND PER PILOT  ·  CURRENT RULESET  ·  COMMUNITY BOARD',
+    fontSize: 0.85,
     font: Font.F_SANS_SERIF,
     textColor: Color4.create(0.65, 0.9, 1, 1),
     outlineColor: Color4.Black(),
@@ -944,8 +987,13 @@ function createLeaderboard() {
   })
 
   room.onMessage('leaderboard', (data) => {
-    const lines = data.entries.map((e, i) => `${i + 1}.  ${e.name}   ${e.score}   (${e.cows} cow${e.cows === 1 ? '' : 's'})`)
-    TextShape.getMutable(boardText).text = lines.length ? lines.join('\n') : 'no rounds yet\ncall the UFO'
+    for (let i = 0; i < rows.length; i++) {
+      const entry = data.entries[i]
+      TextShape.getMutable(rows[i].rank).text = entry ? (i < 3 ? ['1ST', '2ND', '3RD'][i] : `${i + 1}TH`) : ''
+      TextShape.getMutable(rows[i].name).text = entry ? entry.name.toUpperCase().slice(0, 18) : i === 0 ? 'NO SCORES YET — ENTER THE UFO BEAM' : ''
+      TextShape.getMutable(rows[i].score).text = entry ? entry.score.toLocaleString() : ''
+      TextShape.getMutable(rows[i].cows).text = entry ? `${entry.cows}` : ''
+    }
   })
   room.send('leaderboardGet', { v: 1 })
 }
