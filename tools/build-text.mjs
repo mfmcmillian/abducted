@@ -192,15 +192,15 @@ for (let i = 0; i < LINES.length; i++) widths.push(layoutLine(LINES[i], (LINES.l
 const materials = [
   {
     name: 'Face',
-    pbrMetallicRoughness: { baseColorFactor: [0.2, 0.6, 0.15, 1], metallicFactor: 0, roughnessFactor: 0.6 },
-    emissiveFactor: [0.45, 1, 0.35],
-    extensions: { KHR_materials_emissive_strength: { emissiveStrength: 3 } }
+    pbrMetallicRoughness: { baseColorFactor: [0.1, 0.45, 0.12, 1], metallicFactor: 0, roughnessFactor: 0.7 },
+    emissiveFactor: [0.25, 0.85, 0.2],
+    extensions: { KHR_materials_emissive_strength: { emissiveStrength: 0.7 } }
   },
   {
     name: 'Side',
-    pbrMetallicRoughness: { baseColorFactor: [0.03, 0.18, 0.05, 1], metallicFactor: 0.2, roughnessFactor: 0.5 },
-    emissiveFactor: [0.08, 0.35, 0.1],
-    extensions: { KHR_materials_emissive_strength: { emissiveStrength: 1.2 } }
+    pbrMetallicRoughness: { baseColorFactor: [0.02, 0.12, 0.03, 1], metallicFactor: 0.2, roughnessFactor: 0.6 },
+    emissiveFactor: [0.04, 0.2, 0.05],
+    extensions: { KHR_materials_emissive_strength: { emissiveStrength: 0.4 } }
   }
 ]
 

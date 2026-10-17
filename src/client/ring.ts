@@ -4,7 +4,6 @@ import {
   ColliderLayer,
   engine,
   Entity,
-  Font,
   GltfContainer,
   InputAction,
   LightSource,
@@ -12,8 +11,6 @@ import {
   MeshCollider,
   MeshRenderer,
   pointerEventsSystem,
-  TextAlignMode,
-  TextShape,
   TextureFilterMode,
   TextureWrapMode,
   Transform,
@@ -71,31 +68,6 @@ function createAltar(): Entity {
 
   const anchor = engine.addEntity()
   Transform.create(anchor, { position: Vector3.create(c.x, 0, c.z) })
-  const title = engine.addEntity()
-  Transform.create(title, { parent: anchor, position: Vector3.create(0, 4.6, 0) })
-  TextShape.create(title, {
-    text: 'ANTROM GUILDSTONE RING',
-    fontSize: 3.2,
-    font: Font.F_SANS_SERIF,
-    textColor: Color4.create(1, 0.85, 0.45, 1),
-    outlineColor: Color4.Black(),
-    outlineWidth: 0.15,
-    textAlign: TextAlignMode.TAM_MIDDLE_CENTER
-  })
-  Billboard.create(title, { billboardMode: BillboardMode.BM_Y })
-  const sub = engine.addEntity()
-  Transform.create(sub, { parent: anchor, position: Vector3.create(0, 4.0, 0) })
-  TextShape.create(sub, {
-    text: 'claim one per wallet',
-    fontSize: 1.8,
-    font: Font.F_SANS_SERIF,
-    textColor: Color4.create(0.85, 0.75, 0.5, 1),
-    outlineColor: Color4.Black(),
-    outlineWidth: 0.12,
-    textAlign: TextAlignMode.TAM_MIDDLE_CENTER
-  })
-  Billboard.create(sub, { billboardMode: BillboardMode.BM_Y })
-
   // Giant extruded 3D letters ("FREE TO CLAIM" / "CLICK ME!", models/text-claim.glb, built by
   // tools/build-text.mjs at em = 1, readable side -Z like TextShape) hovering above everything.
   const CTA_SCALE = 3.2 // em -> metres; the model is ~4.7 em wide, 1.9 em tall
@@ -116,8 +88,8 @@ function createAltar(): Entity {
   LightSource.create(ctaLight, {
     active: true,
     color: Color3.create(0.45, 1, 0.4),
-    intensity: 500,
-    range: 16,
+    intensity: 180,
+    range: 14,
     shadow: false,
     type: LightSource.Type.Point({})
   })
@@ -131,7 +103,7 @@ function createAltar(): Entity {
     const s = CTA_SCALE * (1 + glow * 0.04)
     ct.scale = Vector3.create(s, s, s)
     ct.position.y = 6.6 + Math.sin(clock * 0.9) * 0.25
-    LightSource.getMutable(ctaLight).intensity = 350 + glow * 350
+    LightSource.getMutable(ctaLight).intensity = 120 + glow * 120
     const t = Transform.getMutable(ring)
     t.rotation = Quaternion.fromEulerDegrees(0, clock * 45, 0)
     t.position.y = 2.5 + Math.sin(clock * 1.3) * 0.15
