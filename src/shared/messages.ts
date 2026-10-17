@@ -18,12 +18,12 @@ export const Messages = {
   }),
 
   /** client -> server: a finished cow round */
-  scoreSubmit: Schemas.Map({ score: Schemas.Int, name: Schemas.String }),
+  scoreSubmit: Schemas.Map({ score: Schemas.Int, cows: Schemas.Int, attempts: Schemas.Int, ruleset: Schemas.Int, name: Schemas.String }),
   /** client -> server: send me the board */
   leaderboardGet: Schemas.Map({ v: Schemas.Int }),
   /** server -> clients: top scores, best first */
   leaderboard: Schemas.Map({
-    entries: Schemas.Array(Schemas.Map({ name: Schemas.String, score: Schemas.Int }))
+    entries: Schemas.Array(Schemas.Map({ name: Schemas.String, score: Schemas.Int, cows: Schemas.Int }))
   })
 }
 
