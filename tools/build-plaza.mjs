@@ -4,9 +4,8 @@
 // Centred on the local origin; the scene places it at (64, 0, 64).
 // Nodes:
 //   Ground    - dark grass quad covering the whole plot (outside the dome, nobody goes there)
-//   CropFlat  - flattened crop: formations under the portals / altar / kiosk, the launch pad,
-//               the path from the spawn to the diorama
-//   CropGlow  - thin emissive rings tracing the formations, the pad and the inner wall
+//   CropFlat  - flattened crop formations under the portal / altar / showcases
+//   CropGlow  - thin emissive rings tracing the formations and inner wall
 //
 // Formation centres are duplicated in src/layout.ts; keep them in sync.
 //
@@ -33,23 +32,13 @@ const FORMATIONS = [
   { name: 'SW', x: -30, z: -14, a0: 225 },
   { name: 'SE', x: 30, z: -14, a0: 315 }
 ]
-const PAD = { x: -12, z: -28 }
-const SPAWN_Z = -38
-
 const ground = new MeshBuf('Ground', 0)
 ground.quad([-HALF, 0, -HALF], [-HALF, 0, HALF], [HALF, 0, HALF], [HALF, 0, -HALF], [0, 1, 0])
 
 const flat = new MeshBuf('CropFlat', 1)
 const glow = new MeshBuf('CropGlow', 2)
 
-// Path from the spawn to the diorama ring.
-flat.quad([-3, Y_FLAT, SPAWN_Z - 4], [-3, Y_FLAT, -16], [3, Y_FLAT, -16], [3, Y_FLAT, SPAWN_Z - 4], [0, 1, 0])
-glow.quad([-3.2, Y_GLOW, SPAWN_Z - 4], [-3.2, Y_GLOW, -16], [-3, Y_GLOW, -16], [-3, Y_GLOW, SPAWN_Z - 4], [0, 1, 0])
-glow.quad([3, Y_GLOW, SPAWN_Z - 4], [3, Y_GLOW, -16], [3.2, Y_GLOW, -16], [3.2, Y_GLOW, SPAWN_Z - 4], [0, 1, 0])
-
-// Spawn circle and the ring around the diorama / dancers.
-flat.annulus(0, SPAWN_Z, 0, 4, Y_FLAT, SEG)
-glow.annulus(0, SPAWN_Z, 3.6, 4, Y_GLOW, SEG)
+// Ring around the central diorama.
 glow.annulus(0, 0, 15.8, 16.2, Y_GLOW, 128)
 
 // Inner wall ring.
@@ -80,13 +69,6 @@ for (const f of FORMATIONS) {
   }
 }
 
-// Launch pad: a target of three rings.
-const pad = new MeshBuf('PadGlow', 3)
-flat.annulus(PAD.x, PAD.z, 0, 3.2, Y_FLAT, SEG)
-pad.annulus(PAD.x, PAD.z, 2.8, 3.2, Y_GLOW, SEG)
-pad.annulus(PAD.x, PAD.z, 1.6, 1.9, Y_GLOW, SEG)
-pad.annulus(PAD.x, PAD.z, 0, 0.6, Y_GLOW, 32)
-
 const materials = [
   {
     name: 'GroundDark',
@@ -97,13 +79,10 @@ const materials = [
     pbrMetallicRoughness: { baseColorFactor: [0.16, 0.2, 0.09, 1], metallicFactor: 0, roughnessFactor: 1 },
     emissiveFactor: [0.03, 0.04, 0.015]
   },
-  emissiveMaterial('CropGlow', [0.3, 1.0, 0.6], 2),
-  emissiveMaterial('PadGlow', [0.4, 0.9, 1.0], 3)
+  emissiveMaterial('CropGlow', [0.3, 1.0, 0.6], 2)
 ]
 
-const glb = buildGlb([ground, flat, glow, pad], materials, 'Plaza', 'abducted-dome build-plaza.mjs')
+const glb = buildGlb([ground, flat, glow], materials, 'Plaza', 'abducted-dome build-plaza.mjs')
 mkdirSync(dirname(OUT), { recursive: true })
 writeFileSync(OUT, glb)
-console.log(
-  `wrote ${OUT} (${(glb.length / 1024).toFixed(1)} KB) tris: ground ${ground.triCount}, flat ${flat.triCount}, glow ${glow.triCount}, pad ${pad.triCount}`
-)
+console.log(`wrote ${OUT} (${(glb.length / 1024).toFixed(1)} KB) tris: ground ${ground.triCount}, flat ${flat.triCount}, glow ${glow.triCount}`)

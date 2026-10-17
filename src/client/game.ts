@@ -102,15 +102,11 @@ const cows: GameCow[] = []
 
 let padText: Entity
 let padSub: Entity
-let padDisc: Entity
-let padFill: Entity
-const padRings: Entity[] = []
 let liftUfo: Entity
 let liftBeam: Entity
 let liftLight: Entity
 const liftIdle = Vector3.create(LAUNCH_PAD.x, 17, LAUNCH_PAD.z)
 const liftDown = Vector3.create(LAUNCH_PAD.x, 12, LAUNCH_PAD.z)
-let spinAngle = 0
 
 let playerUfo: Entity
 let playerBeam: Entity
@@ -164,46 +160,6 @@ function createLaunchPad() {
   })
   triggerAreaEventsSystem.onTriggerExit(beamZone, () => {
     insideBeam = false
-  })
-
-  padDisc = engine.addEntity()
-  Transform.create(padDisc, { position: Vector3.create(LAUNCH_PAD.x, 0.12, LAUNCH_PAD.z), scale: Vector3.create(6.4, 0.24, 6.4) })
-  MeshRenderer.setCylinder(padDisc, 1, 1)
-  MeshCollider.setCylinder(padDisc, 1, 1, ColliderLayer.CL_PHYSICS)
-  Material.setPbrMaterial(padDisc, {
-    albedoColor: Color4.create(0.03, 0.08, 0.1, 1),
-    emissiveColor: Color3.create(0.4, 0.9, 1),
-    emissiveIntensity: 1.2,
-    metallic: 0.5,
-    roughness: 0.3
-  })
-  const ringSpecs: Array<[number, number]> = [
-    [2.8, 1.6],
-    [2.2, 3.0],
-    [1.6, 4.4]
-  ]
-  for (const [radius, y] of ringSpecs) {
-    const ring = engine.addEntity()
-    Transform.create(ring, { position: Vector3.create(LAUNCH_PAD.x, y, LAUNCH_PAD.z), scale: Vector3.create(radius * 2, 0.08, radius * 2) })
-    MeshRenderer.setCylinder(ring, 1, 0.92)
-    Material.setPbrMaterial(ring, {
-      albedoColor: Color4.create(0.4, 0.9, 1, 0.55),
-      emissiveColor: Color3.create(0.4, 0.9, 1),
-      emissiveIntensity: 2,
-      transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
-      castShadows: false
-    })
-    padRings.push(ring)
-  }
-  padFill = engine.addEntity()
-  Transform.create(padFill, { position: Vector3.create(LAUNCH_PAD.x, 0.3, LAUNCH_PAD.z), scale: Vector3.Zero() })
-  MeshRenderer.setCylinder(padFill, 1, 1)
-  Material.setPbrMaterial(padFill, {
-    albedoColor: Color4.create(0.4, 0.9, 1, 0.22),
-    emissiveColor: Color3.create(0.4, 0.9, 1),
-    emissiveIntensity: 1.2,
-    transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
-    castShadows: false
   })
 
   padText = engine.addEntity()
@@ -833,21 +789,6 @@ function gameSystem(dt: number) {
   phaseTime += dt
 
   // --- summon, enter the narrow beam, then get lifted -----------------------
-  const summonProgress = phase === 'summon' ? Math.min(1, phaseTime / SUMMON_SECONDS) : phase === 'boarding' || phase === 'pickup' ? 1 : 0
-  const spin = phase === 'summon' ? 80 + summonProgress * 220 : phase === 'boarding' || phase === 'pickup' ? 360 : 40
-  spinAngle += spin * dt
-  for (let i = 0; i < padRings.length; i++) {
-    const t = Transform.getMutable(padRings[i])
-    t.rotation = Quaternion.fromEulerDegrees(0, spinAngle * (i % 2 === 0 ? 1 : -1), 0)
-    const base = [1.6, 3.0, 4.4][i]
-    t.position.y = base + Math.sin(spinAngle * 0.02 + i) * 0.15 + summonProgress * (liftDown.y - 2 - base) * 0.6
-  }
-  // The old countdown column would compete visually with the real UFO beam.
-  const fillT = Transform.getMutable(padFill)
-  fillT.scale = Vector3.Zero()
-  const discM = Material.getMutable(padDisc)
-  if (discM.material?.$case === 'pbr') discM.material.pbr.emissiveIntensity = 1.2 + summonProgress * 3 + Math.sin(phaseTime * 3) * 0.3
-
   const ufoT = Transform.getMutable(liftUfo)
   const beamT = Transform.getMutable(liftBeam)
   if (phase === 'summon') {
