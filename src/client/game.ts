@@ -126,6 +126,14 @@ function dist2(ax: number, az: number, bx: number, bz: number) {
   return dx * dx + dz * dz
 }
 
+/** Keep the portal beam joined to the saucer instead of leaving a gap as it moves. */
+function setLiftBeam(width: number, height: number) {
+  const h = Math.max(0.1, height)
+  const t = Transform.getMutable(liftBeam)
+  t.position.y = h / 2
+  t.scale = Vector3.create(width, h, width)
+}
+
 // ---------------------------------------------------------------------------
 // Launch pad in the dome (the lobby's Play interaction)
 
@@ -165,7 +173,7 @@ function createLaunchPad() {
   padText = engine.addEntity()
   Transform.create(padText, { position: Vector3.create(LAUNCH_PAD.x, 6.2, LAUNCH_PAD.z) })
   TextShape.create(padText, {
-    text: 'APPROACH TO CALL UFO',
+    text: 'ENTER THE PULSING BEAM',
     fontSize: 3,
     font: Font.F_SANS_SERIF,
     textColor: Color4.create(0.5, 0.95, 1, 1),
@@ -780,7 +788,7 @@ function returnToDome(message: string) {
   if (message) toast(message, 8)
   phase = 'idle'
   phaseTime = 0
-  setPadText('APPROACH TO CALL UFO')
+  setPadText('ENTER THE PULSING BEAM')
 }
 
 // ---------------------------------------------------------------------------
@@ -794,10 +802,9 @@ function gameSystem(dt: number) {
   if (phase === 'summon') {
     const k = Math.min(1, phaseTime / SUMMON_SECONDS)
     ufoT.position = Vector3.lerp(liftIdle, liftDown, easeInOut(k))
-    // A narrow guide beam fades on while the ship descends.
-    const thin = Math.max(0, Math.min(1, (phaseTime - 0.45) / 0.65))
-    beamT.scale = thin > 0 ? Vector3.create(0.16 * thin, liftDown.y, 0.16 * thin) : Vector3.Zero()
-    LightSource.getMutable(liftLight).active = thin > 0
+    // Keep the visible guide beam attached as the ship descends.
+    setLiftBeam(0.12 + k * 0.04, ufoT.position.y - 0.8)
+    LightSource.getMutable(liftLight).active = true
     if (phaseTime >= SUMMON_SECONDS) {
       phase = 'boarding'
       phaseTime = 0
@@ -805,7 +812,8 @@ function gameSystem(dt: number) {
     }
   } else if (phase === 'boarding') {
     ufoT.position = Vector3.create(liftDown.x, liftDown.y + Math.sin(phaseTime * 1.8) * 0.18, liftDown.z)
-    beamT.scale = Vector3.create(0.16, liftDown.y, 0.16)
+    const pulse = 0.16 + (0.5 + Math.sin(phaseTime * 4) * 0.5) * 0.035
+    setLiftBeam(pulse, ufoT.position.y - 0.8)
     LightSource.getMutable(liftLight).active = true
     // If the player reached the centre while the ship was still descending, board now.
     if (insideBeam) {
@@ -816,7 +824,7 @@ function gameSystem(dt: number) {
     } else if (phaseTime > BOARDING_TIMEOUT) {
       phase = 'idle'
       phaseTime = 0
-      setPadText('APPROACH TO CALL UFO')
+      setPadText('ENTER THE PULSING BEAM')
       LightSource.getMutable(liftLight).active = false
     }
   } else if (phase === 'pickup') {
@@ -824,7 +832,7 @@ function gameSystem(dt: number) {
     // The guide beam blooms from 16% to full catch width as it takes hold.
     const widen = Math.min(1, phaseTime / 0.8)
     const width = 0.16 + easeInOut(widen) * 0.84
-    beamT.scale = Vector3.create(width, liftDown.y, width)
+    setLiftBeam(width, ufoT.position.y - 0.8)
     LightSource.getMutable(liftLight).active = true
     if (phaseTime > 0.7 && !pickupMoved) {
       pickupMoved = true
@@ -842,9 +850,20 @@ function gameSystem(dt: number) {
     }
   } else {
     ufoT.position = Vector3.lerp(ufoT.position, Vector3.create(liftIdle.x + Math.sin(phaseTime * 0.4) * 2, liftIdle.y + Math.sin(phaseTime * 0.9) * 0.6, liftIdle.z), Math.min(1, dt * 1.5))
-    beamT.scale = Vector3.Zero()
-    LightSource.getMutable(liftLight).active = false
+    // Always-on breathing beacon: visible from across the dome without a floor circle.
+    const pulse = 0.1 + (0.5 + Math.sin(phaseTime * 3.2) * 0.5) * 0.055
+    setLiftBeam(pulse, ufoT.position.y - 0.8)
+    LightSource.getMutable(liftLight).active = true
   }
+  const beaconPulse = 0.5 + Math.sin(phaseTime * 3.2) * 0.5
+  const liftMaterial = Material.getMutable(liftBeam)
+  if (liftMaterial.material?.$case === 'pbr') {
+    liftMaterial.material.pbr.emissiveIntensity = phase === 'pickup' ? 4 : 1.8 + beaconPulse * 2.2
+    liftMaterial.material.pbr.albedoColor = Color4.create(0.4, 0.9, 1, phase === 'pickup' ? 0.48 : 0.2 + beaconPulse * 0.18)
+  }
+  const liftLamp = LightSource.getMutable(liftLight)
+  liftLamp.intensity = phase === 'pickup' ? 3200 : 700 + beaconPulse * 900
+  Transform.getMutable(liftLight).position.y = ufoT.position.y - 0.6
   ufoT.rotation = Quaternion.fromEulerDegrees(Math.sin(phaseTime * 1.3) * 3, phaseTime * 35, Math.cos(phaseTime * 1.1) * 3)
 
   // --- up on the pasture ------------------------------------------------------
