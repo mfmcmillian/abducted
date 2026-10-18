@@ -143,7 +143,7 @@ export function createDiorama(): Entity {
  */
 export function createApexUfo(): Entity {
   const SCALE = 12 // ufo.glb is 2.2 m across, 1.23 m tall, origin at the bottom
-  const BASE_Y = 46 // bottom of the hull; the dome apex is at 54
+  const BASE_Y = 74 // bottom of the hull; the dome apex is at 82
   const ufo = engine.addEntity()
   Transform.create(ufo, { position: Vector3.create(CENTER.x, BASE_Y, CENTER.z), scale: Vector3.create(SCALE, SCALE, SCALE) })
   GltfContainer.create(ufo, {

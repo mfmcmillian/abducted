@@ -218,3 +218,4 @@ function buildText(fileName, lines, color) {
 
 buildText('text-claim.glb', LINES, [0.3, 1, 0.25]) // neon green, above the ring altar
 buildText('text-buy.glb', ['BUY HERE'], [0.3, 0.9, 1]) // cyan, above the emote Marketplace cow
+buildText('text-play.glb', ['PLAY ME!', 'STAND HERE'], [1, 0.3, 0.75]) // pink, at the cow-game launch pad

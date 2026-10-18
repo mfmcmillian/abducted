@@ -7,7 +7,7 @@ import { createHerd } from './client/cows'
 import { createApexUfo, createDiorama, createDome, createHeroCow, createInterior, createVideoPlayer } from './client/dome'
 import { createCowGame } from './client/game'
 import { initMusic } from './client/music'
-import { createDecor, createGround, createKiosk, createNightSky, createPortals, createRimPylons } from './client/plaza'
+import { createBarrier, createDecor, createGround, createKiosk, createNightSky, createPortals, createRimPylons } from './client/plaza'
 import { createRingAltar } from './client/ring'
 import { initUi } from './client/ui'
 
@@ -49,5 +49,6 @@ function initClient() {
   createKiosk()
   createRingAltar(video)
   createDecor()
+  createBarrier()
   createCowGame()
 }

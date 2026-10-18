@@ -23,11 +23,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'models', 'dome.glb')
 
 // ---- parameters -----------------------------------------------------------
-export const RADIUS = 46 // inner radius (m); dome spans 18..110 on the 128 m plot
+export const RADIUS = 62 // inner radius (m); dome spans 2..126 on the 128 m plot
 const SHELL_GAP = 0.08 // outer shell = RADIUS + SHELL_GAP
-export const WALL_HEIGHT = 8 // vertical wall before the hemispherical cap (apex at 54 m, cap is 120 m for 64 parcels)
+export const WALL_HEIGHT = 20 // vertical wall before the hemispherical cap (apex at 82 m, cap is 120 m for 64 parcels)
 const SEGMENTS = 128 // around (must be even: two video wraps)
-const WALL_RINGS = 8 // 1 m each
+const WALL_RINGS = 10 // 2 m each
 const CAP_RINGS = 24
 const CLOSED = true // no door: once you are in, you are in
 const DOOR_AZIMUTH_DEG = 180 // south, toward the spawn

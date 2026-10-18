@@ -465,6 +465,30 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   )
 }
 
+/**
+ * Invisible wall around the exhibit (booths, altar + poster, launch pad, leaderboard) so
+ * nobody wanders off across the empty floor to the video wall. Everything sits within
+ * ~40 m of the centre; the ring is at 43 m, the screen at 62 m. Built from box colliders
+ * (no renderer) because a hollow cylinder collider is not reliable from the inside.
+ */
+export function createBarrier() {
+  const RADIUS = 43
+  const SEGMENTS = 56
+  const HEIGHT = 10
+  const step = (Math.PI * 2) / SEGMENTS
+  const width = 2 * RADIUS * Math.tan(step / 2) + 0.3 // slight overlap so there are no gaps
+  for (let i = 0; i < SEGMENTS; i++) {
+    const a = (i + 0.5) * step
+    const wall = engine.addEntity()
+    Transform.create(wall, {
+      position: Vector3.create(CENTER.x + Math.sin(a) * RADIUS, HEIGHT / 2, CENTER.z + Math.cos(a) * RADIUS),
+      rotation: Quaternion.fromEulerDegrees(0, (a * 180) / Math.PI, 0),
+      scale: Vector3.create(width, HEIGHT, 0.4)
+    })
+    MeshCollider.setBox(wall, ColliderLayer.CL_PHYSICS)
+  }
+}
+
 /** Separate interactive collection areas: emotes northeast, costumes southeast. */
 export function createKiosk() {
   createAvatarShowcase('emote', FORMATION.NE, 'images/abducted-emote-showcase.jpg', Color3.create(0.15, 0.85, 1))

@@ -1,5 +1,7 @@
 import {
   AvatarModifierArea,
+  Billboard,
+  BillboardMode,
   AvatarModifierType,
   CameraModeArea,
   CameraType,
@@ -189,6 +191,29 @@ function createLaunchPad() {
     range: 20,
     shadow: false,
     type: LightSource.Type.Spot({ innerAngle: 20, outerAngle: 40 })
+  })
+
+  // Giant pink 3D "PLAY ME! / STAND HERE" beside the beam (models/text-play.glb, tools/build-text.mjs).
+  const PLAY_SCALE = 2.6
+  const sign = engine.addEntity()
+  Transform.create(sign, {
+    position: Vector3.create(LAUNCH_PAD.x, 5.5, LAUNCH_PAD.z),
+    scale: Vector3.create(PLAY_SCALE, PLAY_SCALE, PLAY_SCALE)
+  })
+  GltfContainer.create(sign, { src: 'models/text-play.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
+  Billboard.create(sign, { billboardMode: BillboardMode.BM_Y })
+  const signLight = engine.addEntity()
+  Transform.create(signLight, { position: Vector3.create(LAUNCH_PAD.x, 7.5, LAUNCH_PAD.z) })
+  LightSource.create(signLight, { active: true, color: Color3.create(1, 0.35, 0.8), intensity: 200, range: 14, shadow: false, type: LightSource.Type.Point({}) })
+  let signClock = 0
+  engine.addSystem((dt) => {
+    signClock += dt
+    const glow = 0.5 + Math.sin(signClock * 3) * 0.5
+    const s = PLAY_SCALE * (1 + glow * 0.04)
+    const t = Transform.getMutable(sign)
+    t.scale = Vector3.create(s, s, s)
+    t.position.y = 5.5 + Math.sin(signClock * 0.9) * 0.25
+    LightSource.getMutable(signLight).intensity = 130 + glow * 140
   })
 }
 

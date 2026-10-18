@@ -20,7 +20,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'models', 'plaza.glb')
 
 const HALF = 64
-const DOME_RADIUS = 46
+const DOME_RADIUS = 62
 const SEG = 64
 const Y_FLAT = 0.045 // above the dome floor disc (0.03)
 const Y_GLOW = 0.055
