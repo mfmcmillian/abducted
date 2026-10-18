@@ -33,7 +33,9 @@ export const hud = {
   results: { score: 0, cows: 0, attempts: 0, successes: 0, best: 0, isBest: false, saved: '' },
   onSkip: () => {},
   onReplay: () => {},
-  onExit: () => {}
+  onExit: () => {},
+  /** quit mid-round and go back down to the dome */
+  onLeave: () => {}
 }
 
 const GREEN = Color4.create(0.6, 1, 0.75, 1)
@@ -96,6 +98,10 @@ function PlayingHud() {
       </UiEntity>
       <UiEntity uiTransform={{ height: 6 }} />
       <Label value="WASD to fly  ·  look at a cow, click or E to drop the beam" fontSize={14} color={DIM} />
+
+      <UiEntity uiTransform={{ positionType: 'absolute', position: { top: 24, right: 24 } }}>
+        <Button value="LEAVE GAME" variant="secondary" fontSize={15} uiTransform={{ width: 150, height: 36 }} onMouseDown={() => hud.onLeave()} />
+      </UiEntity>
 
       <UiEntity uiTransform={{ positionType: 'absolute', position: { bottom: 150 }, flexDirection: 'column', alignItems: 'center' }}>
         {hud.edge ? <Label value="EDGE OF THE PASTURE" fontSize={16} color={Color4.create(1, 0.5, 0.4, 1)} /> : null}

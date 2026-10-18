@@ -1,5 +1,6 @@
 import {
   AvatarModifierArea,
+  AvatarShape,
   Billboard,
   BillboardMode,
   AvatarModifierType,
@@ -219,6 +220,122 @@ function createLaunchPad() {
 
 // ---------------------------------------------------------------------------
 // Sky pasture
+
+const BASE_AVATAR = 'urn:decentraland:off-chain:base-avatars'
+/** Antrom AFK Butcher suit (L1) and "Pitchfork on hand". */
+const BUTCHER_SUIT = 'urn:decentraland:matic:collections-v2:0xf676c2e2768f415a10fa1703a5100141084f63b5:0'
+const PITCHFORK = 'urn:decentraland:matic:collections-v2:0x877204ffac50cc2028c97e91a54f93c531d8234b:0'
+const FARMER_NAMES = ['Old Gus', 'Marge', 'Clem', 'Bessie-Ann', 'Pa Hollis', 'Dottie', 'Rufus', 'Earl']
+const ANGRY = ['fistpump', 'handsair', 'headexplode', 'shrug', 'dontsee', 'fistpump']
+const farmers: { avatar: Entity; next: number; emote: number }[] = []
+
+/**
+ * Dress the pasture: angry farmers with pitchforks along the fence, a graveyard corner,
+ * pumpkin patches, hay bales and a few lanterns. Pure set dressing, no colliders, so it
+ * never gets in the way of the saucer or the beam.
+ */
+function createArenaDressing() {
+  const prop = (model: string, dx: number, dz: number, rot: number, scale: number) => {
+    const e = engine.addEntity()
+    Transform.create(e, {
+      position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y, ARENA_CENTER.z + dz),
+      rotation: Quaternion.fromEulerDegrees(0, rot, 0),
+      scale: Vector3.create(scale, scale, scale)
+    })
+    GltfContainer.create(e, { src: model, visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
+    return e
+  }
+  const bale = (dx: number, dz: number, rot: number, tipped = false) => {
+    const e = engine.addEntity()
+    Transform.create(e, {
+      position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y + (tipped ? 0.75 : 0.6), ARENA_CENTER.z + dz),
+      rotation: tipped ? Quaternion.fromEulerDegrees(0, rot, 90) : Quaternion.fromEulerDegrees(0, rot, 0),
+      scale: Vector3.create(1.5, 1.2, 1.5)
+    })
+    MeshRenderer.setCylinder(e, 1, 1)
+    Material.setPbrMaterial(e, { albedoColor: Color4.create(0.55, 0.42, 0.14, 1), emissiveColor: Color3.create(0.12, 0.08, 0.02), emissiveIntensity: 1, roughness: 1, metallic: 0 })
+  }
+  const lantern = (dx: number, dz: number) => {
+    const post = engine.addEntity()
+    Transform.create(post, { position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y + 1.6, ARENA_CENTER.z + dz), scale: Vector3.create(0.14, 3.2, 0.14) })
+    MeshRenderer.setBox(post)
+    Material.setPbrMaterial(post, { albedoColor: Color4.create(0.12, 0.08, 0.05, 1), roughness: 1 })
+    const bulb = engine.addEntity()
+    Transform.create(bulb, { position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y + 3.3, ARENA_CENTER.z + dz), scale: Vector3.create(0.45, 0.45, 0.45) })
+    MeshRenderer.setSphere(bulb)
+    Material.setPbrMaterial(bulb, { albedoColor: Color4.create(1, 0.6, 0.2, 1), emissiveColor: Color3.create(1, 0.55, 0.15), emissiveIntensity: 3 })
+    const light = engine.addEntity()
+    Transform.create(light, { position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y + 3.2, ARENA_CENTER.z + dz) })
+    LightSource.create(light, { active: true, color: Color3.create(1, 0.6, 0.25), intensity: 400, range: 12, shadow: false, type: LightSource.Type.Point({}) })
+  }
+
+  // Graveyard in the north-west corner, just outside the fence.
+  const g = HALF + 5
+  const graves: Array<[number, number, number]> = [
+    [-g - 6, g + 2, 95], [-g - 2, g + 5, 80], [-g + 2, g + 1, 100], [-g - 8, g + 7, 70],
+    [-g - 3, g + 10, 85], [-g + 4, g + 6, 110], [-g - 10, g + 12, 90], [-g + 1, g + 12, 75]
+  ]
+  for (const [x, z, r] of graves) prop('models/grave.glb', x, z, r, 2)
+  lantern(-g - 5, g + 6)
+
+  // Pumpkin patches: one spilling in from the south-east corner, one along the east fence.
+  const patches: Array<[number, number]> = [
+    [HALF - 4, -HALF + 3], [HALF - 2, -HALF + 6], [HALF - 6, -HALF + 1], [HALF - 1, -HALF + 1], [HALF - 8, -HALF + 4], [HALF - 3, -HALF + 9],
+    [HALF + 3, -HALF - 2], [HALF + 6, -HALF + 1], [HALF + 2, -HALF - 6],
+    [HALF + 4, 8], [HALF + 7, 11], [HALF + 3, 14], [HALF + 6, 5]
+  ]
+  patches.forEach(([x, z], i) => prop('models/pumpkin.glb', x, z, (i * 73) % 360, 1.6 + ((i * 7) % 5) * 0.22))
+  lantern(HALF + 5, -HALF - 4)
+
+  // Hay bales stacked by the north fence and a few tumbled in the field.
+  bale(-6, HALF + 4, 20)
+  bale(-3.6, HALF + 4, 95)
+  bale(-4.8, HALF + 4, 60, true)
+  bale(4, HALF + 5, 15)
+  bale(-HALF + 6, -8, 40, true)
+  bale(10, HALF - 7, 75)
+  bale(-12, -HALF + 5, 10)
+  lantern(0, HALF + 7)
+  lantern(-HALF - 4, 0)
+
+  // Angry farmers along the fence, shaking pitchforks at the sky.
+  for (let i = 0; i < FARMER_NAMES.length; i++) {
+    const side = i % 4
+    const along = ((i >> 2) === 0 ? -1 : 1) * (HALF * 0.45) + ((i * 37) % 7) - 3
+    const out = HALF + 2.2 + (i % 3) * 0.6
+    const dx = side === 0 ? along : side === 1 ? out : side === 2 ? along : -out
+    const dz = side === 0 ? out : side === 1 ? along : side === 2 ? -out : along
+    const avatar = engine.addEntity()
+    Transform.create(avatar, {
+      position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y, ARENA_CENTER.z + dz),
+      rotation: Quaternion.fromEulerDegrees(0, (Math.atan2(-dx, -dz) * 180) / Math.PI, 0)
+    })
+    AvatarShape.create(avatar, {
+      id: `farmer-${i}`,
+      name: FARMER_NAMES[i],
+      bodyShape: `${BASE_AVATAR}:${i % 3 === 1 ? 'BaseFemale' : 'BaseMale'}`,
+      wearables: [BUTCHER_SUIT, PITCHFORK, `${BASE_AVATAR}:eyes_00`, `${BASE_AVATAR}:eyebrows_00`, `${BASE_AVATAR}:mouth_00`],
+      emotes: [],
+      skinColor: { r: 0.85, g: 0.65, b: 0.5 },
+      hairColor: { r: 0.3, g: 0.2, b: 0.1 },
+      eyeColor: { r: 0.3, g: 0.2, b: 0.1 },
+      expressionTriggerId: ANGRY[i % ANGRY.length],
+      expressionTriggerTimestamp: Date.now()
+    })
+    farmers.push({ avatar, next: 3 + i * 0.9, emote: i })
+  }
+  engine.addSystem((dt) => {
+    for (const f of farmers) {
+      f.next -= dt
+      if (f.next > 0) continue
+      f.emote = (f.emote + 1) % ANGRY.length
+      f.next = 5 + Math.random() * 4
+      const shape = AvatarShape.getMutable(f.avatar)
+      shape.expressionTriggerId = ANGRY[f.emote]
+      shape.expressionTriggerTimestamp = Date.now()
+    }
+  })
+}
 
 function createArena() {
   const pasture = engine.addEntity()
@@ -1038,8 +1155,13 @@ export function createCowGame() {
     if (phase !== 'results') return
     returnToDome(`You scored ${run.score} with ${run.cows} cow${run.cows === 1 ? '' : 's'}. They appear to be enjoying it.`)
   }
+  hud.onLeave = () => {
+    if (phase !== 'practice' && phase !== 'countdown' && phase !== 'playing' && phase !== 'finalizing') return
+    returnToDome('Back on the ground. The cows will be waiting.')
+  }
   createLaunchPad()
   createArena()
+  createArenaDressing()
   createLeaderboard()
   engine.addSystem(gameSystem)
 }
