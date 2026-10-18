@@ -18,6 +18,8 @@ import {
   TextureFilterMode,
   TextureWrapMode,
   Transform,
+  VideoEvent,
+  VideoState,
   VirtualCamera
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
@@ -56,14 +58,19 @@ const ROAD_Z = -8.5
 const HOUSE_SCALE = 4.6
 const HOUSE_POS = Vector3.create(0, GROUND_Y + 0.707 * HOUSE_SCALE, 0) // model bbox y min is -0.707
 const ROOM_POS = Vector3.create(0.6, GROUND_Y + 0.04, 1.23) // room front wall lands on the house front wall (z = -0.97)
-const WINDOW_C = Vector3.create(2.16, GROUND_Y + 2.33, -0.97) // centre of the picture window, world (set) coords
+const WINDOW_C = Vector3.create(2.14, GROUND_Y + 2.35, -0.97) // centre of the (open) picture window: see tools/cut-window.mjs
 const ROOM_H = 3.2
 // room coordinates (origin: room centre on the floor)
 const TV_SCALE = 0.7
 const TV_POS = Vector3.create(0.4, 0.6 + 0.811 * TV_SCALE, 1.75)
-// the CRT glass bulges, so the plane sits a little proud of the bezel and overlaps it slightly
-const TV_SCREEN = Vector3.create(0.4 + 0.195 * TV_SCALE, TV_POS.y - 0.03 * TV_SCALE, 1.75 - 0.54 * TV_SCALE) // faces -Z after the 180 turn
-const TV_SCREEN_SIZE = { w: 1.36 * TV_SCALE, h: 0.84 * TV_SCALE }
+// the CRT glass, measured on an orthographic render of the model: x -0.81..0.44, y -0.41..0.31,
+// bulging to z 0.48 at the centre. The plane is a 16:9 rectangle inset in that, just proud of the bulge.
+const TV_SCREEN = Vector3.create(TV_POS.x + 0.185 * TV_SCALE, TV_POS.y - 0.05 * TV_SCALE, TV_POS.z - 0.49 * TV_SCALE) // faces -Z after the 180 turn
+const TV_SCREEN_SIZE = { w: 1.21 * TV_SCALE, h: 0.68 * TV_SCALE }
+/** Distance at which the screen exactly fills a 60 degree (16:9) view, plus a hair of margin. */
+const FIT_DISTANCE = Math.max(TV_SCREEN_SIZE.h / 2 / Math.tan(Math.PI / 6), TV_SCREEN_SIZE.w / 2 / (Math.tan(Math.PI / 6) * (16 / 9))) * 1.04
+/** How long we will sit on the screen waiting for the video to finish before giving up (s). */
+const MAX_HOLD = 15 * 60
 
 const NO_COLLIDE = { visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE }
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
@@ -103,6 +110,7 @@ function townEmbedded(embedded: boolean) {
 }
 let clickTarget: Entity
 let camera: Entity
+let videoEntity: Entity
 
 // ---- building the sets -----------------------------------------------------------------------
 
@@ -260,6 +268,10 @@ interface Zoom {
   cloudsDone: boolean
   windowDone: boolean
   swapped: boolean
+  /** last seen video offset, to spot the loop wrapping */
+  holdOffset: number
+  /** seconds of hold left if the video events stop coming */
+  holdLeft: number
 }
 let zoom: Zoom | null = null
 
@@ -322,10 +334,10 @@ function buildKeys(): Key[] {
     // the street at full size
     { t: 16.8, pos: town(Vector3.create(2.2, GROUND_Y + 3.4, -9.3)), look: windowFocus },
     { t: 19.3, pos: town(Vector3.create(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z - 2.2)), look: windowFocus },
-    { t: 20.3, pos: town(Vector3.create(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z + 0.6)), look: screen }, // through the glass
+    { t: 20.3, pos: town(Vector3.create(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z + 0.6)), look: screen }, // in through the open window
     { t: 22.3, pos: room(1.2, 1.6, -0.6), look: screen },
-    { t: 24.3, pos: room(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z - 0.7), look: screen },
-    { t: 25.8, pos: room(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z - 0.13), look: screen }
+    { t: 24.3, pos: room(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z - 1.3), look: screen },
+    { t: 25.8, pos: room(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z - FIT_DISTANCE), look: screen } // the picture fills the view
   ]
 }
 
@@ -339,7 +351,7 @@ function startZoom() {
   if (!earthEntity()) return
   setEarthFrozen(true)
   const keys = buildKeys()
-  zoom = { keys, t: 0, end: keys[keys.length - 1].t, phase: 'fly', cloudsDone: false, windowDone: false, swapped: false }
+  zoom = { keys, t: 0, end: keys[keys.length - 1].t, phase: 'fly', cloudsDone: false, windowDone: false, swapped: false, holdOffset: -1, holdLeft: 45 }
   townEmbedded(true)
   const start = keys[0]
   const tr = Transform.getMutable(camera)
@@ -400,11 +412,9 @@ function system(dt: number) {
 
     // clouds: full white before the Earth's surface (crossed at ~9.1) until we are inside the sky sphere (~9.7)
     const c = t < 8.3 ? 0 : t < 8.9 ? (t - 8.3) / 0.6 : t < 10.7 ? 1 : t < 11.4 ? 1 - (t - 10.7) / 0.7 : 0
-    // window: a short glint at the glass (t = 20.3)
-    const w = 1 - Math.min(1, Math.abs(t - 20.3) / 0.35)
     // dome glass: a faint glint as the camera passes the pane (it is see-through, so keep it subtle)
     const g = 1 - Math.min(1, Math.abs(Math.hypot(pos.x - CENTER.x, pos.z - CENTER.z) - DOME_RADIUS) / 0.8)
-    zoomUi.white = Math.max(c, w * 0.75, g * 0.35)
+    zoomUi.white = Math.max(c, g * 0.35)
     if (!z.cloudsDone && t > 8.3) {
       z.cloudsDone = true
       burstExplosion(Vector3.add(E, Vector3.create(0, 12.8 * SET_SCALE, -2 * SET_SCALE)), 2.5, { ...PALETTES.cow, fire0: Color3.White(), fire1: Color3.create(0.9, 0.93, 1), smoke: Color3.White(), spark: Color3.White(), flash: Color3.White() })
@@ -412,16 +422,25 @@ function system(dt: number) {
     }
     if (!z.windowDone && t > 20.1) {
       z.windowDone = true
-      playGlobal(SFX.ringChime, 0.5, 1.3)
+      playAt(SFX.ufoPass, pos, 0.3, 1.2) // a breath of air through the open window
     }
     if (z.t >= z.end) {
       z.phase = 'hold'
       z.t = 0
+      const v = videoInfo()
+      z.holdOffset = v.offset
+      z.holdLeft = v.offset >= 0 && v.length > 0 ? v.length - v.offset + 0.5 : 45
+      zoomUi.hint = 'E to leave'
     }
   } else if (z.phase === 'hold') {
+    // sit on the screen until the video finishes (it loops: until the offset wraps), or E
     z.t += dt
     zoomUi.white = 0
-    if (z.t >= 2.5) {
+    const { offset } = videoInfo()
+    const wrapped = z.holdOffset >= 0 && offset >= 0 && offset < z.holdOffset - 2
+    if (offset > z.holdOffset) z.holdOffset = offset
+    z.holdLeft -= dt
+    if (wrapped || z.holdLeft <= 0 || z.t >= MAX_HOLD) {
       z.phase = 'out'
       z.t = 0
     }
@@ -432,7 +451,17 @@ function system(dt: number) {
   }
 }
 
+/** Playback position / length of the dome video in seconds (-1 / 0 if unknown or not playing). */
+function videoInfo(): { offset: number; length: number } {
+  if (!VideoEvent.has(videoEntity)) return { offset: -1, length: 0 }
+  let last: { state: VideoState; currentOffset: number; videoLength: number } | null = null
+  for (const ev of VideoEvent.get(videoEntity)) last = ev
+  if (!last || last.state !== VideoState.VS_PLAYING) return { offset: -1, length: 0 }
+  return { offset: last.currentOffset, length: last.videoLength }
+}
+
 export function createEarthZoom(video: Entity) {
+  videoEntity = video
   startFx()
   buildSets(video)
   engine.addSystem(system)

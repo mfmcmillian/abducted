@@ -40,6 +40,8 @@ for (const file of readdirSync(IN).filter((f) => f.endsWith('.glb'))) {
       `npx --no-install @gltf-transform/cli optimize "${src}" "${dst}" --compress false --texture-compress auto --texture-size ${tex} --simplify true --simplify-ratio ${ratio} --simplify-error 0.0005 --join true --flatten true`,
       { stdio: 'ignore', cwd: ROOT }
     )
+    // the hero house gets its picture window cut open again (the zoom flies in through it)
+    if (name === 'house') execSync('node tools/cut-window.mjs', { stdio: 'inherit', cwd: ROOT })
   }
   const doc = await io.read(dst)
   const { min, max } = getBounds(doc.getRoot().listScenes()[0])

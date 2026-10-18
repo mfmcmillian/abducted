@@ -33,8 +33,12 @@ export const ROAD_W = 5
 export const ROOM_W = 6.4 // x
 export const ROOM_H = 3.2 // y
 export const ROOM_D = 4.4 // z
-// opening in the front wall: centred on x = WINDOW.x, matches the house model picture window
-export const WINDOW = { x: 1.56, w: 1.2, h: 1.2, sill: 1.7 }
+// opening in the front wall: centred on x = WINDOW.x, matches the hole tools/cut-window.mjs cuts
+// in the house model (glass x -0.57..-0.36, y -0.31..-0.08 in model units, house scale 4.6,
+// yawed 180, room at x 0.6)
+export const WINDOW = { x: 1.54, w: 0.96, h: 1.06, sill: 1.82 }
+// the casements stand open this far past square, swung outward
+export const SASH_OPEN_DEG = 105
 
 const TAU = Math.PI * 2
 const groundR = Math.sqrt(SKY_R * SKY_R - GROUND_Y * GROUND_Y) - 0.3
@@ -190,6 +194,42 @@ const walls = new MeshBuf('RoomWalls', 6)
   q([wx0, wy0, -hd], [wx0, wy1, -hd], [wx0, wy1, -hd - t], [wx0, wy0, -hd - t], [1, 0, 0]) // left jamb
   q([wx1, wy0, -hd], [wx1, wy1, -hd], [wx1, wy1, -hd - t], [wx1, wy0, -hd - t], [-1, 0, 0]) // right jamb
   walls.reveal = reveal
+
+  // two casement sashes hinged on the jambs, swung outward (-Z) so the camera can fly in
+  const frames = new MeshBuf('SashFrames', 5)
+  const glass = new MeshBuf('SashGlass', 7)
+  const th = Math.PI * (SASH_OPEN_DEG / 180)
+  const sw = WINDOW.w / 2 - 0.01, sh = WINDOW.h, bar = 0.05, dep = 0.03
+  for (const side of [-1, 1]) {
+    const hx = side < 0 ? wx0 : wx1 // hinge x
+    // sash axes: u along the sash (away from the hinge), v up, w the sash normal
+    const dir = [-side * Math.cos(th), 0, -Math.sin(th)]
+    const nrm = [dir[2], 0, -dir[0]]
+    const P = (u, v, w) => [hx + u * dir[0] + w * nrm[0], wy0 + v, -hd + u * dir[2] + w * nrm[2]]
+    // a box in sash coords u0..u1, v0..v1, thickness +-dep/2
+    const box = (m, u0, u1, v0, v1) => {
+      const c = [
+        [u0, v0, -dep / 2], [u1, v0, -dep / 2], [u1, v1, -dep / 2], [u0, v1, -dep / 2],
+        [u0, v0, dep / 2], [u1, v0, dep / 2], [u1, v1, dep / 2], [u0, v1, dep / 2]
+      ].map((q) => P(...q))
+      const N = (a) => [a[0] * nrm[0] + a[2] * dir[0], a[1], a[0] * nrm[2] + a[2] * dir[2]] // (w, v, u) -> world-ish
+      m.quad(c[0], c[3], c[2], c[1], N([-1, 0, 0]), true) // back (-w)
+      m.quad(c[4], c[5], c[6], c[7], N([1, 0, 0]), true) // front (+w)
+      m.quad(c[0], c[1], c[5], c[4], [0, -1, 0], true) // bottom
+      m.quad(c[3], c[7], c[6], c[2], [0, 1, 0], true) // top
+      m.quad(c[0], c[4], c[7], c[3], N([0, 0, -1]), true) // hinge end
+      m.quad(c[1], c[2], c[6], c[5], N([0, 0, 1]), true) // free end
+    }
+    box(frames, 0, sw, 0, bar) // bottom rail
+    box(frames, 0, sw, sh - bar, sh) // top rail
+    box(frames, 0, bar, bar, sh - bar) // hinge stile
+    box(frames, sw - bar, sw, bar, sh - bar) // free stile
+    box(frames, sw / 2 - bar / 4, sw / 2 + bar / 4, bar, sh - bar) // mullion
+    box(frames, bar, sw - bar, sh / 2 - bar / 4, sh / 2 + bar / 4) // transom
+    glass.quad(P(bar, bar, 0), P(sw - bar, bar, 0), P(sw - bar, sh - bar, 0), P(bar, sh - bar, 0), nrm, true)
+  }
+  walls.sashes = frames
+  walls.glass = glass
 }
 
 const materials = [
@@ -199,14 +239,15 @@ const materials = [
   { name: 'Path', pbrMetallicRoughness: { baseColorFactor: [0.7, 0.66, 0.6, 1], metallicFactor: 0, roughnessFactor: 1 } },
   { name: 'Wood', pbrMetallicRoughness: { baseColorFactor: [0.6, 0.42, 0.25, 1], metallicFactor: 0, roughnessFactor: 0.7 } },
   { name: 'Plaster', pbrMetallicRoughness: { baseColorFactor: [0.95, 0.94, 0.9, 1], metallicFactor: 0, roughnessFactor: 1 } },
-  { name: 'Wallpaper', pbrMetallicRoughness: { baseColorFactor: [0.85, 0.8, 0.7, 1], metallicFactor: 0, roughnessFactor: 1 } }
+  { name: 'Wallpaper', pbrMetallicRoughness: { baseColorFactor: [0.85, 0.8, 0.7, 1], metallicFactor: 0, roughnessFactor: 1 } },
+  { name: 'Glass', pbrMetallicRoughness: { baseColorFactor: [0.75, 0.85, 0.95, 0.3], metallicFactor: 0, roughnessFactor: 0.1 }, alphaMode: 'BLEND', doubleSided: true }
 ]
 
 mkdirSync(dirname(OUT), { recursive: true })
 for (const [out, meshes, name] of [
   [OUT_SKY, [sky], 'EarthSky'],
   [OUT, [ground, road, path], 'EarthSets'],
-  [OUT_ROOM, [floor, ceiling, walls, walls.reveal], 'EarthRoom']
+  [OUT_ROOM, [floor, ceiling, walls, walls.reveal, walls.sashes, walls.glass], 'EarthRoom']
 ]) {
   const glb = buildGlb(meshes, materials, name, 'abducted-dome build-earth-sets.mjs')
   writeFileSync(out, glb)
