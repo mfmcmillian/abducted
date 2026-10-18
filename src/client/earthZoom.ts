@@ -252,8 +252,10 @@ function buildKeys(): Key[] {
     { t: 5.8, pos: onLine(glassD + 4, 11.5), look: E }, // inside, at window height
     { t: 7.0, pos: onLine(glassD - 3, 13), look: E }, // through the glass (glint)
     { t: 8.5, pos: Vector3.add(Vector3.add(E, Vector3.scale(toPlayer, 7)), Vector3.scale(up, 15)), look: Vector3.add(E, Vector3.scale(up, 2)) },
-    { t: 9.8, pos: local(0, 12.6, -2), look: local(0, 0, -3) }, // in the clouds (shell crossing)
-    { t: 11.5, pos: local(1, 7, -7.5), look: streetFocus },
+    // from here on the heading stays +Z (street side towards the house): a near-vertical look
+    // with a heading flip makes the picture spin, which is what we are avoiding
+    { t: 9.8, pos: local(0.5, 10, -6), look: local(0, -2, -1) }, // inside the clouds, at the sky sphere
+    { t: 11.5, pos: local(1, 5.5, -7.5), look: streetFocus },
     { t: 14, pos: local(2.6, GROUND_Y + 3.2, -9.5), look: windowFocus },
     { t: 16.5, pos: local(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z - 2.2), look: windowFocus },
     { t: 17.5, pos: local(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z + 0.6), look: screen }, // through the glass
@@ -324,14 +326,14 @@ function system(dt: number) {
     const dir = Vector3.subtract(look, pos)
     if (Vector3.lengthSquared(dir) > 1e-6) tr.rotation = Quaternion.lookRotation(Vector3.normalize(dir), Vector3.Up())
 
-    // clouds: full white from just before the Earth's surface until we are inside the sky sphere
-    const c = t < 8.9 ? 0 : t < 9.5 ? (t - 8.9) / 0.6 : t < 10.7 ? 1 : t < 11.4 ? 1 - (t - 10.7) / 0.7 : 0
+    // clouds: full white before the Earth's surface (crossed at ~9.45) until we are inside the sky sphere
+    const c = t < 8.6 ? 0 : t < 9.2 ? (t - 8.6) / 0.6 : t < 10.7 ? 1 : t < 11.4 ? 1 - (t - 10.7) / 0.7 : 0
     // window: a short glint at the glass (t = 17.5)
     const w = 1 - Math.min(1, Math.abs(t - 17.5) / 0.35)
     // dome glass: a faint glint as the camera passes the pane (it is see-through, so keep it subtle)
     const g = 1 - Math.min(1, Math.abs(Math.hypot(pos.x - CENTER.x, pos.z - CENTER.z) - DOME_RADIUS) / 0.8)
     zoomUi.white = Math.max(c, w * 0.75, g * 0.35)
-    if (!z.cloudsDone && t > 8.9) {
+    if (!z.cloudsDone && t > 8.6) {
       z.cloudsDone = true
       burstExplosion(Vector3.add(E, Vector3.create(0, 12.8 * SET_SCALE, -2 * SET_SCALE)), 2.5, { ...PALETTES.cow, fire0: Color3.White(), fire1: Color3.create(0.9, 0.93, 1), smoke: Color3.White(), spark: Color3.White(), flash: Color3.White() })
       playAt(SFX.ufoPass, pos, 0.5, 0.6)
