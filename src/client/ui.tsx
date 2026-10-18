@@ -1,7 +1,6 @@
-import { engine } from '@dcl/sdk/ecs'
+import { engine, UiCanvasInformation } from '@dcl/sdk/ecs'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
-import { canvasSize, dragOffsetPx, startDrag } from './drag'
 
 /** One-line toast at the bottom centre of the screen. */
 let toastText = ''
@@ -187,61 +186,62 @@ function Stat(props: { label: string; value: string }) {
 
 const PINK = Color4.create(1, 0.55, 0.85, 1)
 const PURPLE_UI = Color4.create(0.8, 0.6, 1, 1)
-const FRAME = { textureMode: 'nine-slices' as const, texture: { src: 'images/ui-frame.png' }, textureSlices: { top: 0.2, bottom: 0.2, left: 0.2, right: 0.2 } }
+// the Antrom AFK dock's look: same panel texture (images/ui-panel.png), slices, colour and sizes
+const NAVY_SOFT = Color4.fromHexString('#2a3550f2')
+const PANEL_TEX = { textureMode: 'nine-slices' as const, texture: { src: 'images/ui-panel.png' }, textureSlices: { top: 36 / 128, bottom: 36 / 128, left: 36 / 128, right: 36 / 128 }, color: NAVY_SOFT }
 const icon = (src: string) => ({ textureMode: 'stretch' as const, texture: { src } })
 
-/** One line of the panel: icon tile, a bold value, a small caption. */
-function PanelRow(props: { icon: string; value: string; caption: string; s: number; color?: Color4 }) {
-  const { s } = props
+/**
+ * Design-pixel scale, as the Antrom wearable does it: the HUD keeps a constant fraction of the
+ * usable screen height (designed at 1080), clamped so it never gets silly on odd canvases.
+ */
+function hudLayout() {
+  const info = UiCanvasInformation.getOrNull(engine.RootEntity)
+  const area = info?.interactableArea
+  const canvas = { w: info?.width || 1920, h: info?.height || 1080, left: area?.left ?? 0, top: area?.top ?? 0, bottom: area?.bottom ?? 0 }
+  const scale = info?.width ? Math.max(0.55, Math.min(1.3, (canvas.h - canvas.top - canvas.bottom) / 1080)) : 1
+  return { canvas, S: (n: number) => Math.round(n * scale * 100) / 100 }
+}
+
+/** One line of the panel: icon tile, a bold value, a small caption. Every text has a height so the rows stack. */
+function PanelRow(props: { icon: string; value: string; caption: string; S: (n: number) => number; color?: Color4 }) {
+  const { S } = props
   return (
-    <UiEntity uiTransform={{ flexDirection: 'row', alignItems: 'center', width: '100%', margin: { top: 8 * s } }}>
-      <UiEntity uiTransform={{ width: 54 * s, height: 54 * s, flexShrink: 0 }} uiBackground={icon(props.icon)} />
-      <UiEntity uiTransform={{ flexDirection: 'column', flexGrow: 1, margin: { left: 12 * s } }}>
-        <Label value={props.value} fontSize={24 * s} color={props.color ?? Color4.White()} textAlign="middle-left" uiTransform={{ width: '100%' }} />
-        <Label value={props.caption} fontSize={13 * s} color={DIM} textAlign="middle-left" uiTransform={{ width: '100%' }} />
+    <UiEntity uiTransform={{ flexDirection: 'row', alignItems: 'center', width: '100%', height: S(74), margin: { top: S(10) } }}>
+      <UiEntity uiTransform={{ width: S(64), height: S(64), flexShrink: 0 }} uiBackground={icon(props.icon)} />
+      <UiEntity uiTransform={{ flexDirection: 'column', flexGrow: 1, flexShrink: 1, minWidth: 0, margin: { left: S(14) }, justifyContent: 'center' }}>
+        <Label value={props.value} fontSize={S(26)} color={props.color ?? Color4.White()} textAlign="middle-left" uiTransform={{ width: '100%', height: S(34) }} />
+        <Label value={props.caption} fontSize={S(18)} color={DIM} textAlign="middle-left" uiTransform={{ width: '100%', height: S(26) }} />
       </UiEntity>
     </UiEntity>
   )
 }
 
 /**
- * The kudos board: a big alien-metal window while you walk around the dome. Click and hold
- * the title to drag it anywhere; double-click the title to snap it home. The frame image
- * (images/ui-frame.png) is a nine-slice with a transparent opening, so the scene shows through.
+ * The kudos board: a fixed panel on the left, in the band under the explorer's top-left HUD,
+ * laid out like the Antrom AFK dock (same panel texture, 420 design px wide, 18 px padding).
  */
 function KudosPanel() {
   if (!kudosHud.synced || hud.mode !== 'hidden' || zoomUi.active) return null
   const k = kudosHud
-  const { w, h } = canvasSize()
-  const s = Math.max(0.7, Math.min(1.3, h / 1080))
-  const W = 400 * s
-  const H = (k.carrying ? 420 : 370) * s
-  const { dx, dy } = dragOffsetPx('kudos')
-  const left = Math.max(0, Math.min(w - W, 28 * s + dx))
-  const top = Math.max(0, Math.min(h - H, h * 0.3 + dy))
-  // the frame's metal rim is ~14% of the image width on every side
-  const rim = W * 0.15
-  const inner = W - rim * 2
+  const { canvas, S } = hudLayout()
   return (
-    <UiEntity uiTransform={{ positionType: 'absolute', position: { left, top }, width: W, height: H }}>
-      <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: 0 }, width: W, height: H }} uiBackground={FRAME} />
-      <UiEntity uiTransform={{ positionType: 'absolute', position: { left: rim, top: rim * 0.8 }, width: inner, height: H - rim * 1.6, flexDirection: 'column' }}>
-        <UiEntity uiTransform={{ flexDirection: 'row', alignItems: 'center', width: '100%' }} onMouseDown={() => startDrag('kudos')}>
-          <UiEntity uiTransform={{ width: 66 * s, height: 66 * s, flexShrink: 0 }} uiBackground={icon('images/ui-icon-kudos.png')} />
-          <UiEntity uiTransform={{ flexDirection: 'column', flexGrow: 1, margin: { left: 10 * s } }}>
-            <Label value="KUDOS" fontSize={18 * s} color={GREEN} textAlign="middle-left" uiTransform={{ width: '100%' }} />
-            <Label value={`${k.kudos}`} fontSize={40 * s} color={Color4.White()} textAlign="middle-left" uiTransform={{ width: '100%' }} />
-          </UiEntity>
+    <UiEntity uiTransform={{ positionType: 'absolute', position: { top: canvas.top + S(190), left: canvas.left + S(18) }, flexDirection: 'column' }}>
+      <UiEntity uiTransform={{ width: S(420), padding: S(18), flexDirection: 'column' }} uiBackground={PANEL_TEX}>
+        {/* header: icon, title, the number */}
+        <UiEntity uiTransform={{ width: '100%', height: S(64), flexDirection: 'row', alignItems: 'center', margin: { bottom: S(6) } }}>
+          <UiEntity uiTransform={{ width: S(60), height: S(60), flexShrink: 0 }} uiBackground={icon('images/ui-icon-kudos.png')} />
+          <Label value="KUDOS" fontSize={S(26)} color={GREEN} textAlign="middle-left" uiTransform={{ flexGrow: 1, flexShrink: 1, minWidth: 0, height: S(40), margin: { left: S(14) } }} />
+          <Label value={`${k.kudos}`} fontSize={S(40)} color={Color4.White()} textAlign="middle-right" uiTransform={{ width: S(140), height: S(50) }} />
         </UiEntity>
-        <Label value="hold the title to drag · double-click resets" fontSize={10 * s} color={Color4.create(0.55, 0.65, 0.75, 0.9)} textAlign="middle-left" uiTransform={{ width: '100%' }} />
-        <PanelRow icon="images/ui-icon-cow.png" value={`${k.cargo} in the cargo bay`} caption={`${k.launched} of yours floating outside`} s={s} />
-        <PanelRow icon="images/ui-icon-hole.png" value={`black hole in ${formatTime(k.nextHoleIn)}`} caption="swallows every floating cow · 10 kudos each" s={s} color={PURPLE_UI} />
+        <PanelRow icon="images/ui-icon-cow.png" value={`${k.cargo} in the cargo bay`} caption={`${k.launched} of yours floating outside`} S={S} />
+        <PanelRow icon="images/ui-icon-hole.png" value={`black hole in ${formatTime(k.nextHoleIn)}`} caption="swallows every floating cow, 10 kudos each" S={S} color={PURPLE_UI} />
         {k.carrying ? (
-          <UiEntity uiTransform={{ width: '100%', margin: { top: 10 * s }, padding: { top: 6 * s, bottom: 6 * s, left: 10 * s, right: 10 * s } }} uiBackground={{ color: Color4.create(0.35, 0.05, 0.25, 0.9) }}>
-            <Label value="Carrying a cow: click the COW LAUNCHER" fontSize={14 * s} color={PINK} textAlign="middle-center" uiTransform={{ width: '100%' }} />
+          <UiEntity uiTransform={{ width: '100%', height: S(44), margin: { top: S(12) }, justifyContent: 'center', alignItems: 'center' }} uiBackground={{ color: Color4.create(0.35, 0.05, 0.25, 0.9) }}>
+            <Label value="Carrying a cow: click the COW LAUNCHER" fontSize={S(18)} color={PINK} textAlign="middle-center" uiTransform={{ width: '100%', height: S(30) }} />
           </UiEntity>
         ) : null}
-        <Label value="KUDOS buy Alien Costumes from Nov 7" fontSize={12 * s} color={GREEN} textAlign="middle-left" uiTransform={{ width: '100%', margin: { top: 10 * s } }} />
+        <Label value="KUDOS buy Alien Costumes from Nov 7" fontSize={S(18)} color={GREEN} textAlign="middle-left" uiTransform={{ width: '100%', height: S(28), margin: { top: S(12) } }} />
       </UiEntity>
     </UiEntity>
   )
@@ -252,12 +252,12 @@ export const zoomUi = { active: false, white: 0, hint: '' }
 
 function ZoomOverlay() {
   if (!zoomUi.active && zoomUi.white <= 0) return null
-  const { w, h } = canvasSize()
+  const { canvas } = hudLayout()
   return (
     <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: 0 }, width: '100%', height: '100%' }}>
       {zoomUi.white > 0.002 ? <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: 0 }, width: '100%', height: '100%' }} uiBackground={{ color: Color4.create(1, 1, 1, Math.min(1, zoomUi.white)) }} /> : null}
       {zoomUi.hint ? (
-        <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: h - 70 }, width: w, justifyContent: 'center' }}>
+        <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: canvas.h - 70 }, width: canvas.w, justifyContent: 'center' }}>
           <Label value={zoomUi.hint} fontSize={16} color={Color4.create(1, 1, 1, 0.8)} textAlign="middle-center" />
         </UiEntity>
       ) : null}

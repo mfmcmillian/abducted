@@ -88,6 +88,9 @@ interface PenCow {
   shown: boolean
 }
 const pen: PenCow[] = []
+/** A couple of cows that hang around the empty pen so it never looks abandoned; not yours to launch. */
+const strays: PenCow[] = []
+const STRAYS = 2
 let penLabel: Entity
 
 function createCargoBay() {
@@ -135,6 +138,19 @@ function createCargoBay() {
     hideEntity(entity)
     cow.shown = false
   }
+  for (let i = 0; i < STRAYS; i++) {
+    const entity = engine.addEntity()
+    const a = (i / STRAYS) * TAU + 0.7
+    const home = Vector3.create(CARGO_BAY.x + (CARGO_BAY_RADIUS - 2.4) * Math.sin(a), 0, CARGO_BAY.z + (CARGO_BAY_RADIUS - 2.4) * Math.cos(a))
+    Transform.create(entity, { position: home, rotation: Quaternion.fromEulerDegrees(0, rand(0, 360), 0), scale: Vector3.create(PEN_COW_SCALE, PEN_COW_SCALE, PEN_COW_SCALE) })
+    cowModel(entity, true)
+    const cow: PenCow = { entity, home, heading: rand(0, 360), timer: rand(2, 6), shown: true }
+    strays.push(cow)
+    pointerEventsSystem.onPointerDown({ entity, opts: { button: InputAction.IA_PRIMARY, hoverText: 'Not yours', maxDistance: 9 } }, () => {
+      toast('These two live here. Catch your own cows in the pasture: the saucer waits on the launch pad.', 5)
+      playGlobal(SFX.uiClick, 0.6)
+    })
+  }
   refreshPen()
 }
 
@@ -147,6 +163,17 @@ function refreshPen() {
     cow.shown = show
     const t = Transform.getMutable(cow.entity)
     if (show) {
+      t.position = Vector3.clone(cow.home)
+      t.scale = Vector3.create(PEN_COW_SCALE, PEN_COW_SCALE, PEN_COW_SCALE)
+    } else hideEntity(cow.entity)
+  }
+  // the strays only show up once we know the pen is really empty
+  const showStrays = state.synced && visible === 0
+  for (const cow of strays) {
+    if (showStrays === cow.shown) continue
+    cow.shown = showStrays
+    const t = Transform.getMutable(cow.entity)
+    if (showStrays) {
       t.position = Vector3.clone(cow.home)
       t.scale = Vector3.create(PEN_COW_SCALE, PEN_COW_SCALE, PEN_COW_SCALE)
     } else hideEntity(cow.entity)
@@ -201,24 +228,42 @@ function alignY(dir: Vector3) {
   return Quaternion.multiply(Quaternion.lookRotation(dir, Vector3.Up()), Quaternion.fromEulerDegrees(90, 0, 0))
 }
 
+/**
+ * The Meshy launch pad (models/launch-pad.glb): a round hazard-striped deck with pink pylons and a
+ * loading ramp on its +Z side. Model units: 1.77 wide, deck top at 0.26, 0.67 to the pylon tips.
+ */
+const PAD_SCALE = 6.2
+const PAD_DECK = 0.26 * PAD_SCALE // the cannon stands on the deck
+const PAD_MODEL_CENTRE = Vector3.create(0, 0, -0.07) // the disc is a little off the model origin (ramp side is +Z)
+
 function createLauncher() {
   const out = Vector3.normalize(Vector3.create(LAUNCHER.x - CENTER.x, 0, LAUNCHER.z - CENTER.z))
   const tilt = (38 * Math.PI) / 180
   launchDir = Vector3.create(out.x * Math.cos(tilt), Math.sin(tilt), out.z * Math.cos(tilt))
-  const pivot = Vector3.create(LAUNCHER.x, 2.2, LAUNCHER.z)
+  const pivot = Vector3.create(LAUNCHER.x, PAD_DECK + 2.2, LAUNCHER.z)
   const BARREL = 7.5
   muzzle = Vector3.add(pivot, Vector3.scale(launchDir, BARREL / 2))
+
+  // the pad, ramp towards the middle of the dome (where you walk in from with a cow)
+  const padRot = Quaternion.lookRotation(Vector3.scale(out, -1), Vector3.Up())
+  const pad = engine.addEntity()
+  Transform.create(pad, {
+    position: Vector3.subtract(Vector3.create(LAUNCHER.x, 0, LAUNCHER.z), Vector3.scale(Vector3.rotate(PAD_MODEL_CENTRE, padRot), PAD_SCALE)),
+    rotation: padRot,
+    scale: Vector3.create(PAD_SCALE, PAD_SCALE, PAD_SCALE)
+  })
+  GltfContainer.create(pad, { src: 'models/launch-pad.glb', visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
 
   const metal = { albedoColor: Color4.create(0.12, 0.13, 0.15, 1), metallic: 0.85, roughness: 0.35 }
 
   const base = engine.addEntity()
-  Transform.create(base, { position: Vector3.create(LAUNCHER.x, 0.6, LAUNCHER.z), scale: Vector3.create(4.4, 1.2, 4.4) })
+  Transform.create(base, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 0.6, LAUNCHER.z), scale: Vector3.create(4.4, 1.2, 4.4) })
   MeshRenderer.setBox(base)
   MeshCollider.setBox(base)
   Material.setPbrMaterial(base, metal)
 
   const hopper = engine.addEntity()
-  Transform.create(hopper, { position: Vector3.subtract(Vector3.create(LAUNCHER.x, 2.0, LAUNCHER.z), Vector3.scale(out, 1.6)), scale: Vector3.create(2.4, 1.6, 2.4) })
+  Transform.create(hopper, { position: Vector3.subtract(Vector3.create(LAUNCHER.x, PAD_DECK + 2.0, LAUNCHER.z), Vector3.scale(out, 1.6)), scale: Vector3.create(2.4, 1.6, 2.4) })
   MeshRenderer.setBox(hopper)
   MeshCollider.setBox(hopper)
   Material.setPbrMaterial(hopper, { albedoColor: Color4.create(0.06, 0.1, 0.08, 1), emissiveColor: Color3.create(0.35, 1, 0.45), emissiveIntensity: 0.5, metallic: 0.5, roughness: 0.5 })
@@ -243,20 +288,35 @@ function createLauncher() {
   }
 
   const light = engine.addEntity()
-  Transform.create(light, { position: Vector3.create(LAUNCHER.x, 6, LAUNCHER.z) })
-  LightSource.create(light, { active: true, color: PINK, intensity: 700, range: 18, shadow: false, type: LightSource.Type.Point({}) })
+  Transform.create(light, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 6, LAUNCHER.z) })
+  LightSource.create(light, { active: true, color: PINK, intensity: 900, range: 22, shadow: false, type: LightSource.Type.Point({}) })
 
+  // Giant pink 3D "DROP COWS / HERE" over the cannon (models/text-drop.glb from tools/build-text.mjs,
+  // origin on the bottom line's baseline, reads from -Z, so it billboards like the other signs).
+  const SIGN_SCALE = 2.4
   const title = engine.addEntity()
-  Transform.create(title, { position: Vector3.create(LAUNCHER.x, 8.2, LAUNCHER.z) })
+  Transform.create(title, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 9.2, LAUNCHER.z), scale: Vector3.create(SIGN_SCALE, SIGN_SCALE, SIGN_SCALE) })
+  GltfContainer.create(title, { src: 'models/text-drop.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
   Billboard.create(title, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(title, { text: 'COW LAUNCHER', fontSize: 6, font: Font.F_SANS_SERIF, textColor: Color4.create(1, 0.45, 0.85, 1), outlineColor: Color4.Black(), outlineWidth: 0.12, textAlign: TextAlignMode.TAM_MIDDLE_CENTER })
+  const titleLight = engine.addEntity()
+  Transform.create(titleLight, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 12, LAUNCHER.z) })
+  LightSource.create(titleLight, { active: true, color: PINK, intensity: 250, range: 16, shadow: false, type: LightSource.Type.Point({}) })
+  let titleClock = 0
+  engine.addSystem((dt) => {
+    titleClock += dt
+    const k = SIGN_SCALE * (1 + (0.5 + Math.sin(titleClock * 3) * 0.5) * 0.04)
+    const t = Transform.getMutable(title)
+    t.scale = Vector3.create(k, k, k)
+    t.position.y = PAD_DECK + 9.2 + Math.sin(titleClock * 1.3) * 0.25
+  })
+
   launcherLabel = engine.addEntity()
-  Transform.create(launcherLabel, { position: Vector3.create(LAUNCHER.x, 7.1, LAUNCHER.z) })
+  Transform.create(launcherLabel, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 7.1, LAUNCHER.z) })
   Billboard.create(launcherLabel, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(launcherLabel, { text: '', fontSize: 2.4, font: Font.F_SANS_SERIF, textColor: Color4.White(), outlineColor: Color4.Black(), outlineWidth: 0.1, textAlign: TextAlignMode.TAM_MIDDLE_CENTER })
 
   const sign = engine.addEntity()
-  Transform.create(sign, { position: Vector3.create(LAUNCHER.x, 6.2, LAUNCHER.z) })
+  Transform.create(sign, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 6.2, LAUNCHER.z) })
   Billboard.create(sign, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(sign, {
     text: `${KUDOS.perCow} KUDOS per cow the black hole swallows\nKUDOS buy Alien Costumes from Nov 7`,
@@ -413,15 +473,16 @@ function system(dt: number) {
     TextShape.getMutable(launcherLabel).text = state.synced ? `black hole in ${formatTime(state.nextHoleIn)}  ·  ${state.launched} of yours floating` : ''
   }
 
-  for (const cow of pen) {
-    if (!cow.shown) continue
-    cow.timer -= dt
-    if (cow.timer > 0) continue
-    cow.timer = rand(3, 8)
-    cow.heading = rand(0, 360)
-    Transform.getMutable(cow.entity).rotation = Quaternion.fromEulerDegrees(0, cow.heading, 0)
-    if (Math.random() < 0.15) moo(Vector3.create(cow.home.x, 1, cow.home.z), 0.4)
-  }
+  for (const herd of [pen, strays])
+    for (const cow of herd) {
+      if (!cow.shown) continue
+      cow.timer -= dt
+      if (cow.timer > 0) continue
+      cow.timer = rand(3, 8)
+      cow.heading = rand(0, 360)
+      Transform.getMutable(cow.entity).rotation = Quaternion.fromEulerDegrees(0, cow.heading, 0)
+      if (Math.random() < 0.15) moo(Vector3.create(cow.home.x, 1, cow.home.z), 0.4)
+    }
 
   for (let i = flights.length - 1; i >= 0; i--) {
     const f = flights[i]

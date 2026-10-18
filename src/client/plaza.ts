@@ -531,39 +531,3 @@ export function createKiosk() {
     }
   })
 }
-
-/** Pumpkins and gravestones from the emote, scattered around the dome floor (dome-centred offsets). */
-export function createDecor() {
-  const place = (model: string, dx: number, dz: number, rot: number, scale: number) => {
-    const e = engine.addEntity()
-    Transform.create(e, {
-      position: Vector3.create(CENTER.x + dx, 0, CENTER.z + dz),
-      rotation: Quaternion.fromEulerDegrees(0, rot, 0),
-      scale: Vector3.create(scale, scale, scale)
-    })
-    GltfContainer.create(e, { src: model, visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
-  }
-  const graves: Array<[number, number, number]> = [
-    [-40, 6, 80],
-    [-38, -4, 100],
-    [40, 4, -80],
-    [38, -8, -70],
-    [-8, 40, 20],
-    [10, 41, -30],
-    [-36, 20, 50],
-    [34, 22, -50]
-  ]
-  for (const [x, z, r] of graves) place('models/grave.glb', x, z, r, 2.2)
-  const pumpkins: Array<[number, number, number]> = [
-    [-20, 36, 20],
-    [22, 34, -40],
-    [-42, -14, 60],
-    [42, -16, -60],
-    [-24, -36, 120],
-    [20, -38, 200],
-    [0, 42, 30],
-    [-14, -22, -20],
-    [16, -24, 70]
-  ]
-  for (const [x, z, r] of pumpkins) place('models/pumpkin.glb', x, z, r, 2.5)
-}
