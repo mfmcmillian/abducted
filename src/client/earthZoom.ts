@@ -328,9 +328,9 @@ function system(dt: number) {
     const c = t < 8.9 ? 0 : t < 9.5 ? (t - 8.9) / 0.6 : t < 10.7 ? 1 : t < 11.4 ? 1 - (t - 10.7) / 0.7 : 0
     // window: a short glint at the glass (t = 17.5)
     const w = 1 - Math.min(1, Math.abs(t - 17.5) / 0.35)
-    // dome glass: glint while the camera is within a metre of the wall
-    const g = 1 - Math.min(1, Math.abs(Math.hypot(pos.x - CENTER.x, pos.z - CENTER.z) - DOME_RADIUS) / 1.1)
-    zoomUi.white = Math.max(c, w * 0.75, g * 0.85)
+    // dome glass: a faint glint as the camera passes the pane (it is see-through, so keep it subtle)
+    const g = 1 - Math.min(1, Math.abs(Math.hypot(pos.x - CENTER.x, pos.z - CENTER.z) - DOME_RADIUS) / 0.8)
+    zoomUi.white = Math.max(c, w * 0.75, g * 0.35)
     if (!z.cloudsDone && t > 8.9) {
       z.cloudsDone = true
       burstExplosion(Vector3.add(E, Vector3.create(0, 12.8 * SET_SCALE, -2 * SET_SCALE)), 2.5, { ...PALETTES.cow, fire0: Color3.White(), fire1: Color3.create(0.9, 0.93, 1), smoke: Color3.White(), spark: Color3.White(), flash: Color3.White() })

@@ -228,6 +228,8 @@ export function createSpaceWindows() {
   const GIANT = 15
   const giant = orbiter(model('models/space/gas-giant.glb', GIANT), BACK - GIANT - 1.5, deg(180), 17, 0.06, Vector3.create(0, 2.4, 0), Quaternion.fromEulerDegrees(12, 0, -22))
   bigBodies.push([earth, EARTH_SCALE * 0.92], [giant, GIANT * 0.95])
+  // somebody's hatchback, tumbling slowly in orbit just below the Earth (it tested well)
+  orbiter(model('models/earth/car.glb', 2.2), BACK - 22, deg(-11), 9, 0.07, Vector3.create(4, 17, 7))
 
   const comet = createComet()
   const fleet = createFleet()
