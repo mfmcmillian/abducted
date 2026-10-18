@@ -196,7 +196,8 @@ export function createPortals() {
 
 const BASE_AVATAR = 'urn:decentraland:off-chain:base-avatars'
 const EMOTE_NAMES = ['RED', 'PURPLE', 'GREEN', 'CYAN']
-const COSTUME_NAMES = ['ALIEN 01', 'ALIEN 02', 'ALIEN 03', 'ALIEN 04']
+const COSTUME_NAMES = ["EARTH'S AMBASSADOR", 'WAVED AT THE LIGHTS', 'THAT MEANS YES', 'GETTING BANNED']
+const COSTUME_THUMBS = ['images/costume-0.png', 'images/costume-1.png', 'images/costume-2.png', 'images/costume-3.png']
 const EMOTE_THUMBS = ['images/emote-red.png', 'images/emote-purple.png', 'images/emote-green.png', 'images/emote-cyan.png']
 
 /** Price line per emote item. Starts from the last known Marketplace listing, refreshed live. */
@@ -328,7 +329,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   const status = engine.addEntity()
   Transform.create(status, { parent: root, position: Vector3.create(0, 1.15, -3.65) })
   TextShape.create(status, {
-    text: kind === 'emote' ? 'RED  ·  1 / 4' : 'ALIEN 01  ·  1 / 4',
+    text: `${kind === 'emote' ? EMOTE_NAMES[0] : COSTUME_NAMES[0]}  ·  1 / 4`,
     fontSize: 2,
     font: Font.F_SANS_SERIF,
     textColor: kind === 'emote' ? Color4.create(0.3, 0.95, 1, 1) : Color4.create(0.7, 1, 0.35, 1),
@@ -381,30 +382,38 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
     Billboard.create(buyText, { billboardMode: BillboardMode.BM_Y })
     display.buyText = buyText
 
-    // Row of the four item thumbnails on the backdrop with the Marketplace price under each.
-    // Clicking one shows that emote; the glowing frame marks the one on the pedestal.
+  }
+
+  // Row of the four item thumbnails on the backdrop (emotes: middle of the panel with the
+  // Marketplace price under each; costumes: the empty strip at the bottom of the guide).
+  // Clicking one shows that item; the glowing frame marks the one on the pedestal.
+  {
+    const thumbs = kind === 'emote' ? EMOTE_THUMBS : COSTUME_THUMBS
+    const tileY = kind === 'emote' ? TILE_Y : 1.8
+    const tileSize = kind === 'emote' ? TILE : 1.15
+    const tileGap = kind === 'emote' ? TILE_GAP : 2.8
     const highlight = engine.addEntity()
-    Transform.create(highlight, { parent: root, position: Vector3.create(-1.5 * TILE_GAP, TILE_Y, -0.06), scale: Vector3.create(TILE + 0.22, TILE + 0.22, 1) })
+    Transform.create(highlight, { parent: root, position: Vector3.create(-1.5 * tileGap, tileY, -0.06), scale: Vector3.create(tileSize + 0.22, tileSize + 0.22, 1) })
     MeshRenderer.setPlane(highlight)
     Material.setPbrMaterial(highlight, { albedoColor: Color4.create(0.1, 0.5, 0.6, 1), emissiveColor: glowColor, emissiveIntensity: 1.6, roughness: 1, metallic: 0 })
     display.highlight = highlight
     display.tiles = []
     display.prices = []
     for (let i = 0; i < 4; i++) {
-      const x = (i - 1.5) * TILE_GAP
+      const x = (i - 1.5) * tileGap
       const tile = engine.addEntity()
-      Transform.create(tile, { parent: root, position: Vector3.create(x, TILE_Y, -0.1), scale: Vector3.create(TILE, TILE, 1) })
+      Transform.create(tile, { parent: root, position: Vector3.create(x, tileY, -0.1), scale: Vector3.create(tileSize, tileSize, 1) })
       MeshRenderer.setPlane(tile)
       MeshCollider.setPlane(tile, ColliderLayer.CL_POINTER)
       Material.setBasicMaterial(tile, {
-        texture: Material.Texture.Common({ src: EMOTE_THUMBS[i], wrapMode: TextureWrapMode.TWM_CLAMP, filterMode: TextureFilterMode.TFM_BILINEAR }),
+        texture: Material.Texture.Common({ src: thumbs[i], wrapMode: TextureWrapMode.TWM_CLAMP, filterMode: TextureFilterMode.TFM_BILINEAR }),
         diffuseColor: Color4.White(),
         castShadows: false
       })
       const price = engine.addEntity()
-      Transform.create(price, { parent: root, position: Vector3.create(x, TILE_Y - TILE / 2 - 0.42, -0.1) })
+      Transform.create(price, { parent: root, position: Vector3.create(x, tileY - tileSize / 2 - 0.42, -0.1) })
       TextShape.create(price, {
-        text: priceLabel(i),
+        text: kind === 'emote' ? priceLabel(i) : '',
         fontSize: 1.25,
         font: Font.F_SANS_SERIF,
         textColor: Color4.create(1, 0.9, 0.45, 1),
@@ -414,7 +423,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
         lineSpacing: 9
       })
       pointerEventsSystem.onPointerDown(
-        { entity: tile, opts: { button: InputAction.IA_POINTER, hoverText: `Show ${EMOTE_NAMES[i].toLowerCase()} emote`, maxDistance: 16 } },
+        { entity: tile, opts: { button: InputAction.IA_POINTER, hoverText: kind === 'emote' ? `Show ${EMOTE_NAMES[i].toLowerCase()} emote` : `Show suit: ${COSTUME_NAMES[i].toLowerCase()}`, maxDistance: 16 } },
         () => show(i)
       )
       display.tiles.push(tile)
@@ -441,7 +450,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
     }
     shape.expressionTriggerTimestamp = Date.now()
     TextShape.getMutable(status).text = `${kind === 'emote' ? EMOTE_NAMES[display.index] : COSTUME_NAMES[display.index]}  ·  ${display.index + 1} / 4`
-    if (display.highlight) Transform.getMutable(display.highlight).position.x = (display.index - 1.5) * TILE_GAP
+    if (display.highlight) Transform.getMutable(display.highlight).position.x = (display.index - 1.5) * (kind === 'emote' ? TILE_GAP : 2.8)
   }
   const cycle = () => show((display.index + 1) % 4)
   const cycleOptions = { button: InputAction.IA_POINTER, hoverText: `Next ${kind}`, maxDistance: 14 }
