@@ -103,17 +103,25 @@ export function createDome(video: Entity): Entity {
   }
 
   // Vertical wall under the video: mothership interior with portholes looking out at Earth.
-  // Unlit so the windows read in the dark; MIRROR wrap hides the tile seams.
+  // Same PBR-with-texture path as the floor (which the Explorer honours); the emissive copy
+  // keeps the windows readable in the dark. MIRROR wrap hides the tile seams.
+  const wallTexture = Material.Texture.Common({
+    src: 'images/ship-wall.jpg',
+    wrapMode: TextureWrapMode.TWM_MIRROR,
+    filterMode: TextureFilterMode.TFM_TRILINEAR
+  })
   const wallMaterial = {
     material: {
-      $case: 'unlit' as const,
-      unlit: {
-        texture: Material.Texture.Common({
-          src: 'images/ship-wall.jpg',
-          wrapMode: TextureWrapMode.TWM_MIRROR,
-          filterMode: TextureFilterMode.TFM_TRILINEAR
-        }),
-        diffuseColor: Color4.create(0.8, 0.8, 0.85, 1),
+      $case: 'pbr' as const,
+      pbr: {
+        texture: wallTexture,
+        emissiveTexture: wallTexture,
+        emissiveColor: Color3.White(),
+        emissiveIntensity: 0.9,
+        albedoColor: Color4.White(),
+        metallic: 0.2,
+        roughness: 0.8,
+        specularIntensity: 0,
         castShadows: false
       }
     }

@@ -197,7 +197,10 @@ const materials = [
 // (WALL_REPEATS copies around, mirrored wrap so the seams are invisible); the video
 // covers only the cap, remapped so v runs 0 at the top of the wall to 1 at the apex.
 const WALL_REPEATS = 14
-const capUv = ({ u, y }) => [u, 1 - (y - WALL_HEIGHT) / RADIUS]
+// The Explorer leaves the bottom ~14% of the video texture black (frame padding), so the
+// cap samples v 0..VIDEO_V_MAX and the picture's real bottom edge sits on the wall top.
+const VIDEO_V_MAX = 0.86
+const capUv = ({ u, y }) => [u, VIDEO_V_MAX * (1 - (y - WALL_HEIGHT) / RADIUS)]
 const wallUv = ({ col, y }) => [(col / SEGMENTS) * WALL_REPEATS, 1 - y / WALL_HEIGHT]
 const inner = buildShell('DomeInner', RADIUS, true, { kStart: WALL_RINGS, uv: ({ u, k }) => capUv({ u, y: profile(k, RADIUS).y }) })
 const wall = buildShell('WallInner', RADIUS, true, { kEnd: WALL_RINGS, uv: wallUv, material: 3 })
