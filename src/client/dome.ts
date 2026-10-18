@@ -20,6 +20,7 @@ import {
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { openExternalUrl } from '~system/RestrictedActions'
 import { CENTER, EMOTE_URL, SPAWN, VIDEO_URL } from '../layout'
+import { moo } from './sfx'
 import { music } from './music'
 
 /** Single looping VideoPlayer; every screen in the scene samples this entity. */
@@ -191,6 +192,7 @@ export function createHeroCow(): Entity {
   pointerEventsSystem.onPointerDown(
     { entity: cow, opts: { button: InputAction.IA_POINTER, hoverText: 'Moo.', maxDistance: 40 } },
     () => {
+      moo(Vector3.create(SPAWN.x + 5, 1.5, SPAWN.z + 3))
       void openExternalUrl({ url: EMOTE_URL })
     }
   )

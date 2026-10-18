@@ -20,6 +20,7 @@ import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { CENTER, FORMATION, RING_VIDEO_URL } from '../layout'
 import { room } from '../shared/messages'
 import { toast } from './ui'
+import { playAt, playGlobal, SFX } from './sfx'
 
 /**
  * The ring altar on the south-west crop circle. One Antrom Guildstone Ring per wallet;
@@ -115,6 +116,7 @@ function createAltar(): Entity {
     if (claimed === true) return toast('You already claimed your Antrom Guildstone Ring.')
     if (pending > 0) return
     pending = 20
+    playGlobal(SFX.uiClick, 0.8)
     toast('The aliens are checking your wallet...')
     room.send('ringClaim', { v: 1 })
   }
@@ -234,7 +236,10 @@ function createPoster(domeVideo: Entity) {
   }
   pointerEventsSystem.onPointerDown(
     { entity: screen, opts: { button: InputAction.IA_POINTER, hoverText: 'Watch: how the Guildstone Ring works', maxDistance: 14 } },
-    () => (remaining > 0 ? stop() : play())
+    () => {
+      playGlobal(SFX.uiClick, 0.8)
+      remaining > 0 ? stop() : play()
+    }
   )
   engine.addSystem((dt) => {
     if (remaining <= 0) return
@@ -250,6 +255,7 @@ export function createRingAltar(domeVideo: Entity) {
   room.onMessage('ringStatus', (data) => {
     claimed = data.claimed
     pending = 0
+    if (data.ok) playAt(SFX.ringChime, Vector3.create(FORMATION.SW.x, 2.5, FORMATION.SW.z), 1)
     if (data.text) toast(data.text, data.ok ? 10 : 7)
   })
 

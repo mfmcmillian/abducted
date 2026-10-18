@@ -38,6 +38,7 @@ import {
 } from '../layout'
 import { music } from './music'
 import { toast } from './ui'
+import { moo, playGlobal, SFX } from './sfx'
 
 /** Permanent night: 01:00. */
 export function createNightSky() {
@@ -424,6 +425,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   const show = (index: number) => {
     display.index = index
     display.replay = 8
+    playGlobal(SFX.uiClick, 0.7)
     const shape = AvatarShape.getMutable(display.avatar)
     if (kind === 'emote') {
       shape.emotes = EMOTE_URNS
@@ -455,6 +457,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
       }
     },
     () => {
+      moo(Vector3.add(position, Vector3.create(0, 1.7, 0)), 0.9)
       if (kind === 'costume') {
         toast('Alien costumes are not for sale. Earn them in Dungeons of Antrom through the purple portal.', 7)
         return

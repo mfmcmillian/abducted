@@ -14,6 +14,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { CENTER, DOME_RADIUS, flatDistance, FORMATION, LAUNCH_PAD, LEADERBOARD, SPAWN } from '../layout'
+import { attachLoop, moo, playAt, SFX } from './sfx'
 
 /**
  * A herd of the emote's cows wandering the dome floor. Click one and the saucer
@@ -125,6 +126,8 @@ function abduct(cow: Cow) {
   if (ufo.state !== 'idle') return
   cow.state = 'abducted'
   cow.timer = 0
+  moo(Vector3.create(cow.pos.x, 1, cow.pos.z))
+  playAt(SFX.ufoArrive, Vector3.create(cow.pos.x, 6, cow.pos.z), 0.7)
   ufo.victim = cow
   ufo.state = 'approach'
   ufo.timer = 0
@@ -234,6 +237,7 @@ function cowSystem(dt: number) {
       case 'abducted': {
         // Wait for the saucer; once the beam is on, rise and spin.
         if (ufo.state !== 'beam') break
+        if (cow.timer === 0) moo(Vector3.create(cow.pos.x, 1, cow.pos.z), 0.8)
         cow.timer += dt
         const k = Math.min(1, cow.timer / 3.2)
         cow.spin += dt * (1 + k * 6)
@@ -242,6 +246,7 @@ function cowSystem(dt: number) {
         if (k >= 1) {
           cow.state = 'gone'
           cow.timer = randomBetween(8, 14)
+          playAt(SFX.catch, Vector3.create(cow.pos.x, BEAM_HEIGHT - 2, cow.pos.z), 0.9)
           VisibilityComponent.createOrReplace(cow.entity, { visible: false })
           ufo.state = 'return'
           ufo.timer = 0
@@ -269,6 +274,7 @@ function cowSystem(dt: number) {
         const y = DROP_HEIGHT - 0.5 * 22 * cow.timer * cow.timer // soft gravity
         if (y <= 0) {
           t.position.y = 0
+          moo(Vector3.create(cow.pos.x, 1, cow.pos.z), 0.7)
           cow.state = 'graze'
           cow.timer = 2
           cow.heading = Quaternion.toEulerAngles(t.rotation).y * (Math.PI / 180)
@@ -333,10 +339,14 @@ function ufoSystem(dt: number) {
   light.rotation = Quaternion.fromEulerDegrees(90, 0, 0)
   const l = LightSource.getMutable(ufo.light)
   l.intensity = ufo.state === 'beam' ? 2500 : 500
+  setHum(ufo.state === 'beam' ? 0.6 : ufo.state === 'approach' ? 0.25 : 0)
 }
+
+let setHum: (v: number) => void = () => {}
 
 export function createHerd() {
   ufo = createUfo()
+  setHum = attachLoop(ufo.entity, SFX.beamHum, 0)
   for (let i = 0; i < HERD; i++) cows.push(spawnCow(i))
   engine.addSystem(cowSystem)
   engine.addSystem(ufoSystem)

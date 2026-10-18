@@ -32,6 +32,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
+import { attachLoop, moo, playAt, playGlobal, SFX } from './sfx'
 import { movePlayerTo } from '~system/RestrictedActions'
 import { ARENA_FLY_HEIGHT, ARENA_SIZE, ARENA_Y, CENTER, LANDING, LAUNCH_PAD, LEADERBOARD } from '../layout'
 import { GAME, RULESET } from '../shared/gameConfig'
@@ -102,6 +103,7 @@ interface GameCow {
 const cows: GameCow[] = []
 
 let liftUfo: Entity
+let setPadHum: (v: number) => void = () => {}
 let liftBeam: Entity
 let liftLight: Entity
 const liftIdle = Vector3.create(LAUNCH_PAD.x, 17, LAUNCH_PAD.z)
@@ -126,6 +128,8 @@ function dist2(ax: number, az: number, bx: number, bz: number) {
 
 /** Keep the portal beam joined to the saucer instead of leaving a gap as it moves. */
 function setLiftBeam(width: number, height: number) {
+  // Hum follows the beam: a whisper when idle, full when it opens to lift you.
+  setPadHum(0.12 + Math.min(1, width) * 0.5)
   const h = Math.max(0.1, height)
   const t = Transform.getMutable(liftBeam)
   t.position.y = h / 2
@@ -145,6 +149,7 @@ function createLaunchPad() {
     if (phase === 'idle') {
       phase = 'summon'
       phaseTime = 0
+      playAt(SFX.ufoArrive, Vector3.create(LAUNCH_PAD.x, 10, LAUNCH_PAD.z), 0.9)
       toast('A saucer heard the call.', 3)
     }
   })
@@ -160,6 +165,7 @@ function createLaunchPad() {
       phase = 'pickup'
       phaseTime = 0
       pickupMoved = false
+      playGlobal(SFX.lift, 1)
     }
   })
   triggerAreaEventsSystem.onTriggerExit(beamZone, () => {
@@ -173,6 +179,7 @@ function createLaunchPad() {
   liftUfo = engine.addEntity()
   Transform.create(liftUfo, { position: Vector3.clone(liftIdle), scale: Vector3.create(3.5, 3.5, 3.5) })
   GltfContainer.create(liftUfo, { src: 'models/ufo.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
+  setPadHum = attachLoop(liftUfo, SFX.beamHum, 0.15)
   liftBeam = engine.addEntity()
   Transform.create(liftBeam, { position: Vector3.create(LAUNCH_PAD.x, liftDown.y / 2, LAUNCH_PAD.z), scale: Vector3.Zero() })
   MeshRenderer.setCylinder(liftBeam, 3.2, 1.2)
@@ -643,6 +650,7 @@ function activateBeam(x: number, z: number, scored: boolean) {
   beam.state = 'charging'
   beam.time = 0
   beam.locked = false
+  playGlobal(SFX.beamCharge, 0.8)
   beam.x = x
   beam.z = z
   if (scored) run.attempts++
@@ -688,6 +696,8 @@ function updateBeam(dt: number, scoring: boolean): boolean {
       best.state = 'lifting'
       best.lift = 0
       best.exposure = 0
+      moo(Vector3.create(best.x, ARENA_Y + 1, best.z), 1)
+      playGlobal(SFX.catch, 1)
       if (scoring) {
         const points = Math.floor(GAME.catchPoints * run.multiplier)
         run.score += points
@@ -700,6 +710,7 @@ function updateBeam(dt: number, scoring: boolean): boolean {
       }
     }
     if (beam.time >= GAME.activeSeconds) {
+      if (!beam.locked) playGlobal(SFX.miss, 0.7)
       if (!beam.locked && scoring) {
         run.multiplier = 1
         hud.combo = 1
@@ -840,6 +851,7 @@ function finalizeRound() {
   hud.secondsLeft = 0
   hud.mode = 'finalizing'
   setInputLocked(true)
+  playGlobal(SFX.roundEnd, 0.9)
   // no new locks after the deadline: cancel an in-flight drop, let scored lifts finish
   if (beam.state === 'charging' || beam.state === 'active') {
     beam.state = 'cooldown'
@@ -1013,6 +1025,7 @@ function gameSystem(dt: number) {
       phaseTime = 0
       hud.mode = 'playing'
       hud.countdown = 'GO!'
+      playGlobal(SFX.roundStart, 0.9)
       setInputLocked(false)
     }
   } else if (phase === 'playing') {
@@ -1148,6 +1161,7 @@ export function createCowGame() {
   }
   hud.onReplay = () => {
     if (phase !== 'results') return
+    playGlobal(SFX.uiClick, 0.8)
     const player = Transform.getOrNull(engine.PlayerEntity)
     beginCountdown(player?.position.x ?? ARENA_CENTER.x, player?.position.z ?? ARENA_CENTER.z)
   }
@@ -1157,6 +1171,7 @@ export function createCowGame() {
   }
   hud.onLeave = () => {
     if (phase !== 'practice' && phase !== 'countdown' && phase !== 'playing' && phase !== 'finalizing') return
+    playGlobal(SFX.uiClick, 0.8)
     returnToDome('Back on the ground. The cows will be waiting.')
   }
   createLaunchPad()
