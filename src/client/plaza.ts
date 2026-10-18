@@ -244,7 +244,7 @@ function refreshEmotePrices() {
         const mana = Number(`${wei.slice(0, -18)}.${wei.slice(-18)}`)
         EMOTE_PRICES[i] = { mana: Math.round(mana * 100) / 100, onSale: !!it.isOnSale, available: Number(it.available) }
       }
-      for (const d of showcases) d.prices?.forEach((e, i) => (TextShape.getMutable(e).text = priceLabel(i)))
+      for (const d of showcases) if (d.kind === 'emote') d.prices?.forEach((e, i) => (TextShape.getMutable(e).text = priceLabel(i)))
     } catch (e) {
       console.log('[plaza] marketplace prices unavailable', e)
     }

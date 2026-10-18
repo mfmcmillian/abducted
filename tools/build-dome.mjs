@@ -66,8 +66,9 @@ function profile(k, radius) {
  * Build a shell. inward=true flips normals and winding so the surface renders
  * from inside the dome.
  */
-function buildShell(name, radius, inward) {
-  const m = new MeshBuf(name, 0)
+function buildShell(name, radius, inward, opts = {}) {
+  const { kStart = 0, kEnd = RING_COUNT, uv = null, material = 0 } = opts
+  const m = new MeshBuf(name, material)
   // Two halves, each with HALF+1 columns so the UV seam vertices are duplicated.
   const grid = [] // grid[half][col][ring] => vertex index
   for (let h = 0; h < 2; h++) {
@@ -80,7 +81,8 @@ function buildShell(name, radius, inward) {
       // Second half is mirrored (u runs 1..0) so both seams join identical picture edges.
       const u = h === 0 ? j / HALF : 1 - j / HALF
       const colVerts = []
-      for (let k = 0; k <= RING_COUNT; k++) {
+      for (let k = 0; k < kStart; k++) colVerts.push(-1)
+      for (let k = kStart; k <= kEnd; k++) {
         const { r, y, v } = profile(k, radius)
         const p = [r * sx, y, r * cz]
         let n
@@ -91,7 +93,7 @@ function buildShell(name, radius, inward) {
           n = [Math.cos(a) * sx, Math.sin(a), Math.cos(a) * cz]
         }
         if (inward) n = n.map((c) => -c)
-        colVerts.push(m.vertex(p, n, [u, 1 - v]))
+        colVerts.push(m.vertex(p, n, uv ? uv({ col, k, u, v, y, theta }) : [u, 1 - v]))
       }
       grid[h].push(colVerts)
     }
@@ -99,7 +101,7 @@ function buildShell(name, radius, inward) {
   for (let h = 0; h < 2; h++) {
     for (let j = 0; j < HALF; j++) {
       const col = h * HALF + j
-      for (let k = 0; k < RING_COUNT; k++) {
+      for (let k = kStart; k < kEnd; k++) {
         if (isDoorQuad(col, k)) continue
         const a = grid[h][j][k]
         const b = grid[h][j + 1][k]
@@ -184,14 +186,25 @@ const materials = [
   {
     name: 'Grass',
     pbrMetallicRoughness: { baseColorFactor: [0.05, 0.095, 0.05, 1], metallicFactor: 0, roughnessFactor: 1 }
+  },
+  {
+    name: 'ShipWall', // replaced at runtime with the ship-interior texture
+    pbrMetallicRoughness: { baseColorFactor: [0.04, 0.04, 0.05, 1], metallicFactor: 0.3, roughnessFactor: 0.8 }
   }
 ]
 
-const inner = buildShell('DomeInner', RADIUS, true)
+// Inside: the vertical wall is a separate node with a tiling ship-interior texture
+// (WALL_REPEATS copies around, mirrored wrap so the seams are invisible); the video
+// covers only the cap, remapped so v runs 0 at the top of the wall to 1 at the apex.
+const WALL_REPEATS = 14
+const capUv = ({ u, y }) => [u, 1 - (y - WALL_HEIGHT) / RADIUS]
+const wallUv = ({ col, y }) => [(col / SEGMENTS) * WALL_REPEATS, 1 - y / WALL_HEIGHT]
+const inner = buildShell('DomeInner', RADIUS, true, { kStart: WALL_RINGS, uv: ({ u, k }) => capUv({ u, y: profile(k, RADIUS).y }) })
+const wall = buildShell('WallInner', RADIUS, true, { kEnd: WALL_RINGS, uv: wallUv, material: 3 })
 const outer = buildShell('DomeOuter', RADIUS + SHELL_GAP, false)
 const floor = buildFloor()
 floor.material = 2
-const parts = CLOSED ? [inner, outer, floor] : [inner, outer, buildDoorFrame(), floor]
+const parts = CLOSED ? [inner, wall, outer, floor] : [inner, wall, outer, buildDoorFrame(), floor]
 
 const glb = buildGlb(parts, materials, 'Dome', 'abducted-dome build-dome.mjs')
 mkdirSync(dirname(OUT), { recursive: true })

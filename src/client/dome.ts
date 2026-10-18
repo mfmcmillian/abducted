@@ -102,11 +102,29 @@ export function createDome(video: Entity): Entity {
     }
   }
 
+  // Vertical wall under the video: mothership interior with portholes looking out at Earth.
+  // Unlit so the windows read in the dark; MIRROR wrap hides the tile seams.
+  const wallMaterial = {
+    material: {
+      $case: 'unlit' as const,
+      unlit: {
+        texture: Material.Texture.Common({
+          src: 'images/ship-wall.jpg',
+          wrapMode: TextureWrapMode.TWM_MIRROR,
+          filterMode: TextureFilterMode.TFM_TRILINEAR
+        }),
+        diffuseColor: Color4.create(0.8, 0.8, 0.85, 1),
+        castShadows: false
+      }
+    }
+  }
+
   // Node paths match the node names written by tools/build-dome.mjs.
   GltfNodeModifiers.create(dome, {
     modifiers: [
       { path: 'DomeInner', material: screenMaterial, castShadows: false },
       { path: 'DomeOuter', material: screenMaterial, castShadows: false },
+      { path: 'WallInner', material: wallMaterial, castShadows: false },
       { path: 'Floor', material: floorMaterial, castShadows: false }
     ]
   })
