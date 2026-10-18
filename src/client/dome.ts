@@ -103,9 +103,8 @@ export function createDome(video: Entity): Entity {
   }
 
   // Vertical wall under the video: a continuous observation deck. Machinery strips above and
-  // below, glass between, and outside it dome.glb carries a star ring: eight 45-degree sectors
-  // of back wall cycling through four space pictures, starfield top and bottom
-  // (src/client/space.ts animates what drifts through). Same PBR-with-texture path as the floor (which the Explorer honours);
+  // below, glass between, and outside it dome.glb carries a 30 m deep star ring; the planets,
+  // ships and rocks out there are models driven by src/client/space.ts. Same PBR-with-texture path as the floor (which the Explorer honours);
   // the emissive copy keeps everything readable in the dark. MIRROR wrap hides tile seams.
   const wallMaterialFor = (src: string, wrapMode: TextureWrapMode, emissiveIntensity = 0.9) => {
     const texture = Material.Texture.Common({ src, wrapMode, filterMode: TextureFilterMode.TFM_TRILINEAR })
@@ -128,11 +127,8 @@ export function createDome(video: Entity): Entity {
   }
   const machineMaterial = wallMaterialFor('images/ship-machines.jpg', TextureWrapMode.TWM_MIRROR)
   const starsMaterial = wallMaterialFor('images/space-stars.jpg', TextureWrapMode.TWM_MIRROR, 1)
-  const backdrops = ['space-earth', 'space-nebula', 'space-moon', 'space-fleet'].map((name, i) => ({
-    path: 'SpaceBack' + i,
-    material: wallMaterialFor('images/' + name + '.jpg', TextureWrapMode.TWM_CLAMP, 1),
-    castShadows: false
-  }))
+  // The back wall is plain stars too: everything with a shape out there is a model (space.ts).
+  const backdrops = [0, 1, 2, 3].map((i) => ({ path: 'SpaceBack' + i, material: starsMaterial, castShadows: false }))
 
   // Node paths match the node names written by tools/build-dome.mjs.
   GltfNodeModifiers.create(dome, {

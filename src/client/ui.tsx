@@ -1,6 +1,7 @@
 import { engine } from '@dcl/sdk/ecs'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
+import { canvasSize, dragOffsetPx, startDrag } from './drag'
 
 /** One-line toast at the bottom centre of the screen. */
 let toastText = ''
@@ -184,17 +185,62 @@ function Stat(props: { label: string; value: string }) {
   )
 }
 
-/** Top-left while walking around the dome: kudos, cargo and the black hole countdown. */
+const PINK = Color4.create(1, 0.55, 0.85, 1)
+const PURPLE_UI = Color4.create(0.8, 0.6, 1, 1)
+const FRAME = { textureMode: 'nine-slices' as const, texture: { src: 'images/ui-frame.png' }, textureSlices: { top: 0.2, bottom: 0.2, left: 0.2, right: 0.2 } }
+const icon = (src: string) => ({ textureMode: 'stretch' as const, texture: { src } })
+
+/** One line of the panel: icon tile, a bold value, a small caption. */
+function PanelRow(props: { icon: string; value: string; caption: string; s: number; color?: Color4 }) {
+  const { s } = props
+  return (
+    <UiEntity uiTransform={{ flexDirection: 'row', alignItems: 'center', margin: { top: 10 * s } }}>
+      <UiEntity uiTransform={{ width: 64 * s, height: 64 * s }} uiBackground={icon(props.icon)} />
+      <UiEntity uiTransform={{ flexDirection: 'column', margin: { left: 14 * s } }}>
+        <Label value={props.value} fontSize={28 * s} color={props.color ?? Color4.White()} textAlign="middle-left" />
+        <Label value={props.caption} fontSize={15 * s} color={DIM} textAlign="middle-left" />
+      </UiEntity>
+    </UiEntity>
+  )
+}
+
+/**
+ * The kudos board: a big alien-metal window while you walk around the dome. Click and hold
+ * the title to drag it anywhere; double-click the title to snap it home.
+ */
 function KudosPanel() {
   if (!kudosHud.synced || hud.mode !== 'hidden') return null
   const k = kudosHud
+  const { w, h } = canvasSize()
+  const s = Math.max(0.7, Math.min(1.3, h / 1080))
+  const W = 430 * s
+  const H = (k.carrying ? 470 : 420) * s
+  const { dx, dy } = dragOffsetPx('kudos')
+  const left = Math.max(0, Math.min(w - W, 28 * s + dx))
+  const top = Math.max(0, Math.min(h - H, h * 0.3 + dy))
+  const pad = W * 0.11
   return (
-    <UiEntity uiTransform={{ positionType: 'absolute', position: { top: 24, left: 24 }, padding: { top: 10, bottom: 10, left: 16, right: 16 }, flexDirection: 'column' }} uiBackground={{ color: PANEL }}>
-      <Label value={`KUDOS  ${k.kudos}`} fontSize={24} color={GREEN} textAlign="middle-left" />
-      <Label value={`cargo bay  ${k.cargo} cow${k.cargo === 1 ? '' : 's'}   ·   floating  ${k.launched}`} fontSize={14} color={Color4.White()} textAlign="middle-left" />
-      <Label value={`black hole in  ${formatTime(k.nextHoleIn)}`} fontSize={14} color={Color4.create(0.8, 0.6, 1, 1)} textAlign="middle-left" />
-      {k.carrying ? <Label value="carrying a cow: click the COW LAUNCHER" fontSize={14} color={Color4.create(1, 0.55, 0.85, 1)} textAlign="middle-left" /> : null}
-      <Label value="kudos buy Alien Costumes from Nov 7" fontSize={11} color={DIM} textAlign="middle-left" />
+    <UiEntity uiTransform={{ positionType: 'absolute', position: { left, top }, width: W, height: H }}>
+      <UiEntity uiTransform={{ positionType: 'absolute', position: { left: W * 0.07, top: W * 0.07 }, width: W * 0.86, height: H - W * 0.14 }} uiBackground={{ color: Color4.create(0.03, 0.02, 0.08, 0.8) }} />
+      <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: 0 }, width: W, height: H }} uiBackground={FRAME} />
+      <UiEntity uiTransform={{ positionType: 'absolute', position: { left: pad, top: pad * 0.85 }, width: W - pad * 2, flexDirection: 'column' }}>
+        <UiEntity uiTransform={{ flexDirection: 'row', alignItems: 'center', width: '100%' }} onMouseDown={() => startDrag('kudos')}>
+          <UiEntity uiTransform={{ width: 74 * s, height: 74 * s }} uiBackground={icon('images/ui-icon-kudos.png')} />
+          <UiEntity uiTransform={{ flexDirection: 'column', margin: { left: 12 * s } }}>
+            <Label value="KUDOS" fontSize={20 * s} color={GREEN} textAlign="middle-left" />
+            <Label value={`${k.kudos}`} fontSize={44 * s} color={Color4.White()} textAlign="middle-left" />
+          </UiEntity>
+        </UiEntity>
+        <Label value="hold the title to drag  ·  double-click to reset" fontSize={11 * s} color={Color4.create(0.5, 0.6, 0.7, 0.8)} textAlign="middle-left" />
+        <PanelRow icon="images/ui-icon-cow.png" value={`${k.cargo} in the cargo bay`} caption={`${k.launched} of yours floating outside`} s={s} />
+        <PanelRow icon="images/ui-icon-hole.png" value={`black hole in ${formatTime(k.nextHoleIn)}`} caption="swallows every floating cow, 10 kudos each" s={s} color={PURPLE_UI} />
+        {k.carrying ? (
+          <UiEntity uiTransform={{ margin: { top: 12 * s }, padding: { top: 8 * s, bottom: 8 * s, left: 12 * s, right: 12 * s } }} uiBackground={{ color: Color4.create(0.35, 0.05, 0.25, 0.9) }}>
+            <Label value="You are carrying a cow: click the COW LAUNCHER" fontSize={15 * s} color={PINK} textAlign="middle-center" />
+          </UiEntity>
+        ) : null}
+        <Label value="KUDOS buy Alien Costumes from Nov 7" fontSize={13 * s} color={GREEN} textAlign="middle-left" uiTransform={{ margin: { top: 12 * s } }} />
+      </UiEntity>
     </UiEntity>
   )
 }
