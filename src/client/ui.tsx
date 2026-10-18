@@ -1,6 +1,7 @@
 import { engine, UiCanvasInformation } from '@dcl/sdk/ecs'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
+import { dragOffsetPx, startDrag } from './drag'
 
 /** One-line toast at the bottom centre of the screen. */
 let toastText = ''
@@ -189,6 +190,7 @@ const PURPLE_UI = Color4.create(0.8, 0.6, 1, 1)
 // the Antrom AFK dock's look: same panel texture (images/ui-panel.png), slices, colour and sizes
 const NAVY_SOFT = Color4.fromHexString('#2a3550f2')
 const PANEL_TEX = { textureMode: 'nine-slices' as const, texture: { src: 'images/ui-panel.png' }, textureSlices: { top: 36 / 128, bottom: 36 / 128, left: 36 / 128, right: 36 / 128 }, color: NAVY_SOFT }
+const PILL_TEX = { textureMode: 'nine-slices' as const, texture: { src: 'images/ui-pill.png' }, textureSlices: { top: 0.49, bottom: 0.49, left: 0.245, right: 0.245 }, color: NAVY_SOFT }
 const icon = (src: string) => ({ textureMode: 'stretch' as const, texture: { src } })
 
 /**
@@ -218,15 +220,20 @@ function PanelRow(props: { icon: string; value: string; caption: string; S: (n: 
 }
 
 /**
- * The kudos board: a fixed panel on the left, in the band under the explorer's top-left HUD,
- * laid out like the Antrom AFK dock (same panel texture, 420 design px wide, 18 px padding).
+ * The kudos board on the left, in the band under the explorer's top-left HUD, laid out like the
+ * Antrom AFK dock (same panel texture, 420 design px wide, 18 px padding). The header tab above
+ * it drags the whole thing; a double tap on the tab snaps it home.
  */
 function KudosPanel() {
   if (!kudosHud.synced || hud.mode !== 'hidden' || zoomUi.active) return null
   const k = kudosHud
   const { canvas, S } = hudLayout()
+  const { dx, dy } = dragOffsetPx('kudos')
   return (
-    <UiEntity uiTransform={{ positionType: 'absolute', position: { top: canvas.top + S(190), left: canvas.left + S(18) }, flexDirection: 'column' }}>
+    <UiEntity uiTransform={{ positionType: 'absolute', position: { top: canvas.top + S(190) + dy, left: canvas.left + S(18) + dx }, flexDirection: 'column', alignItems: 'center' }}>
+      <UiEntity uiTransform={{ width: S(260), height: S(44), alignItems: 'center', justifyContent: 'center', margin: { bottom: -S(6) } }} uiBackground={PILL_TEX} onMouseDown={() => startDrag('kudos')}>
+        <Label value="ABDUCTED!  KUDOS" fontSize={S(20)} color={GREEN} textAlign="middle-center" uiTransform={{ width: '100%', height: S(32) }} />
+      </UiEntity>
       <UiEntity uiTransform={{ width: S(420), padding: S(18), flexDirection: 'column' }} uiBackground={PANEL_TEX}>
         {/* header: icon, title, the number */}
         <UiEntity uiTransform={{ width: '100%', height: S(64), flexDirection: 'row', alignItems: 'center', margin: { bottom: S(6) } }}>
@@ -235,13 +242,14 @@ function KudosPanel() {
           <Label value={`${k.kudos}`} fontSize={S(40)} color={Color4.White()} textAlign="middle-right" uiTransform={{ width: S(140), height: S(50) }} />
         </UiEntity>
         <PanelRow icon="images/ui-icon-cow.png" value={`${k.cargo} in the cargo bay`} caption={`${k.launched} of yours floating outside`} S={S} />
-        <PanelRow icon="images/ui-icon-hole.png" value={`black hole in ${formatTime(k.nextHoleIn)}`} caption="swallows every floating cow, 10 kudos each" S={S} color={PURPLE_UI} />
+        <PanelRow icon="images/ui-icon-hole.png" value={`black hole in ${formatTime(k.nextHoleIn)}`} caption="10 kudos per floating cow it eats" S={S} color={PURPLE_UI} />
         {k.carrying ? (
           <UiEntity uiTransform={{ width: '100%', height: S(44), margin: { top: S(12) }, justifyContent: 'center', alignItems: 'center' }} uiBackground={{ color: Color4.create(0.35, 0.05, 0.25, 0.9) }}>
             <Label value="Carrying a cow: click the COW LAUNCHER" fontSize={S(18)} color={PINK} textAlign="middle-center" uiTransform={{ width: '100%', height: S(30) }} />
           </UiEntity>
         ) : null}
         <Label value="KUDOS buy Alien Costumes from Nov 7" fontSize={S(18)} color={GREEN} textAlign="middle-left" uiTransform={{ width: '100%', height: S(28), margin: { top: S(12) } }} />
+        <Label value="hold the tab to move  ·  double-tap resets" fontSize={S(14)} color={DIM} textAlign="middle-left" uiTransform={{ width: '100%', height: S(20), margin: { top: S(4) } }} />
       </UiEntity>
     </UiEntity>
   )
