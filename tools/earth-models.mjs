@@ -42,6 +42,8 @@ for (const file of readdirSync(IN).filter((f) => f.endsWith('.glb'))) {
     )
     // the hero house gets its picture window cut open again (the zoom flies in through it)
     if (name === 'house') execSync('node tools/cut-window.mjs', { stdio: 'inherit', cwd: ROOT })
+    // the TV loses its baked glass dome; models/earth-screen.glb puts a recessed screen in the hole
+    if (name === 'tv') execSync('node tools/cut-hole.mjs models/earth/tv.glb -0.82 0.44 -0.42 0.34 0.30', { stdio: 'inherit', cwd: ROOT })
   }
   const doc = await io.read(dst)
   const { min, max } = getBounds(doc.getRoot().listScenes()[0])

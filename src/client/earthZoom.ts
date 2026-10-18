@@ -25,7 +25,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { CENTER, DOME_RADIUS, VIDEO_URL } from '../layout'
-import { AERIAL_LIFT, CITY_POS, CITY_SCALE, COUNTRY_SCALE, EMBED, GROUND_Y, HOUSE_SCALE, ROAD_Z, ROOM_H, ROOM_POS, SET_SCALE, TERRAIN_LOCAL_Y, TOWN_EMBED_POS, TOWN_FULL_POS, TV_POS, TV_SCALE, TV_SCREEN, TV_SCREEN_SIZE, WINDOW_C } from './earthLayout'
+import { AERIAL_LIFT, CITY_POS, CITY_SCALE, COUNTRY_SCALE, EMBED, GROUND_Y, HOUSE_SCALE, ROAD_Z, ROOM_H, ROOM_POS, SET_SCALE, TERRAIN_LOCAL_Y, TOWN_EMBED_POS, TOWN_FULL_POS, TV_POS, TV_SCALE, TV_SCREEN, WINDOW_C } from './earthLayout'
 import { EARTH_MODELS, EarthModel } from './earthManifest'
 import { burstExplosion, PALETTES, startFx } from './fx'
 import { playAt, playGlobal, SFX } from './sfx'
@@ -220,19 +220,21 @@ function buildSets() {
   Transform.create(cabinet, { parent: roomRoot, position: Vector3.create(0.4, 0.3, 1.75), scale: Vector3.create(1.6, 0.6, 0.7) })
   MeshRenderer.setBox(cabinet)
   Material.setPbrMaterial(cabinet, { albedoColor: Color4.create(0.45, 0.3, 0.18, 1), roughness: 0.6, metallic: 0 })
-  prop(roomRoot, 'tv', TV_POS.x, 0.6, TV_POS.z, TV_SCALE, 180)
+  const tv = prop(roomRoot, 'tv', TV_POS.x, 0.6, TV_POS.z, TV_SCALE, 180)
 
-  // the screen: a domed CRT face over the model's glass. It shows snow until the camera has
-  // settled on it, then the TV's own copy of the dome video, from the top.
+  // the screen: a recessed tray and domed CRT face sitting in the hole cut out of the TV's glass.
+  // Built in the TV's model coordinates, so it takes the TV's exact transform. It shows snow until
+  // the camera has settled on it, then the TV's own copy of the dome video, from the top.
   screen = engine.addEntity()
-  Transform.create(screen, { parent: roomRoot, position: TV_SCREEN, scale: Vector3.create(TV_SCREEN_SIZE.w, TV_SCREEN_SIZE.h, 1) })
+  const tvTr = Transform.get(tv)
+  Transform.create(screen, { parent: roomRoot, position: Vector3.clone(tvTr.position), rotation: Quaternion.fromEulerDegrees(0, 180, 0), scale: Vector3.clone(tvTr.scale) })
   GltfContainer.create(screen, { src: 'models/earth-screen.glb', ...NO_COLLIDE })
   tvPlayer = engine.addEntity()
   Transform.create(tvPlayer, { parent: roomRoot, position: TV_SCREEN })
   VideoPlayer.create(tvPlayer, { src: VIDEO_URL, playing: false, loop: false, volume: 1 })
   staticPlayer = engine.addEntity()
   Transform.create(staticPlayer, { parent: roomRoot, position: TV_SCREEN })
-  VideoPlayer.create(staticPlayer, { src: 'videos/tv-static.mp4', playing: true, loop: true, volume: 0 })
+  VideoPlayer.create(staticPlayer, { src: 'videos/tv-static.mp4', playing: true, loop: true, volume: 0.35 }) // the clip carries a quiet hiss
   tune(staticPlayer)
   light(roomRoot, Vector3.add(TV_SCREEN, Vector3.create(0, 0.2, -0.8)), Color3.create(0.6, 0.75, 1), 110, 3.5, true)
 

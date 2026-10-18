@@ -11,7 +11,8 @@
 //   RoomWalls   four walls, normals inward, with a window opening in the front (-Z) wall
 //   RoomCeiling ceiling, normals down
 // models/earth-screen.glb
-//   Screen      1 x 1 CRT face, bulging 35 mm toward -Z (its front); scaled to the TV's glass in the scene
+//   Tray        recessed box filling the hole tools/cut-hole.mjs cuts out of the TV's glass (TV model coords)
+//   Screen      16:9 CRT face at the back of the tray, gently domed, 5 cm behind the bezel (TV model coords)
 //
 // The room sits at the origin, front wall at z = -ROOM_D / 2. The scene positions the whole
 // room entity so the opening lines up with the house model's picture window.
@@ -236,11 +237,29 @@ const walls = new MeshBuf('RoomWalls', 6)
   walls.glass = glass
 }
 
-// ---- CRT screen: a gently domed 1 x 1 face, front toward -Z ------------------------------------
-// u=0 sits at +X: looking at the front (toward +Z) in glTF's right-handed space, +X is the viewer's left.
+// ---- CRT screen: a recessed tray in the hole cut out of the TV, in the TV's own model coords -----
+// Both meshes are placed with the TV's Transform (position, yaw 180, scale 0.7), so hole, tray
+// and face line up by construction. The TV's front is +Z here; its bezel face is at z ~0.46.
+export const TV_HOLE = { x0: -0.82, x1: 0.44, y0: -0.42, y1: 0.34, zMin: 0.3 } // what cut-hole.mjs removes
+const TRAY_INSET = 0.005, TRAY_FRONT = 0.455, TRAY_BACK = 0.37
+export const TV_FACE = { w: 1.26, h: 1.26 * (9 / 16), cx: (TV_HOLE.x0 + TV_HOLE.x1) / 2, cy: (TV_HOLE.y0 + TV_HOLE.y1) / 2, zEdge: TRAY_BACK + 0.001, bulge: 0.039 }
+
+const tray = new MeshBuf('Tray', 9)
+{
+  const x0 = TV_HOLE.x0 + TRAY_INSET, x1 = TV_HOLE.x1 - TRAY_INSET, y0 = TV_HOLE.y0 + TRAY_INSET, y1 = TV_HOLE.y1 - TRAY_INSET
+  const zf = TRAY_FRONT, zb = TRAY_BACK
+  const q = (a, b, c, d, n) => tray.quad(a, b, c, d, n, true)
+  q([x0, y0, zb], [x1, y0, zb], [x1, y1, zb], [x0, y1, zb], [0, 0, 1]) // back plate
+  q([x0, y0, zf], [x1, y0, zf], [x1, y0, zb], [x0, y0, zb], [0, 1, 0]) // bottom wall
+  q([x0, y1, zf], [x1, y1, zf], [x1, y1, zb], [x0, y1, zb], [0, -1, 0]) // top wall
+  q([x0, y0, zf], [x0, y1, zf], [x0, y1, zb], [x0, y0, zb], [1, 0, 0]) // left wall
+  q([x1, y0, zf], [x1, y1, zf], [x1, y1, zb], [x1, y0, zb], [-1, 0, 0]) // right wall
+}
+
 const screen = new MeshBuf('Screen', 8)
 {
-  const NX = 24, NY = 16, BULGE = 0.035
+  const NX = 24, NY = 16
+  const { w, h, cx, cy, zEdge, bulge } = TV_FACE
   const P = []
   const idx = []
   for (let j = 0; j <= NY; j++) {
@@ -248,12 +267,13 @@ const screen = new MeshBuf('Screen', 8)
     const v = j / NY, ny = 2 * v - 1
     for (let i = 0; i <= NX; i++) {
       const u = i / NX, nx = 2 * u - 1
-      const z = -BULGE * (1 - 0.5 * (nx * nx + ny * ny))
-      // dz/du, dz/dv for the normal (face points -Z)
-      const dzu = BULGE * nx * 2, dzv = BULGE * ny * 2
-      const n = [-dzu, -dzv, -1]
+      // domed toward the viewer (+Z): zEdge at the corners, zEdge + bulge at the centre
+      const z = zEdge + bulge * (1 - 0.5 * (nx * nx + ny * ny))
+      const dzu = -bulge * nx * 2, dzv = -bulge * ny * 2 // dz/dnx, dz/dny
+      const n = [-dzu, -dzv, 1]
       const l = Math.hypot(...n)
-      const p = [0.5 - u, 0.5 - v, z]
+      // u runs with +x, v = 0 at the top (glTF texture origin)
+      const p = [cx + (u - 0.5) * w, cy + (0.5 - v) * h, z]
       P.push(p)
       row.push(screen.vertex(p, n.map((c) => c / l), [u, v]))
     }
@@ -263,7 +283,7 @@ const screen = new MeshBuf('Screen', 8)
     const [pa, pb, pc] = [P[a], P[b], P[c]]
     const e1 = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]], e2 = [pc[0] - pa[0], pc[1] - pa[1], pc[2] - pa[2]]
     const nz = e1[0] * e2[1] - e1[1] * e2[0]
-    if (nz < 0) screen.tri(a, b, c)
+    if (nz > 0) screen.tri(a, b, c)
     else screen.tri(a, c, b)
   }
   for (let j = 0; j < NY; j++) {
@@ -285,7 +305,8 @@ const materials = [
   { name: 'Plaster', pbrMetallicRoughness: { baseColorFactor: [0.95, 0.94, 0.9, 1], metallicFactor: 0, roughnessFactor: 1 }, doubleSided: true },
   { name: 'Wallpaper', pbrMetallicRoughness: { baseColorFactor: [0.85, 0.8, 0.7, 1], metallicFactor: 0, roughnessFactor: 1 }, doubleSided: true },
   { name: 'Glass', pbrMetallicRoughness: { baseColorFactor: [0.75, 0.85, 0.95, 0.3], metallicFactor: 0, roughnessFactor: 0.1 }, alphaMode: 'BLEND', doubleSided: true },
-  { name: 'Screen', pbrMetallicRoughness: { baseColorFactor: [0.08, 0.08, 0.09, 1], metallicFactor: 0, roughnessFactor: 0.3 } }
+  { name: 'Screen', pbrMetallicRoughness: { baseColorFactor: [0.08, 0.08, 0.09, 1], metallicFactor: 0, roughnessFactor: 0.3 } },
+  { name: 'Tray', pbrMetallicRoughness: { baseColorFactor: [0.03, 0.03, 0.035, 1], metallicFactor: 0, roughnessFactor: 0.9 } }
 ]
 
 mkdirSync(dirname(OUT), { recursive: true })
@@ -293,7 +314,7 @@ for (const [out, meshes, name] of [
   [OUT_SKY, [sky], 'EarthSky'],
   [OUT, [ground, road, path], 'EarthSets'],
   [OUT_ROOM, [floor, ceiling, walls, walls.reveal, walls.sashes, walls.glass], 'EarthRoom'],
-  [OUT_SCREEN, [screen], 'EarthScreen']
+  [OUT_SCREEN, [tray, screen], 'EarthScreen']
 ]) {
   const glb = buildGlb(meshes, materials, name, 'abducted-dome build-earth-sets.mjs')
   writeFileSync(out, glb)

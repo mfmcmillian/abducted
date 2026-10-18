@@ -25,10 +25,14 @@ export const ROOM_H = 3.2
 // room coordinates (origin: room centre on the floor)
 export const TV_SCALE = 0.7
 export const TV_POS = Vector3.create(0.4, 0.6 + 0.811 * TV_SCALE, 1.75)
-// the CRT glass, measured on an orthographic render of the model: x -0.81..0.44, y -0.41..0.31,
-// bulging to z 0.48 at the centre. The screen is a 16:9 rectangle inset in that, over the bulge.
-export const TV_SCREEN = Vector3.create(TV_POS.x - 0.185 * TV_SCALE, TV_POS.y - 0.05 * TV_SCALE, TV_POS.z - 0.49 * TV_SCALE) // faces -Z after the 180 turn
-export const TV_SCREEN_SIZE = { w: 1.21 * TV_SCALE, h: 0.68 * TV_SCALE }
+// The TV's baked glass (model x -0.82..0.44, y -0.42..0.34, domed to z 0.48, proud of the bezel at
+// 0.46) is cut out by tools/cut-hole.mjs; models/earth-screen.glb puts a recessed tray in the hole
+// with a 16:9 face at its back, domed from z 0.371 to 0.41 (keep in sync with tools/build-earth-sets.mjs
+// TV_HOLE / TV_FACE). The face centre in room coords: the TV is yawed 180 and the explorer mirrors X,
+// so model x keeps its sign and model z flips.
+const TV_FACE_MODEL = Vector3.create(-0.19, -0.04, 0.41)
+export const TV_SCREEN = Vector3.create(TV_POS.x + TV_FACE_MODEL.x * TV_SCALE, TV_POS.y + TV_FACE_MODEL.y * TV_SCALE, TV_POS.z - TV_FACE_MODEL.z * TV_SCALE) // faces -Z
+export const TV_SCREEN_SIZE = { w: 1.26 * TV_SCALE, h: 1.26 * (9 / 16) * TV_SCALE }
 /** Distance at which the screen exactly fills a 60 degree (16:9) view, plus a hair of margin. */
 export const FIT_DISTANCE = Math.max(TV_SCREEN_SIZE.h / 2 / Math.tan(Math.PI / 6), TV_SCREEN_SIZE.w / 2 / (Math.tan(Math.PI / 6) * (16 / 9))) * 1.04
 
