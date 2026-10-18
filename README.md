@@ -1,4 +1,4 @@
-# Abducted! - They appear to be enjoying it (stupid.dcl.eth)
+# Abducted! - They appear to be enjoying it (abducted.dcl.eth)
 
 Decentraland SDK7 World for the Knights of Antrom alien collection. A 4x4 parcel (64 m) night field with
 a 44 m video dome in the middle: inner and outer surfaces play the "They appear to be enjoying it" music
