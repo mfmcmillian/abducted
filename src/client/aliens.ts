@@ -9,13 +9,22 @@ import { ABDUCTED_EMOTE_URN, CENTER, COSTUME_COLLECTION, COSTUME_URNS, FORMATION
  */
 
 const BASE = 'urn:decentraland:off-chain:base-avatars'
-const DANCES = ['dance', 'disco', 'tektonik', 'robot', 'handsair', 'tik', 'hammer', 'dab', 'fistpump', 'shrug']
+/** The choreography: every dancer runs the same routine in lockstep, ending with all eight abducted. */
+const ROUTINE: Array<[string, number]> = [
+  ['dance', 8],
+  ['disco', 8],
+  ['tektonik', 8],
+  ['robot', 8],
+  ['handsair', 6],
+  ['tik', 8],
+  ['dab', 4],
+  [ABDUCTED_EMOTE_URN, 9.5]
+]
 const NAMES = ['Zorp', 'Blee', 'Gleep', 'Xanthe', 'Mox', 'Luma', 'Quib', 'Vexa']
 
 interface Dancer {
   entity: Entity
   index: number
-  timer: number
 }
 
 const dancers: Dancer[] = []
@@ -47,8 +56,8 @@ function createDancer(index: number): Dancer {
     skinColor: { r: 0.45, g: 0.85, b: 0.5 },
     hairColor: { r: 0.1, g: 0.1, b: 0.12 },
     eyeColor: { r: 0.1, g: 0.1, b: 0.1 },
-    expressionTriggerId: index === 0 ? ABDUCTED_EMOTE_URN : DANCES[index % DANCES.length],
-    expressionTriggerTimestamp: Date.now()
+    expressionTriggerId: ROUTINE[0][0],
+    expressionTriggerTimestamp: 1
   })
 
   // Avatars have no pointer collider of their own: an invisible pillar takes the click.
@@ -62,26 +71,27 @@ function createDancer(index: number): Dancer {
     }
   )
 
-  return { entity, index, timer: 4 + index * 2.5 }
+  return { entity, index }
 }
 
 export function createAliens() {
   for (let i = 0; i < NAMES.length; i++) dancers.push(createDancer(i))
 
+  // One clock for the whole troupe: every step is triggered on the same frame with the
+  // same timestamp so the eight of them stay in sync.
+  let step = 0
+  let timer = 1.5 // let the costumes load before the first cue
   engine.addSystem((dt) => {
+    timer -= dt
+    if (timer > 0) return
+    step = (step + 1) % ROUTINE.length
+    const [emote, seconds] = ROUTINE[step]
+    timer = seconds
+    const stamp = Date.now()
     for (const d of dancers) {
-      d.timer -= dt
-      if (d.timer > 0) continue
       const shape = AvatarShape.getMutable(d.entity)
-      if (d.index === 0) {
-        // Zorp gets taken over and over. The emote is ~8 s long.
-        shape.expressionTriggerId = ABDUCTED_EMOTE_URN
-        d.timer = 9
-      } else {
-        shape.expressionTriggerId = DANCES[Math.floor(Math.random() * DANCES.length)]
-        d.timer = 6 + Math.random() * 6
-      }
-      shape.expressionTriggerTimestamp = Date.now()
+      shape.expressionTriggerId = emote
+      shape.expressionTriggerTimestamp = stamp
     }
   })
 }

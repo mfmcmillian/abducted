@@ -392,13 +392,15 @@ function createArena() {
 
   // Up here you are a saucer: first person so nothing blocks the view of the field.
   const mods = engine.addEntity()
-  Transform.create(mods, { position: Vector3.create(ARENA_CENTER.x, FLY_Y + 2, ARENA_CENTER.z) })
+  // Covers the whole pasture volume, from below the grass to well above flying height, so
+  // other players are hidden whether they are flying, landing or standing on the field.
+  Transform.create(mods, { position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 14, ARENA_CENTER.z) })
   AvatarModifierArea.create(mods, {
-    area: Vector3.create(ARENA_SIZE + 4, 14, ARENA_SIZE + 4),
+    area: Vector3.create(ARENA_SIZE + 4, 44, ARENA_SIZE + 4),
     modifiers: [AvatarModifierType.AMT_HIDE_AVATARS, AvatarModifierType.AMT_DISABLE_PASSPORTS],
     excludeIds: []
   })
-  CameraModeArea.create(mods, { area: Vector3.create(ARENA_SIZE + 4, 14, ARENA_SIZE + 4), mode: CameraType.CT_FIRST_PERSON })
+  CameraModeArea.create(mods, { area: Vector3.create(ARENA_SIZE + 4, 44, ARENA_SIZE + 4), mode: CameraType.CT_FIRST_PERSON })
 
   const moon = engine.addEntity()
   Transform.create(moon, { position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 30, ARENA_CENTER.z) })
