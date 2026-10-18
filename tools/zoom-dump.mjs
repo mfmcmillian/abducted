@@ -12,7 +12,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const dir = mkdtempSync(join(tmpdir(), 'zoom-dump-'))
 const out = join(dir, 'zoomPath.mjs')
 await build({ entryPoints: [resolve(root, 'src/client/zoomPath.ts')], bundle: true, format: 'esm', platform: 'node', outfile: out, logLevel: 'silent' })
-const { authorKeys, Path, townFrames, toWorld, cloudAlpha } = await import(pathToFileURL(out).href)
+const { authorPath, townFrames, toWorld } = await import(pathToFileURL(out).href)
 const { Vector3 } = await import(pathToFileURL(join(root, 'node_modules/@dcl/sdk/math/index.js')).href).catch(() => ({ Vector3: null }))
 rmSync(dir, { recursive: true, force: true })
 
@@ -27,8 +27,8 @@ const fwdRaw = { x: E.x - start.x, y: E.y - start.y, z: E.z - start.z }
 const fl = Math.hypot(fwdRaw.x, fwdRaw.y, fwdRaw.z)
 const forward = V.create(fwdRaw.x / fl, fwdRaw.y / fl, fwdRaw.z / fl)
 
-const keys = authorKeys({ E, start, forward })
-const path = new Path(keys)
+const path = authorPath({ E, start, forward })
+const keys = path.keys
 const frames = townFrames(E)
 const f3 = (n) => n.toFixed(2).padStart(7)
 
@@ -49,8 +49,8 @@ let prev = null, prevV = null
 const legs = keys.slice(1).map((k, i) => ({ name: `${keys[i].name}>${k.name}`, t0: keys[i].t, t1: k.t, vMax: 0, aMax: 0, turnMax: 0, rollMax: 0, relMax: 0 }))
 const deg = (r) => (r * 180) / Math.PI
 for (let t = 0; t <= path.end + 1e-9; t += dt) {
-  const white = cloudAlpha(path, t)
-  const p = path.pose(t, dt, white >= 0.95 ? 12 : 1.5)
+  const p = path.pose(t, dt)
+  const white = p.white
   const leg = legs.find((l) => t >= l.t0 && t <= l.t1) ?? legs[legs.length - 1]
   if (prev) {
     const v = { x: (p.q.x - prev.q.x) / dt, y: (p.q.y - prev.q.y) / dt, z: (p.q.z - prev.q.z) / dt }
@@ -90,11 +90,25 @@ for (let t = 0; t <= path.end + 1e-9; t += dt) {
 }
 let on = 0, off = 0
 for (let t = 0; t < path.end; t += 0.01) {
-  const w = cloudAlpha(path, t)
+  const w = path.pose(t, 0.01).white
   if (!on && w > 0) on = t
   if (on && !off && w === 0 && t > on + 0.5) off = t
 }
 console.log(`\nclouds: white from ${on.toFixed(2)} to ${off.toFixed(2)} s`)
+{
+  // residual bank when the picture comes back, and how it decays
+  const bankOf = (o) => {
+    const r = { x: o.up.y * o.dir.z - o.up.z * o.dir.y, y: o.up.z * o.dir.x - o.up.x * o.dir.z, z: o.up.x * o.dir.y - o.up.y * o.dir.x }
+    return deg(Math.asin(Math.max(-1, Math.min(1, r.y / Math.hypot(r.x, r.y, r.z)))))
+  }
+  path.reset()
+  const line = []
+  for (let t = 0; t <= path.end; t += dt) {
+    const p = path.pose(t, dt)
+    for (const at of [off, off + 0.5, off + 1, off + 2]) if (Math.abs(t - at) < dt / 2) line.push(`${at.toFixed(2)}s ${bankOf(p).toFixed(1)}deg`)
+  }
+  console.log(`bank after the clouds: ${line.join(', ')}`)
+}
 console.log('\nper leg, worst case at 240 Hz (town metres; roll/s only while the picture is visible):')
 console.log('  leg                      v max   a max  turn/s  roll/s   v/D')
 for (const l of legs) console.log(`  ${l.name.padEnd(22)}${f3(l.vMax)} ${f3(l.aMax)} ${f3(l.turnMax)} ${f3(l.rollMax)} ${f3(l.relMax)}`)

@@ -31,7 +31,7 @@ import { burstExplosion, PALETTES, startFx } from './fx'
 import { playAt, playGlobal, SFX } from './sfx'
 import { earthEntity, earthPosition, EARTH_SCALE, setEarthFrozen } from './space'
 import { toast, zoomUi } from './ui'
-import { authorKeys, cloudAlpha, Frame, Path, toWorld, townFrames } from './zoomPath'
+import { authorPath, Frame, Path, toWorld, townFrames } from './zoomPath'
 
 /**
  * Click the Earth: one continuous camera move from where you stand, out through the glass,
@@ -285,7 +285,7 @@ function startZoom() {
   setEarthFrozen(true)
   const E = earthPosition()
   const cam = Transform.get(engine.CameraEntity)
-  const path = new Path(authorKeys({ E, start: Vector3.clone(cam.position), forward: Vector3.rotate(Vector3.Forward(), cam.rotation) }))
+  const path = authorPath({ E, start: Vector3.clone(cam.position), forward: Vector3.rotate(Vector3.Forward(), cam.rotation) })
   const frames = townFrames(E)
   zoom = { path, frames, swapT: path.key('swap').t, t: 0, end: path.end, phase: 'fly', cloudsDone: false, windowDone: false, swapped: false, tvStarted: false, tvShowing: false, holdOffset: -1, holdLeft: 45 }
   townEmbedded(true)
@@ -337,10 +337,8 @@ function system(dt: number) {
   if (z.phase === 'fly') {
     z.t += dt
     const t = Math.min(z.t, z.end)
-    // clouds: the one white-out, keyed to the shell crossing; while it is full the camera is
-    // allowed to level its roll quickly (the heading changes at the top of the dive in there)
-    const c = cloudAlpha(z.path, t)
-    const pose = z.path.pose(t, dt, c >= 0.95 ? 12 : 1.5)
+    const pose = z.path.pose(t, dt)
+    const c = pose.white // clouds: the one white-out, on while the camera is inside the Earth's shell
     // the patch fills the frame: grow the street set around the camera, park the countryside.
     // The path is in town-local space, so only the frame it is mapped through changes.
     if (!z.swapped && t >= z.swapT) {

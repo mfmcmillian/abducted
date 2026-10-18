@@ -94,19 +94,11 @@ export function retime(keys: KeyIn[], total: number): Key[] {
 }
 
 /**
- * The cloud white-out, 0..1: the only cut in the shot. It covers the crossing of the Earth's
- * shell (between the 'top' and 'sky' keys) and, inside it, the heading change at the top of
- * the dive, so it is keyed to those times rather than to seconds.
+ * The cloud white-out, by distance from the Earth's centre (world metres): full only while the
+ * camera is between the planet's surface (ocean ~11.2 m, land a little higher) and the inside
+ * of the sky sphere (9.3 m), with short ramps either side. It is the only cut in the shot.
  */
-export function cloudAlpha(path: Path, t: number): number {
-  const top = path.key('top').t, sky = path.key('sky').t, dive = path.key('dive').t
-  const on = top - 0.2, full = top + 0.4, hold = sky + 0.36 * (dive - sky), off = hold + 0.7
-  if (t < on) return 0
-  if (t < full) return (t - on) / (full - on)
-  if (t < hold) return 1
-  if (t < off) return 1 - (t - hold) / (off - hold)
-  return 0
-}
+const CLOUD_IN = 13.4, CLOUD_FULL = 12.4, CLOUD_THIN = 9.1, CLOUD_OUT = 8.5
 
 /** Cardinal spline through the keys: time-scaled tangents, per-key tension. */
 export function sample(keys: Key[], t: number, pick: (k: Key) => Vector3): Vector3 {
@@ -134,14 +126,25 @@ export interface Pose {
   dir: Vector3
   up: Vector3
   rotation: Quaternion
+  /** cloud white-out, 0..1 */
+  white: number
 }
 
 /** Samples the path and carries the camera's up vector along it (parallel transport, easing back to level). */
 export class Path {
   readonly end: number
   private up = Vector3.Up()
-  constructor(readonly keys: Key[]) {
+  /** keys, the Earth's centre in town-local, and how many world metres one town-local unit is before the swap */
+  constructor(readonly keys: Key[], readonly earthQ: Vector3, readonly metres: number) {
     this.end = keys[keys.length - 1].t
+  }
+  /** the cloud white-out at a camera position */
+  clouds(q: Vector3): number {
+    const d = Vector3.distance(q, this.earthQ) * this.metres
+    if (d >= CLOUD_IN || d <= CLOUD_OUT) return 0
+    if (d > CLOUD_FULL) return (CLOUD_IN - d) / (CLOUD_IN - CLOUD_FULL)
+    if (d < CLOUD_THIN) return (d - CLOUD_OUT) / (CLOUD_THIN - CLOUD_OUT)
+    return 1
   }
   key(name: string): Key {
     const k = this.keys.find((k) => k.name === name)
@@ -151,9 +154,12 @@ export class Path {
   reset() {
     this.up = Vector3.Up()
   }
-  /** levelRate: how fast (1/s) the up vector eases back to level; make it high while the clouds hide the picture. */
-  pose(t: number, dt: number, levelRate = 1.5): Pose {
+  pose(t: number, dt: number): Pose {
     const q = sample(this.keys, t, (k) => k.q)
+    // the up vector eases back to level slowly, except while the clouds hide the picture: the
+    // heading change at the top of the dive is absorbed in there
+    const white = this.clouds(q)
+    const levelRate = white >= 0.95 ? 12 : 1.5
     const l = sample(this.keys, t, (k) => k.lookPt)
     const dir = Vector3.normalize(Vector3.subtract(l, q))
     // keep roll continuous through the vertical: carry the last up across, projected off the new forward
@@ -167,7 +173,7 @@ export class Path {
       up = Vector3.normalize(Vector3.lerp(up, level, Math.min(1, dt * levelRate)))
     }
     this.up = up
-    return { q, dir, up, rotation: Quaternion.lookRotation(dir, up) }
+    return { q, dir, up, rotation: Quaternion.lookRotation(dir, up), white }
   }
 }
 
@@ -183,8 +189,8 @@ export interface Shot {
 /** Total flight time, deck to CRT (s). */
 export const FLIGHT_T = 25.8
 
-/** The authored keys for a shot, in town-local space, timed. */
-export function authorKeys(shot: Shot): Key[] {
+/** The path for a shot: authored keys in town-local space, timed. */
+export function authorPath(shot: Shot): Path {
   const { E, start, forward } = shot
   const { embedded } = townFrames(E)
   // world / set / town / room -> town-local (the embedded frame is the one in force at every key
@@ -221,7 +227,7 @@ export function authorKeys(shot: Shot): Key[] {
     // from here on the heading stays +Z. Out of the clouds the downtown is in view ahead; the dive
     // steepens onto the patch (the street set at 1/4) until it fills the frame.
     { name: 'sky', q: S(0.3, 8.5, -7), look: city },
-    { name: 'dive', q: S(0.3, 5.2, -7.8), look: Vector3.lerp(city, TOWN_LOOK0, 0.55), focus: TOWN_LOOK0 },
+    { name: 'dive', q: S(0.3, 5.2, -7.8), look: Vector3.lerp(city, TOWN_LOOK0, 0.55), focus: TOWN_LOOK0, minDt: 2.2 }, // time to take the downtown in
     { name: 'swap', q: Vector3.clone(TOWN_Q0), look: Vector3.clone(TOWN_LOOK0) }, // the street set grows x4 around the camera here
     // the street at full size
     { name: 'street', q: Vector3.create(-2.2, GROUND_Y + 3.4, -9.3), look: window },
@@ -231,5 +237,5 @@ export function authorKeys(shot: Shot): Key[] {
     { name: 'tv', q: R(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z - 1.3), look: screen, tension: 0.5 },
     { name: 'fit', q: R(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z - FIT_DISTANCE), look: screen, tension: 1, weight: 1.3 } // the picture fills the view
   ]
-  return retime(keys, FLIGHT_T)
+  return new Path(retime(keys, FLIGHT_T), earth, SET_SCALE * EMBED)
 }
