@@ -1,5 +1,7 @@
-// Generates models/earth-sets.glb: the nested sets hidden inside the Earth model for the
-// Earth zoom (src/client/earthZoom.ts). Origin = Earth centre, y up, the street side is -Z.
+// Generates models/earth-sky.glb, models/earth-sets.glb and models/earth-room.glb: the nested
+// sets hidden inside the Earth model for the Earth zoom (src/client/earthZoom.ts). Origin = Earth
+// centre, y up, the street side is -Z. The sky is its own file because it stays while the
+// countryside / city / neighbourhood layers are swapped underneath it.
 //
 //   Sky         inverted sphere (normals inward) just under the Earth's surface; equirect UVs
 //   Ground      lawn disc at GROUND_Y, planar UVs (one tile per 4 m)
@@ -22,6 +24,7 @@ import { MeshBuf, buildGlb } from './glb.mjs'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'models', 'earth-sets.glb')
 const OUT_ROOM = resolve(__dirname, '..', 'models', 'earth-room.glb')
+const OUT_SKY = resolve(__dirname, '..', 'models', 'earth-sky.glb')
 
 export const SKY_R = 11.6
 export const GROUND_Y = -4.2
@@ -201,7 +204,8 @@ const materials = [
 
 mkdirSync(dirname(OUT), { recursive: true })
 for (const [out, meshes, name] of [
-  [OUT, [sky, ground, road, path], 'EarthSets'],
+  [OUT_SKY, [sky], 'EarthSky'],
+  [OUT, [ground, road, path], 'EarthSets'],
   [OUT_ROOM, [floor, ceiling, walls, walls.reveal], 'EarthRoom']
 ]) {
   const glb = buildGlb(meshes, materials, name, 'abducted-dome build-earth-sets.mjs')

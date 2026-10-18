@@ -24,8 +24,8 @@ const OUT = join(ROOT, 'models', 'earth')
 const MANIFEST = join(ROOT, 'src', 'client', 'earthManifest.ts')
 mkdirSync(OUT, { recursive: true })
 
-const SIMPLIFY = { house: 0.6, 'house-neighbour': 0.5, tv: 0.6 } // default 0.5
-const TEX = { house: 2048, 'house-neighbour': 2048, tv: 2048, sofa: 2048, car: 2048 } // default 1024
+const SIMPLIFY = { house: 0.6, 'house-neighbour': 0.5, tv: 0.6, countryside: 0.6, city: 0.6 } // default 0.5
+const TEX = { house: 2048, 'house-neighbour': 2048, tv: 2048, sofa: 2048, car: 2048, countryside: 2048, city: 2048 } // default 1024
 
 const io = new NodeIO()
 const entries = {}
