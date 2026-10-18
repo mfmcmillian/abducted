@@ -188,26 +188,69 @@ const materials = [
     pbrMetallicRoughness: { baseColorFactor: [0.05, 0.095, 0.05, 1], metallicFactor: 0, roughnessFactor: 1 }
   },
   {
-    name: 'ShipWall', // replaced at runtime with the ship-interior texture
+    name: 'ShipMachines', // replaced at runtime with the machinery texture
     pbrMetallicRoughness: { baseColorFactor: [0.04, 0.04, 0.05, 1], metallicFactor: 0.3, roughnessFactor: 0.8 }
+  },
+  {
+    name: 'ShipWindow', // replaced at runtime with the window texture
+    pbrMetallicRoughness: { baseColorFactor: [0.02, 0.02, 0.04, 1], metallicFactor: 0.1, roughnessFactor: 0.9 }
   }
 ]
 
-// Inside: the vertical wall is a separate node with a tiling ship-interior texture
-// (WALL_REPEATS copies around, mirrored wrap so the seams are invisible); the video
-// covers only the cap, remapped so v runs 0 at the top of the wall to 1 at the apex.
-const WALL_REPEATS = 14
+// Inside: the vertical wall is two nodes, long observation windows (east and west,
+// WINDOW_COLS columns each, one picture per bay) and alien machinery tiling everywhere
+// else (MACHINE_REPEATS copies around, mirrored wrap). Built per column so each quad can
+// go to either node. The video covers only the cap.
+const WINDOW_COLS = 12 // 33.75 deg = ~36.5 m of a 20 m wall, close to the 16:9 picture
+const WINDOW_CENTERS = [90, 270].map((deg) => Math.round((deg / 360) * SEGMENTS))
+const MACHINE_REPEATS = 14
+function windowOffset(col) {
+  for (const c of WINDOW_CENTERS) {
+    const d = (((col - c) % SEGMENTS) + SEGMENTS) % SEGMENTS
+    const rel = d > SEGMENTS / 2 ? d - SEGMENTS : d
+    const start = -Math.floor(WINDOW_COLS / 2)
+    if (rel >= start && rel < start + WINDOW_COLS) return (rel - start) / WINDOW_COLS
+  }
+  return -1
+}
+function buildWall() {
+  const win = new MeshBuf('WallWindow', 4)
+  const mach = new MeshBuf('WallMachine', 3)
+  for (let col = 0; col < SEGMENTS; col++) {
+    const off = windowOffset(col)
+    const m = off >= 0 ? win : mach
+    const u0 = off >= 0 ? off : (col / SEGMENTS) * MACHINE_REPEATS
+    const u1 = off >= 0 ? off + 1 / WINDOW_COLS : ((col + 1) / SEGMENTS) * MACHINE_REPEATS
+    const t0 = (col / SEGMENTS) * TAU
+    const t1 = ((col + 1) / SEGMENTS) * TAU
+    const n0 = [-Math.sin(t0), 0, -Math.cos(t0)]
+    const n1 = [-Math.sin(t1), 0, -Math.cos(t1)]
+    for (let k = 0; k < WALL_RINGS; k++) {
+      const y0 = (k / WALL_RINGS) * WALL_HEIGHT
+      const y1 = ((k + 1) / WALL_RINGS) * WALL_HEIGHT
+      const v0 = 1 - y0 / WALL_HEIGHT
+      const v1 = 1 - y1 / WALL_HEIGHT
+      const a = m.vertex([RADIUS * Math.sin(t0), y0, RADIUS * Math.cos(t0)], n0, [u0, v0])
+      const b = m.vertex([RADIUS * Math.sin(t1), y0, RADIUS * Math.cos(t1)], n1, [u1, v0])
+      const c = m.vertex([RADIUS * Math.sin(t1), y1, RADIUS * Math.cos(t1)], n1, [u1, v1])
+      const d = m.vertex([RADIUS * Math.sin(t0), y1, RADIUS * Math.cos(t0)], n0, [u0, v1])
+      // inward facing: same winding as buildShell(inward)
+      m.tri(a, c, b)
+      m.tri(a, d, c)
+    }
+  }
+  return [win, mach]
+}
 // The Explorer leaves the bottom ~14% of the video texture black (frame padding), so the
 // cap samples v 0..VIDEO_V_MAX and the picture's real bottom edge sits on the wall top.
 const VIDEO_V_MAX = 0.86
 const capUv = ({ u, y }) => [u, VIDEO_V_MAX * (1 - (y - WALL_HEIGHT) / RADIUS)]
-const wallUv = ({ col, y }) => [(col / SEGMENTS) * WALL_REPEATS, 1 - y / WALL_HEIGHT]
 const inner = buildShell('DomeInner', RADIUS, true, { kStart: WALL_RINGS, uv: ({ u, k }) => capUv({ u, y: profile(k, RADIUS).y }) })
-const wall = buildShell('WallInner', RADIUS, true, { kEnd: WALL_RINGS, uv: wallUv, material: 3 })
+const [wallWindow, wallMachine] = buildWall()
 const outer = buildShell('DomeOuter', RADIUS + SHELL_GAP, false)
 const floor = buildFloor()
 floor.material = 2
-const parts = CLOSED ? [inner, wall, outer, floor] : [inner, wall, outer, buildDoorFrame(), floor]
+const parts = CLOSED ? [inner, wallWindow, wallMachine, outer, floor] : [inner, wallWindow, wallMachine, outer, buildDoorFrame(), floor]
 
 const glb = buildGlb(parts, materials, 'Dome', 'abducted-dome build-dome.mjs')
 mkdirSync(dirname(OUT), { recursive: true })

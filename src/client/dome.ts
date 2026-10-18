@@ -102,37 +102,39 @@ export function createDome(video: Entity): Entity {
     }
   }
 
-  // Vertical wall under the video: mothership interior with portholes looking out at Earth.
+  // Vertical wall under the video: mothership engine room, with two long observation windows
+  // (east and west) looking out at Earth.
   // Same PBR-with-texture path as the floor (which the Explorer honours); the emissive copy
   // keeps the windows readable in the dark. MIRROR wrap hides the tile seams.
-  const wallTexture = Material.Texture.Common({
-    src: 'images/ship-wall.jpg',
-    wrapMode: TextureWrapMode.TWM_MIRROR,
-    filterMode: TextureFilterMode.TFM_TRILINEAR
-  })
-  const wallMaterial = {
-    material: {
-      $case: 'pbr' as const,
-      pbr: {
-        texture: wallTexture,
-        emissiveTexture: wallTexture,
-        emissiveColor: Color3.White(),
-        emissiveIntensity: 0.9,
-        albedoColor: Color4.White(),
-        metallic: 0.2,
-        roughness: 0.8,
-        specularIntensity: 0,
-        castShadows: false
+  const wallMaterialFor = (src: string, wrapMode: TextureWrapMode) => {
+    const texture = Material.Texture.Common({ src, wrapMode, filterMode: TextureFilterMode.TFM_TRILINEAR })
+    return {
+      material: {
+        $case: 'pbr' as const,
+        pbr: {
+          texture,
+          emissiveTexture: texture,
+          emissiveColor: Color3.White(),
+          emissiveIntensity: 0.9,
+          albedoColor: Color4.White(),
+          metallic: 0.2,
+          roughness: 0.8,
+          specularIntensity: 0,
+          castShadows: false
+        }
       }
     }
   }
+  const machineMaterial = wallMaterialFor('images/ship-machines.jpg', TextureWrapMode.TWM_MIRROR)
+  const windowMaterial = wallMaterialFor('images/ship-window.jpg', TextureWrapMode.TWM_CLAMP)
 
   // Node paths match the node names written by tools/build-dome.mjs.
   GltfNodeModifiers.create(dome, {
     modifiers: [
       { path: 'DomeInner', material: screenMaterial, castShadows: false },
       { path: 'DomeOuter', material: screenMaterial, castShadows: false },
-      { path: 'WallInner', material: wallMaterial, castShadows: false },
+      { path: 'WallMachine', material: machineMaterial, castShadows: false },
+      { path: 'WallWindow', material: windowMaterial, castShadows: false },
       { path: 'Floor', material: floorMaterial, castShadows: false }
     ]
   })
