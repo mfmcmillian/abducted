@@ -2,10 +2,13 @@ import { isServer as isServerApi } from '~system/EngineApi'
 import './shared/messages'
 import { initLeaderboardServer } from './server/leaderboardServer'
 import { initRingServer } from './server/ringServer'
+import { initKudosServer } from './server/kudosServer'
 import { createAliens } from './client/aliens'
 import { createHerd } from './client/cows'
 import { createApexUfo, createDiorama, createDome, createHeroCow, createInterior, createVideoPlayer } from './client/dome'
+import { createSpaceWindows } from './client/space'
 import { createCowGame } from './client/game'
+import { createCargoLoop } from './client/cargo'
 import { initMusic } from './client/music'
 import { createBarrier, createDecor, createGround, createKiosk, createNightSky, createPortals } from './client/plaza'
 import { createRingAltar } from './client/ring'
@@ -24,6 +27,7 @@ export async function main() {
   if (server) {
     initRingServer()
     initLeaderboardServer()
+    initKudosServer()
     return
   }
   initClient()
@@ -37,6 +41,7 @@ function initClient() {
   const video = createVideoPlayer()
   initMusic(video)
   createDome(video)
+  createSpaceWindows()
   createDiorama()
   createApexUfo()
   createInterior()
@@ -50,4 +55,5 @@ function initClient() {
   createDecor()
   createBarrier()
   createCowGame()
+  createCargoLoop()
 }

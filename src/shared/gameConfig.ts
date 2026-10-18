@@ -46,3 +46,15 @@ export const GAME = {
 /** Ceiling the server accepts: one activation every 2.2 s, every one a max-combo catch. */
 export const MAX_ACTIVATIONS = Math.floor(GAME.roundSeconds / (GAME.chargeSeconds + GAME.activeSeconds + GAME.cooldownSeconds))
 export const MAX_SCORE = MAX_ACTIVATIONS * Math.floor(GAME.catchPoints * GAME.comboCap)
+
+/** The kudos loop: cows caught in the pasture wait in the cargo bay, get launched into the star
+ * ring and are swallowed by the black hole that passes every holePeriodSeconds. */
+export const KUDOS = {
+  perCow: 10,
+  holePeriodSeconds: 120,
+  holePassSeconds: 26,
+  /** floating cows the ring will hold; beyond this the oldest are swallowed early */
+  maxFloating: 60,
+  /** cows shown in the cargo bay pen at once (the rest are 'more in the hold') */
+  penCapacity: 20
+}

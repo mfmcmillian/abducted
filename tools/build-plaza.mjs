@@ -1,7 +1,7 @@
-// Generates models/plaza.glb: the 128 x 128 m night field and the crop-circle floor art
+// Generates models/plaza.glb: the 192 x 192 m night field and the crop-circle floor art
 // inside the closed dome.
 //
-// Centred on the local origin; the scene places it at (64, 0, 64).
+// Centred on the local origin; the scene places it at CENTER (96, 0, 96).
 // Nodes:
 //   Ground    - dark grass quad covering the whole plot (outside the dome, nobody goes there)
 //   CropFlat  - flattened crop formations under the portal / altar / showcases
@@ -19,7 +19,7 @@ import { MeshBuf, buildGlb, emissiveMaterial } from './glb.mjs'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'models', 'plaza.glb')
 
-const HALF = 64
+const HALF = 96
 const DOME_RADIUS = 62
 const SEG = 64
 const Y_FLAT = 0.045 // above the dome floor disc (0.03)

@@ -102,11 +102,12 @@ export function createDome(video: Entity): Entity {
     }
   }
 
-  // Vertical wall under the video: mothership engine room, with two long observation windows
-  // (east and west) looking out at Earth.
-  // Same PBR-with-texture path as the floor (which the Explorer honours); the emissive copy
-  // keeps the windows readable in the dark. MIRROR wrap hides the tile seams.
-  const wallMaterialFor = (src: string, wrapMode: TextureWrapMode) => {
+  // Vertical wall under the video: a continuous observation deck. Machinery strips above and
+  // below, glass between, and outside it dome.glb carries a star ring: eight 45-degree sectors
+  // of back wall cycling through four space pictures, starfield top and bottom
+  // (src/client/space.ts animates what drifts through). Same PBR-with-texture path as the floor (which the Explorer honours);
+  // the emissive copy keeps everything readable in the dark. MIRROR wrap hides tile seams.
+  const wallMaterialFor = (src: string, wrapMode: TextureWrapMode, emissiveIntensity = 0.9) => {
     const texture = Material.Texture.Common({ src, wrapMode, filterMode: TextureFilterMode.TFM_TRILINEAR })
     return {
       material: {
@@ -115,7 +116,7 @@ export function createDome(video: Entity): Entity {
           texture,
           emissiveTexture: texture,
           emissiveColor: Color3.White(),
-          emissiveIntensity: 0.9,
+          emissiveIntensity,
           albedoColor: Color4.White(),
           metallic: 0.2,
           roughness: 0.8,
@@ -126,7 +127,12 @@ export function createDome(video: Entity): Entity {
     }
   }
   const machineMaterial = wallMaterialFor('images/ship-machines.jpg', TextureWrapMode.TWM_MIRROR)
-  const windowMaterial = wallMaterialFor('images/ship-window.jpg', TextureWrapMode.TWM_CLAMP)
+  const starsMaterial = wallMaterialFor('images/space-stars.jpg', TextureWrapMode.TWM_MIRROR, 1)
+  const backdrops = ['space-earth', 'space-nebula', 'space-moon', 'space-fleet'].map((name, i) => ({
+    path: 'SpaceBack' + i,
+    material: wallMaterialFor('images/' + name + '.jpg', TextureWrapMode.TWM_CLAMP, 1),
+    castShadows: false
+  }))
 
   // Node paths match the node names written by tools/build-dome.mjs.
   GltfNodeModifiers.create(dome, {
@@ -134,7 +140,8 @@ export function createDome(video: Entity): Entity {
       { path: 'DomeInner', material: screenMaterial, castShadows: false },
       { path: 'DomeOuter', material: screenMaterial, castShadows: false },
       { path: 'WallMachine', material: machineMaterial, castShadows: false },
-      { path: 'WallWindow', material: windowMaterial, castShadows: false },
+      { path: 'SpaceStars', material: starsMaterial, castShadows: false },
+      ...backdrops,
       { path: 'Floor', material: floorMaterial, castShadows: false }
     ]
   })

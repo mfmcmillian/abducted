@@ -38,6 +38,9 @@ export const hud = {
   onLeave: () => {}
 }
 
+/** Kudos loop readout (cargo bay / launcher / black hole), written by client/cargo.ts. */
+export const kudosHud = { synced: false, kudos: 0, cargo: 0, launched: 0, nextHoleIn: 0, carrying: false }
+
 const GREEN = Color4.create(0.6, 1, 0.75, 1)
 const DIM = Color4.create(0.7, 0.8, 0.9, 0.9)
 const PANEL = Color4.create(0.02, 0.04, 0.06, 0.82)
@@ -181,6 +184,21 @@ function Stat(props: { label: string; value: string }) {
   )
 }
 
+/** Top-left while walking around the dome: kudos, cargo and the black hole countdown. */
+function KudosPanel() {
+  if (!kudosHud.synced || hud.mode !== 'hidden') return null
+  const k = kudosHud
+  return (
+    <UiEntity uiTransform={{ positionType: 'absolute', position: { top: 24, left: 24 }, padding: { top: 10, bottom: 10, left: 16, right: 16 }, flexDirection: 'column' }} uiBackground={{ color: PANEL }}>
+      <Label value={`KUDOS  ${k.kudos}`} fontSize={24} color={GREEN} textAlign="middle-left" />
+      <Label value={`cargo bay  ${k.cargo} cow${k.cargo === 1 ? '' : 's'}   ·   floating  ${k.launched}`} fontSize={14} color={Color4.White()} textAlign="middle-left" />
+      <Label value={`black hole in  ${formatTime(k.nextHoleIn)}`} fontSize={14} color={Color4.create(0.8, 0.6, 1, 1)} textAlign="middle-left" />
+      {k.carrying ? <Label value="carrying a cow: click the COW LAUNCHER" fontSize={14} color={Color4.create(1, 0.55, 0.85, 1)} textAlign="middle-left" /> : null}
+      <Label value="kudos buy Alien Costumes from Nov 7" fontSize={11} color={DIM} textAlign="middle-left" />
+    </UiEntity>
+  )
+}
+
 function Hud() {
   if (hud.mode === 'hidden') return null
   if (hud.mode === 'results') return <Results />
@@ -194,6 +212,7 @@ export function initUi() {
   ReactEcsRenderer.setUiRenderer(() => (
     <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
       <Hud />
+      <KudosPanel />
       <Toast />
     </UiEntity>
   ))

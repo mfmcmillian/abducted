@@ -13,7 +13,7 @@ import {
   VisibilityComponent
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { CENTER, DOME_RADIUS, flatDistance, FORMATION, LAUNCH_PAD, LEADERBOARD, SPAWN } from '../layout'
+import { CARGO_BAY, CENTER, DOME_RADIUS, flatDistance, FORMATION, LAUNCH_PAD, LAUNCHER, LEADERBOARD, SPAWN } from '../layout'
 import { attachLoop, moo, playAt, SFX } from './sfx'
 
 /**
@@ -31,7 +31,9 @@ const KEEP_OUT_FORMATION = 10
 const KEEP_OUT_SPOTS: Array<[Vector3, number]> = [
   [LAUNCH_PAD, 7],
   [LEADERBOARD, 6],
-  [SPAWN, 7]
+  [SPAWN, 7],
+  [CARGO_BAY, 9],
+  [LAUNCHER, 7]
 ]
 
 const UFO_IDLE = Vector3.create(CENTER.x + 20, 22, CENTER.z - 18)

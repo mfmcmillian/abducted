@@ -874,7 +874,10 @@ function showResults() {
     successes: run.successes,
     best: sessionBest,
     isBest,
-    saved: run.cows > 0 ? 'sent to the board in the dome (community board, not verified)' : 'no cows caught, nothing sent to the board'
+    saved:
+      run.cows > 0
+        ? `${run.cows} cow${run.cows === 1 ? '' : 's'} beamed into the CARGO BAY. Carry them to the COW LAUNCHER for kudos.`
+        : 'no cows caught: nothing for the cargo bay this time'
   }
   hud.mode = 'results'
   hud.countdown = ''

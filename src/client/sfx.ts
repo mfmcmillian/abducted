@@ -17,7 +17,9 @@ export const SFX = {
   ringChime: 'sounds/ring-chime.mp3',
   uiClick: 'sounds/ui-click.mp3',
   roundStart: 'sounds/round-start.mp3',
-  roundEnd: 'sounds/round-end.mp3'
+  roundEnd: 'sounds/round-end.mp3',
+  launch: 'sounds/launch.mp3',
+  blackHole: 'sounds/black-hole.mp3'
 } as const
 
 const POOL = 6

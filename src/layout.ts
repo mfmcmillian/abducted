@@ -1,12 +1,16 @@
 import { Vector3 } from '@dcl/sdk/math'
 
-/** 8 x 8 parcels: 128 m square, closed dome in the middle. Keep in sync with tools/build-*.mjs. */
-export const PLOT = 128
-export const CENTER = Vector3.create(64, 0, 64)
+/**
+ * 12 x 12 parcels: 192 m square, closed dome in the middle. The extra ring outside the dome
+ * exists so the observation-window pods (30 m deep on the diagonals) stay inside the scene
+ * bounds. Keep in sync with tools/build-*.mjs.
+ */
+export const PLOT = 192
+export const CENTER = Vector3.create(96, 0, 96)
 export const DOME_RADIUS = 62
 export const DOME_WALL = 20
 /** Where players arrive: in the middle of the dome, directly under the diorama's ship. */
-export const SPAWN = Vector3.create(64, 0, 64)
+export const SPAWN = Vector3.create(96, 0, 96)
 
 /** Height of the dome ceiling above a point at horizontal distance r from the centre. */
 export function ceilingAt(r: number) {
@@ -26,6 +30,11 @@ export const FORMATION = {
 export const LAUNCH_PAD = Vector3.create(CENTER.x - 12, 0, CENTER.z - 28)
 /** Where the saucer drops you back after a round. */
 export const LANDING = Vector3.create(CENTER.x - 5, 0, CENTER.z - 30)
+/** Cargo bay: cows beamed up in the pasture wait here to be carried to the launcher. */
+export const CARGO_BAY = Vector3.create(CENTER.x + 6, 0, CENTER.z - 36)
+export const CARGO_BAY_RADIUS = 5
+/** The cow launcher, aimed out through the observation deck. */
+export const LAUNCHER = Vector3.create(CENTER.x + 18, 0, CENTER.z - 34)
 /** Leaderboard panel next to the pad. */
 export const LEADERBOARD = Vector3.create(CENTER.x - 21, 0, CENTER.z - 32)
 

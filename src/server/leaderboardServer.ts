@@ -1,6 +1,7 @@
 import { Storage } from '@dcl/sdk/server'
 import { GAME, MAX_ACTIVATIONS, MAX_SCORE, RULESET } from '../shared/gameConfig'
 import { room } from '../shared/messages'
+import { addCargo } from './kudosServer'
 
 /**
  * Cow game leaderboard: best round per wallet for the current ruleset, top ten, kept in
@@ -88,6 +89,8 @@ export function initLeaderboardServer() {
       console.log(`[Cows] ignored round from ${address}: score ${String(data.score)} cows ${String(data.cows)} attempts ${String(data.attempts)} ruleset ${String(data.ruleset)}`)
       return
     }
+    // Every plausible round feeds the kudos loop, best round or not.
+    void addCargo(address, cows)
     const name = cleanName(data.name)
     const existing = entries.find((e) => e.address === address && e.ruleset === RULESET)
     if (existing) {

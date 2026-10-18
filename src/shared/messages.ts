@@ -24,7 +24,29 @@ export const Messages = {
   /** server -> clients: top scores, best first */
   leaderboard: Schemas.Map({
     entries: Schemas.Array(Schemas.Map({ name: Schemas.String, score: Schemas.Int, cows: Schemas.Int }))
-  })
+  }),
+
+  // ---- kudos loop: cargo bay -> launcher -> black hole -> kudos ----
+  /** client -> server: send me my cargo / kudos state (and the cows floating outside) */
+  cargoGet: Schemas.Map({ v: Schemas.Int }),
+  /** client -> server: I dropped a cow in the launcher */
+  cowLaunch: Schemas.Map({ v: Schemas.Int }),
+  /** server -> one client: wallet state; text is an optional toast line */
+  cargoState: Schemas.Map({
+    cargo: Schemas.Int,
+    kudos: Schemas.Int,
+    launched: Schemas.Int,
+    nextHoleIn: Schemas.Int,
+    text: Schemas.String
+  }),
+  /** server -> all clients: a cow left the launcher, fly it to (rho, phi, y) in the star ring */
+  cowLaunched: Schemas.Map({ id: Schemas.Int, owner: Schemas.String, rho: Schemas.Float, phi: Schemas.Float, y: Schemas.Float }),
+  /** server -> one client: everything currently floating (on join) */
+  cowsFloating: Schemas.Map({
+    cows: Schemas.Array(Schemas.Map({ id: Schemas.Int, owner: Schemas.String, rho: Schemas.Float, phi: Schemas.Float, y: Schemas.Float }))
+  }),
+  /** server -> all clients: the black hole is passing; it swallows these cows */
+  blackHole: Schemas.Map({ phi: Schemas.Float, seconds: Schemas.Int, ids: Schemas.Array(Schemas.Int) })
 }
 
 export const room = registerMessages(Messages)

@@ -2,8 +2,15 @@
 //
 // Geometry is centred on the local origin; the scene places it at (64, 0, 64).
 // Nodes (all root level, so GltfNodeModifiers paths are just the names):
-//   DomeInner  - shell facing inward, video plays on it
-//   DomeOuter  - slightly larger shell facing outward, video plays on it too
+//   DomeInner   - cap facing inward, video plays on it
+//   WallMachine - machinery strips below the sill and above the head of the window ring
+//   WindowGlass - tinted panes all the way around
+//   WindowFrame - head/sill reveals, face bands and mullions
+//   SpaceBack0..3 - curved back wall of the star ring, 8 sectors cycling 4 space pictures
+//   SpaceStars  - top and bottom of the star ring (tileable starfield)
+//   PodHull     - outside skin of the star ring (seen from the sky pasture)
+//   DomeOuter   - slightly larger shell facing outward, video plays on it too
+// Windows and pods are built in build-dome-pods.mjs.
 //   DoorFrame  - only when CLOSED is false: dark jambs + lintel around the door
 //   Floor      - dark grass disc
 //
@@ -18,12 +25,13 @@ import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MeshBuf, buildGlb } from './glb.mjs'
+import { makeWindowBuilders } from './build-dome-pods.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'models', 'dome.glb')
 
 // ---- parameters -----------------------------------------------------------
-export const RADIUS = 62 // inner radius (m); dome spans 2..126 on the 128 m plot
+export const RADIUS = 62 // inner radius (m); centred on the 192 m plot, the star ring reaches 92 m
 const SHELL_GAP = 0.08 // outer shell = RADIUS + SHELL_GAP
 export const WALL_HEIGHT = 20 // vertical wall before the hemispherical cap (apex at 82 m, cap is 120 m for 64 parcels)
 const SEGMENTS = 128 // around (must be even: two video wraps)
@@ -67,7 +75,7 @@ function profile(k, radius) {
  * from inside the dome.
  */
 function buildShell(name, radius, inward, opts = {}) {
-  const { kStart = 0, kEnd = RING_COUNT, uv = null, material = 0 } = opts
+  const { kStart = 0, kEnd = RING_COUNT, uv = null, material = 0, skip = isDoorQuad } = opts
   const m = new MeshBuf(name, material)
   // Two halves, each with HALF+1 columns so the UV seam vertices are duplicated.
   const grid = [] // grid[half][col][ring] => vertex index
@@ -102,7 +110,7 @@ function buildShell(name, radius, inward, opts = {}) {
     for (let j = 0; j < HALF; j++) {
       const col = h * HALF + j
       for (let k = kStart; k < kEnd; k++) {
-        if (isDoorQuad(col, k)) continue
+        if (skip(col, k)) continue
         const a = grid[h][j][k]
         const b = grid[h][j + 1][k]
         const c = grid[h][j + 1][k + 1]
@@ -192,65 +200,46 @@ const materials = [
     pbrMetallicRoughness: { baseColorFactor: [0.04, 0.04, 0.05, 1], metallicFactor: 0.3, roughnessFactor: 0.8 }
   },
   {
-    name: 'ShipWindow', // replaced at runtime with the window texture
-    pbrMetallicRoughness: { baseColorFactor: [0.02, 0.02, 0.04, 1], metallicFactor: 0.1, roughnessFactor: 0.9 }
+    name: 'SpaceBack', // replaced at runtime with a space picture per pod
+    pbrMetallicRoughness: { baseColorFactor: [0.01, 0.01, 0.02, 1], metallicFactor: 0, roughnessFactor: 1 }
+  },
+  {
+    name: 'SpaceStars', // replaced at runtime with the tileable starfield
+    pbrMetallicRoughness: { baseColorFactor: [0.01, 0.01, 0.02, 1], metallicFactor: 0, roughnessFactor: 1 }
+  },
+  {
+    name: 'Glass',
+    pbrMetallicRoughness: { baseColorFactor: [0.55, 0.8, 1, 0.1], metallicFactor: 0.9, roughnessFactor: 0.15 },
+    alphaMode: 'BLEND',
+    doubleSided: true
+  },
+  {
+    name: 'Frame',
+    pbrMetallicRoughness: { baseColorFactor: [0.1, 0.11, 0.12, 1], metallicFactor: 0.85, roughnessFactor: 0.45 }
   }
 ]
 
-// Inside: the vertical wall is two nodes, long observation windows (east and west,
-// WINDOW_COLS columns each, one picture per bay) and alien machinery tiling everywhere
-// else (MACHINE_REPEATS copies around, mirrored wrap). Built per column so each quad can
-// go to either node. The video covers only the cap.
-const WINDOW_COLS = 12 // 33.75 deg = ~36.5 m of a 20 m wall, close to the 16:9 picture
-const WINDOW_CENTERS = [90, 270].map((deg) => Math.round((deg / 360) * SEGMENTS))
+// Inside: the vertical wall is an observation deck. Engine-room texture (MACHINE_REPEATS
+// copies around, mirrored wrap) on the strips below and above, continuous glass between,
+// and a 30 m deep star ring outside so the whole wall looks out into open space.
+// src/client/space.ts drifts rocks and UFOs through the ring.
 const MACHINE_REPEATS = 14
-function windowOffset(col) {
-  for (const c of WINDOW_CENTERS) {
-    const d = (((col - c) % SEGMENTS) + SEGMENTS) % SEGMENTS
-    const rel = d > SEGMENTS / 2 ? d - SEGMENTS : d
-    const start = -Math.floor(WINDOW_COLS / 2)
-    if (rel >= start && rel < start + WINDOW_COLS) return (rel - start) / WINDOW_COLS
-  }
-  return -1
-}
-function buildWall() {
-  const win = new MeshBuf('WallWindow', 4)
-  const mach = new MeshBuf('WallMachine', 3)
-  for (let col = 0; col < SEGMENTS; col++) {
-    const off = windowOffset(col)
-    const m = off >= 0 ? win : mach
-    const u0 = off >= 0 ? off : (col / SEGMENTS) * MACHINE_REPEATS
-    const u1 = off >= 0 ? off + 1 / WINDOW_COLS : ((col + 1) / SEGMENTS) * MACHINE_REPEATS
-    const t0 = (col / SEGMENTS) * TAU
-    const t1 = ((col + 1) / SEGMENTS) * TAU
-    const n0 = [-Math.sin(t0), 0, -Math.cos(t0)]
-    const n1 = [-Math.sin(t1), 0, -Math.cos(t1)]
-    for (let k = 0; k < WALL_RINGS; k++) {
-      const y0 = (k / WALL_RINGS) * WALL_HEIGHT
-      const y1 = ((k + 1) / WALL_RINGS) * WALL_HEIGHT
-      const v0 = 1 - y0 / WALL_HEIGHT
-      const v1 = 1 - y1 / WALL_HEIGHT
-      const a = m.vertex([RADIUS * Math.sin(t0), y0, RADIUS * Math.cos(t0)], n0, [u0, v0])
-      const b = m.vertex([RADIUS * Math.sin(t1), y0, RADIUS * Math.cos(t1)], n1, [u1, v0])
-      const c = m.vertex([RADIUS * Math.sin(t1), y1, RADIUS * Math.cos(t1)], n1, [u1, v1])
-      const d = m.vertex([RADIUS * Math.sin(t0), y1, RADIUS * Math.cos(t0)], n0, [u0, v1])
-      // inward facing: same winding as buildShell(inward)
-      m.tri(a, c, b)
-      m.tri(a, d, c)
-    }
-  }
-  return [win, mach]
-}
+const { isHole, buildWall, buildWindows, buildPods } = makeWindowBuilders(
+  { RADIUS, SHELL_GAP, WALL_HEIGHT, WALL_RINGS, SEGMENTS, TAU },
+  { machine: 3, back: 4, stars: 5, hull: 1, glass: 6, frame: 7 }
+)
 // The Explorer leaves the bottom ~14% of the video texture black (frame padding), so the
 // cap samples v 0..VIDEO_V_MAX and the picture's real bottom edge sits on the wall top.
 const VIDEO_V_MAX = 0.86
 const capUv = ({ u, y }) => [u, VIDEO_V_MAX * (1 - (y - WALL_HEIGHT) / RADIUS)]
 const inner = buildShell('DomeInner', RADIUS, true, { kStart: WALL_RINGS, uv: ({ u, k }) => capUv({ u, y: profile(k, RADIUS).y }) })
-const [wallWindow, wallMachine] = buildWall()
-const outer = buildShell('DomeOuter', RADIUS + SHELL_GAP, false)
+const wall = buildWall(MACHINE_REPEATS)
+const [glass, frame] = buildWindows()
+const pods = buildPods()
+const outer = buildShell('DomeOuter', RADIUS + SHELL_GAP, false, { skip: (c, k) => isDoorQuad(c, k) || isHole(c, k) })
 const floor = buildFloor()
 floor.material = 2
-const parts = CLOSED ? [inner, wallWindow, wallMachine, outer, floor] : [inner, wallWindow, wallMachine, outer, buildDoorFrame(), floor]
+const parts = [inner, wall, glass, frame, ...pods, outer, ...(CLOSED ? [] : [buildDoorFrame()]), floor]
 
 const glb = buildGlb(parts, materials, 'Dome', 'abducted-dome build-dome.mjs')
 mkdirSync(dirname(OUT), { recursive: true })
