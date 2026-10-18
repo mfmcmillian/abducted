@@ -238,6 +238,11 @@ function buildKeys(): Key[] {
   const local = (x: number, y: number, z: number) => Vector3.add(E, Vector3.create(x * SET_SCALE, y * SET_SCALE, z * SET_SCALE))
   // a point on the Earth-player line at horizontal distance d from the Earth, at absolute height y
   const onLine = (d: number, y: number) => Vector3.create(E.x + toPlayer.x * d, y, E.z + toPlayer.z * d)
+  // the Earth's near side is only ~3 m outside the glass, so we slip past it sideways (towards the
+  // street side of the set when there is a choice) and climb over the top
+  const sideRaw = Vector3.create(toPlayer.z, 0, -toPlayer.x)
+  const side = sideRaw.z <= 0 ? sideRaw : Vector3.scale(sideRaw, -1)
+  const beside = (p: Vector3, m: number) => Vector3.add(p, Vector3.scale(side, m))
   const room = (x: number, y: number, z: number) => local(ROOM_POS.x + x, ROOM_POS.y + y, ROOM_POS.z + z)
   const up = Vector3.Up()
   const far = Vector3.add(E, Vector3.scale(toPlayer, 30))
@@ -249,9 +254,9 @@ function buildKeys(): Key[] {
   return [
     { t: 0, pos: start, look: Vector3.add(start, Vector3.scale(forward, 40)) },
     { t: 3.5, pos: Vector3.add(start, Vector3.scale(Vector3.normalize(Vector3.subtract(far, start)), Vector3.distance(start, far) * 0.55)), look: E },
-    { t: 5.8, pos: onLine(glassD + 4, 11.5), look: E }, // inside, at window height
-    { t: 7.0, pos: onLine(glassD - 3, 13), look: E }, // through the glass (glint)
-    { t: 8.5, pos: Vector3.add(Vector3.add(E, Vector3.scale(toPlayer, 7)), Vector3.scale(up, 15)), look: Vector3.add(E, Vector3.scale(up, 2)) },
+    { t: 5.8, pos: beside(onLine(glassD + 4, 11.5), 6), look: E }, // inside, at window height
+    { t: 7.0, pos: beside(onLine(glassD - 3, 14), 13), look: E }, // through the glass (glint), beside the planet
+    { t: 8.5, pos: beside(Vector3.add(Vector3.add(E, Vector3.scale(toPlayer, 3)), Vector3.scale(up, 15.5)), 5), look: Vector3.add(E, Vector3.scale(up, 2)) },
     // from here on the heading stays +Z (street side towards the house): a near-vertical look
     // with a heading flip makes the picture spin, which is what we are avoiding
     { t: 9.8, pos: local(0.5, 10, -6), look: local(0, -2, -1) }, // inside the clouds, at the sky sphere
