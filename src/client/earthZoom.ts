@@ -57,15 +57,17 @@ const SET_SCALE = 0.8
 const ROAD_Z = -8.5
 const HOUSE_SCALE = 4.6
 const HOUSE_POS = Vector3.create(0, GROUND_Y + 0.707 * HOUSE_SCALE, 0) // model bbox y min is -0.707
-const ROOM_POS = Vector3.create(0.6, GROUND_Y + 0.04, 1.23) // room front wall lands on the house front wall (z = -0.97)
-const WINDOW_C = Vector3.create(2.14, GROUND_Y + 2.35, -0.97) // centre of the (open) picture window: see tools/cut-window.mjs
+// NOTE: the explorer mirrors glTF content in X (right- to left-handed), so anything measured in a
+// model's own coordinates lands at -x in the scene. Scene-side placements below already account for it.
+const ROOM_POS = Vector3.create(-0.6, GROUND_Y + 0.04, 1.23) // room front wall lands on the house front wall (z = -0.97)
+const WINDOW_C = Vector3.create(-2.14, GROUND_Y + 2.35, -0.97) // centre of the (open) picture window: see tools/cut-window.mjs
 const ROOM_H = 3.2
 // room coordinates (origin: room centre on the floor)
 const TV_SCALE = 0.7
 const TV_POS = Vector3.create(0.4, 0.6 + 0.811 * TV_SCALE, 1.75)
 // the CRT glass, measured on an orthographic render of the model: x -0.81..0.44, y -0.41..0.31,
 // bulging to z 0.48 at the centre. The plane is a 16:9 rectangle inset in that, just proud of the bulge.
-const TV_SCREEN = Vector3.create(TV_POS.x + 0.185 * TV_SCALE, TV_POS.y - 0.05 * TV_SCALE, TV_POS.z - 0.49 * TV_SCALE) // faces -Z after the 180 turn
+const TV_SCREEN = Vector3.create(TV_POS.x - 0.185 * TV_SCALE, TV_POS.y - 0.05 * TV_SCALE, TV_POS.z - 0.49 * TV_SCALE) // faces -Z after the 180 turn
 const TV_SCREEN_SIZE = { w: 1.21 * TV_SCALE, h: 0.68 * TV_SCALE }
 /** Distance at which the screen exactly fills a 60 degree (16:9) view, plus a hair of margin. */
 const FIT_DISTANCE = Math.max(TV_SCREEN_SIZE.h / 2 / Math.tan(Math.PI / 6), TV_SCREEN_SIZE.w / 2 / (Math.tan(Math.PI / 6) * (16 / 9))) * 1.04
@@ -91,8 +93,8 @@ const AERIAL_LIFT = Vector3.create(0, -TERRAIN_LOCAL_Y, 0)
 /** Where the street set's ground centre sits on the countryside (a flat field; countryside yawed 180). */
 const PATCH = Vector3.create(0, 0.15, -6.3)
 /** The camera's first street-set key (town-local coords): over the road, 5.7 m up, looking 70 degrees down. */
-const TOWN_Q0 = Vector3.create(0.8, 1.5, -8.5)
-const TOWN_LOOK0 = Vector3.create(0.6, GROUND_Y, -6.4)
+const TOWN_Q0 = Vector3.create(-0.8, 1.5, -8.5)
+const TOWN_LOOK0 = Vector3.create(-0.6, GROUND_Y, -6.4)
 /** town-local -> set while embedded: set = TOWN_EMBED_POS + EMBED * q */
 const TOWN_EMBED_POS = Vector3.subtract(PATCH, Vector3.scale(Vector3.create(0, GROUND_Y, 0), EMBED))
 /** camera position (set coords) at the swap */
@@ -211,7 +213,7 @@ function buildSets(video: Entity) {
     ]
   })
   light(roomRoot, Vector3.create(0.4, ROOM_H - 0.3, 0.6), Color3.create(1, 0.93, 0.8), 320, 8)
-  light(roomRoot, Vector3.create(2.2, 2.4, -1.6), Color3.create(0.9, 0.95, 1), 140, 5) // window light
+  light(roomRoot, Vector3.create(-1.5, 2.4, -1.6), Color3.create(0.9, 0.95, 1), 140, 5) // window light
 
   // furniture (room coords, origin room centre on the floor; TV wall is +Z)
   prop(roomRoot, 'sofa', 0.4, 0, -0.9, 1.05, 0) // faces the TV (+Z)
@@ -332,7 +334,7 @@ function buildKeys(): Key[] {
     { t: 12.3, pos: local(0.3, 5.2, -7.8), look: Vector3.lerp(city, patch(TOWN_LOOK0), 0.55) },
     { t: SWAP_T, pos: patch(TOWN_Q0), look: patch(TOWN_LOOK0) }, // == town(TOWN_Q0): the swap is seamless
     // the street at full size
-    { t: 16.8, pos: town(Vector3.create(2.2, GROUND_Y + 3.4, -9.3)), look: windowFocus },
+    { t: 16.8, pos: town(Vector3.create(-2.2, GROUND_Y + 3.4, -9.3)), look: windowFocus },
     { t: 19.3, pos: town(Vector3.create(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z - 2.2)), look: windowFocus },
     { t: 20.3, pos: town(Vector3.create(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z + 0.6)), look: screen }, // in through the open window
     { t: 22.3, pos: room(1.2, 1.6, -0.6), look: screen },
