@@ -34,15 +34,16 @@ import { toast, zoomUi } from './ui'
  * picture window of a house, across the living room and into the TV, which is playing the
  * dome's video.
  *
- * Real scale can't do this, so the sets are nested inside opaque shells and swapped under
- * cover. The Earth model is hollow: inside it sits an inverted sky sphere, and under that
- * sky three "layers" take turns (the other two are parked far below the scene):
- *   aerial  - countryside diorama seen from altitude
- *   city    - downtown district, flown over at rooftop height
- *   town    - the street, the house (Meshy models, models/earth/) and, inside the house
- *             model, a room box (models/earth-room.glb) with the furniture and the TV.
- * Every layer change and shell crossing happens under a short white-out (clouds / haze).
- * Everything here follows the Earth's position.
+ * Real scale can't do this, so the sets are nested "Powers of Ten" style. The Earth model is
+ * hollow: inside it sits an inverted sky sphere, and under that sky:
+ *   aerial - a countryside diorama with a small city on it and, on a field, the whole
+ *            street set at 1/4 scale (the "patch");
+ *   town   - the street, the house (Meshy models, models/earth/) and, inside the house
+ *            model, a room box (models/earth-room.glb) with the furniture and the TV.
+ * The camera dives at the patch until it fills the frame; at that instant the countryside
+ * is parked away and the street set is scaled up x4 *around the camera*, which leaves the
+ * picture unchanged, so there is no cut. The only white-out is the real one: the clouds,
+ * which hide the crossing of the Earth's shell. Everything here follows the Earth's position.
  *
  * Purely client-side: a VirtualCamera entity moved along a spline every frame.
  */
@@ -69,12 +70,36 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a)
 
 let setRoot: Entity
 let roomRoot: Entity
-type Layer = 'aerial' | 'city' | 'town'
-const layerRoots = {} as Record<Layer, Entity>
-const PARK = Vector3.create(0, -400, 0) // where inactive layers wait (set coords; well under the scene)
+let aerialRoot: Entity
+let townRoot: Entity
+const PARK = Vector3.create(0, -400, 0) // where the countryside waits while we are in the street (set coords)
 
-function showLayer(active: Layer) {
-  for (const name of Object.keys(layerRoots) as Layer[]) Transform.getMutable(layerRoots[name]).position = name === active ? Vector3.Zero() : PARK
+// ---- nesting (set coords unless stated) ----
+const COUNTRY_SCALE = 11
+const CITY_SCALE = 2 // the downtown diorama as a town on the countryside
+const EMBED = 0.25 // the street set's scale when it sits on the countryside
+/** The countryside's flat fields are ~0.13 model units above its bbox bottom; lift the layer so they are at y = 0. */
+const TERRAIN_LOCAL_Y = GROUND_Y + 0.13 * COUNTRY_SCALE
+const AERIAL_LIFT = Vector3.create(0, -TERRAIN_LOCAL_Y, 0)
+/** Where the street set's ground centre sits on the countryside (a flat field; countryside yawed 180). */
+const PATCH = Vector3.create(0, 0.15, -6.3)
+/** The camera's first street-set key (town-local coords): over the road, 5.7 m up, looking 70 degrees down. */
+const TOWN_Q0 = Vector3.create(0.8, 1.5, -8.5)
+const TOWN_LOOK0 = Vector3.create(0.6, GROUND_Y, -6.4)
+/** town-local -> set while embedded: set = TOWN_EMBED_POS + EMBED * q */
+const TOWN_EMBED_POS = Vector3.subtract(PATCH, Vector3.scale(Vector3.create(0, GROUND_Y, 0), EMBED))
+/** camera position (set coords) at the swap */
+const SWAP_POS = Vector3.add(TOWN_EMBED_POS, Vector3.scale(TOWN_Q0, EMBED))
+/** town-local -> set at full size, scaled up around SWAP_POS: set = TOWN_FULL_POS + q */
+const TOWN_FULL_POS = Vector3.subtract(SWAP_POS, TOWN_Q0)
+const SWAP_T = 14.8
+
+function townEmbedded(embedded: boolean) {
+  const t = Transform.getMutable(townRoot)
+  t.position = embedded ? TOWN_EMBED_POS : TOWN_FULL_POS
+  const k = embedded ? EMBED : 1
+  t.scale = Vector3.create(k, k, k)
+  Transform.getMutable(aerialRoot).position = embedded ? AERIAL_LIFT : PARK
 }
 let clickTarget: Entity
 let camera: Entity
@@ -129,20 +154,18 @@ function buildSets(video: Entity) {
   light(setRoot, Vector3.create(5, 9, -8), Color3.create(1, 0.96, 0.85), 2600, 40)
   light(setRoot, Vector3.create(-6, 5, 6), Color3.create(0.7, 0.8, 1), 600, 26)
 
-  for (const name of ['aerial', 'city', 'town'] as Layer[]) {
-    layerRoots[name] = engine.addEntity()
-    Transform.create(layerRoots[name], { parent: setRoot, position: PARK })
-  }
+  aerialRoot = engine.addEntity()
+  Transform.create(aerialRoot, { parent: setRoot, position: AERIAL_LIFT })
+  townRoot = engine.addEntity()
+  Transform.create(townRoot, { parent: setRoot })
 
-  // layer 1: the countryside from altitude. One diorama filling the whole ground disc.
-  prop(layerRoots.aerial, 'countryside', 0, GROUND_Y, 0, 11)
+  // the countryside from altitude: one diorama filling the ground disc, a downtown on one of the
+  // flat fields (sunk a little so its plinth meets the terrain), the street set on another (below)
+  prop(aerialRoot, 'countryside', 0, GROUND_Y, 0, COUNTRY_SCALE, 180)
+  prop(aerialRoot, 'city', 0.5, TERRAIN_LOCAL_Y - 0.1, -1, CITY_SCALE)
 
-  // layer 2: downtown, flown over at rooftop height
-  prop(layerRoots.city, 'city', 0, GROUND_Y, 0, 9.5)
-  light(layerRoots.city, Vector3.create(0, GROUND_Y + 6, -4), Color3.create(1, 0.9, 0.8), 500, 14)
-
-  // layer 3: the street. Lawn, road, path, hero house facing the road, neighbours either side, props.
-  const town = layerRoots.town
+  // the street. Lawn, road, path, hero house facing the road, neighbours either side, props.
+  const town = townRoot
   const sets = engine.addEntity()
   Transform.create(sets, { parent: town })
   GltfContainer.create(sets, { src: 'models/earth-sets.glb', ...NO_COLLIDE })
@@ -213,7 +236,7 @@ function buildSets(video: Entity) {
   MeshCollider.setSphere(clickTarget, ColliderLayer.CL_POINTER)
   pointerEventsSystem.onPointerDown({ entity: clickTarget, opts: { button: InputAction.IA_POINTER, hoverText: 'Zoom to Earth', maxDistance: 220, showFeedback: true } }, () => startZoom())
 
-  showLayer('town')
+  townEmbedded(true)
 
   // the camera
   camera = engine.addEntity()
@@ -227,10 +250,6 @@ interface Key {
   t: number
   pos: Vector3
   look: Vector3
-  /** first key of a new layer: the spline restarts here (the jump before it is hidden by white) */
-  cut?: boolean
-  /** switch to this layer when the key's time is reached */
-  layer?: Layer
 }
 
 interface Zoom {
@@ -240,10 +259,7 @@ interface Zoom {
   phase: 'fly' | 'hold' | 'out'
   cloudsDone: boolean
   windowDone: boolean
-  /** index of the next key whose layer switch is pending */
-  nextLayerKey: number
-  /** haze transitions already puffed */
-  hazeDone: Set<number>
+  swapped: boolean
 }
 let zoom: Zoom | null = null
 
@@ -253,9 +269,7 @@ function sample(keys: Key[], t: number, pick: (k: Key) => Vector3): Vector3 {
   if (t >= keys[keys.length - 1].t) return pick(keys[keys.length - 1])
   let i = 0
   while (keys[i + 1].t <= t) i++
-  const k1 = keys[i], k2 = keys[i + 1]
-  const k0 = k1.cut ? k1 : keys[Math.max(0, i - 1)]
-  const k3 = k2.cut ? k2 : keys[Math.min(keys.length - 1, i + 2)]
+  const k0 = keys[Math.max(0, i - 1)], k1 = keys[i], k2 = keys[i + 1], k3 = keys[Math.min(keys.length - 1, i + 2)]
   const dt = k2.t - k1.t
   const u = (t - k1.t) / dt
   const p1 = pick(k1), p2 = pick(k2)
@@ -281,13 +295,17 @@ function buildKeys(): Key[] {
   const sideRaw = Vector3.create(toPlayer.z, 0, -toPlayer.x)
   const side = sideRaw.z <= 0 ? sideRaw : Vector3.scale(sideRaw, -1)
   const beside = (p: Vector3, m: number) => Vector3.add(p, Vector3.scale(side, m))
-  const room = (x: number, y: number, z: number) => local(ROOM_POS.x + x, ROOM_POS.y + y, ROOM_POS.z + z)
+  // street-set coords at full size (after the swap) -> world
+  const town = (q: Vector3) => local(TOWN_FULL_POS.x + q.x, TOWN_FULL_POS.y + q.y, TOWN_FULL_POS.z + q.z)
+  // ... and while it is still the patch on the countryside
+  const patch = (q: Vector3) => local(TOWN_EMBED_POS.x + q.x * EMBED, TOWN_EMBED_POS.y + q.y * EMBED, TOWN_EMBED_POS.z + q.z * EMBED)
+  const room = (x: number, y: number, z: number) => town(Vector3.create(ROOM_POS.x + x, ROOM_POS.y + y, ROOM_POS.z + z))
+  const city = local(0.5, 0.5, -1)
   const up = Vector3.Up()
   const far = Vector3.add(E, Vector3.scale(toPlayer, 30))
   // horizontal distance from the Earth to the dome glass along the approach line
   const glassD = Math.hypot(E.x - CENTER.x, E.z - CENTER.z) - DOME_RADIUS
-  const streetFocus = local(0, GROUND_Y + 1, -2)
-  const windowFocus = local(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z)
+  const windowFocus = town(WINDOW_C)
   const screen = room(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z)
   return [
     { t: 0, pos: start, look: Vector3.add(start, Vector3.scale(forward, 40)) },
@@ -296,25 +314,18 @@ function buildKeys(): Key[] {
     { t: 7.0, pos: beside(onLine(glassD - 3, 14), 13), look: E }, // through the glass (glint), beside the planet
     { t: 8.5, pos: beside(Vector3.add(Vector3.add(E, Vector3.scale(toPlayer, 3)), Vector3.scale(up, 15.5)), 5), look: Vector3.add(E, Vector3.scale(up, 2)) },
     // from here on the heading stays +Z: a near-vertical look with a heading flip makes the
-    // picture spin, which is what we are avoiding. Each layer starts high and ends low, the
-    // next one starts high again under a white-out (see HAZE below).
-    // layer 1: countryside, from the cloud base down to the grey town in the middle
-    { t: 9.8, pos: local(0.5, 10, -6), look: local(0, -2, -1), cut: true, layer: 'aerial' },
-    { t: 12.6, pos: local(0.3, 4.6, -3.8), look: local(0, GROUND_Y, 2) },
-    { t: 15.3, pos: local(0.2, GROUND_Y + 2.3, 1.2), look: local(0, GROUND_Y, 5.5) }, // low over the fields (clear of trees)
-    // layer 2: downtown, over the towers and down to street level at the edge
-    // (the towers stand in x -4..7, z -9..0 and reach y ~5; the low blocks are at z > 4)
-    { t: 15.6, pos: local(2.5, 9.5, -7), look: local(2, GROUND_Y + 2, 1), cut: true, layer: 'city' },
-    { t: 18.2, pos: local(2.5, 6.5, -1.5), look: local(2.2, GROUND_Y + 0.5, 5) },
-    { t: 20.8, pos: local(2.6, GROUND_Y + 3.8, 2.0), look: local(2.4, GROUND_Y + 0.3, 6) }, // down to the low blocks
-    // layer 3: the street
-    { t: 21.1, pos: local(1, 5.5, -7.5), look: streetFocus, cut: true, layer: 'town' },
-    { t: 23.6, pos: local(2.6, GROUND_Y + 3.2, -9.5), look: windowFocus },
-    { t: 26.1, pos: local(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z - 2.2), look: windowFocus },
-    { t: 27.1, pos: local(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z + 0.6), look: screen }, // through the glass
-    { t: 29.1, pos: room(1.2, 1.6, -0.6), look: screen },
-    { t: 31.1, pos: room(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z - 0.7), look: screen },
-    { t: 32.6, pos: room(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z - 0.13), look: screen }
+    // picture spin, which is what we are avoiding. Out of the clouds the downtown is in view
+    // ahead; the dive steepens onto the patch (the street set at 1/4) until it fills the frame.
+    { t: 9.8, pos: local(0.3, 8.5, -7), look: city },
+    { t: 12.3, pos: local(0.3, 5.2, -7.8), look: Vector3.lerp(city, patch(TOWN_LOOK0), 0.55) },
+    { t: SWAP_T, pos: patch(TOWN_Q0), look: patch(TOWN_LOOK0) }, // == town(TOWN_Q0): the swap is seamless
+    // the street at full size
+    { t: 16.8, pos: town(Vector3.create(2.2, GROUND_Y + 3.4, -9.3)), look: windowFocus },
+    { t: 19.3, pos: town(Vector3.create(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z - 2.2)), look: windowFocus },
+    { t: 20.3, pos: town(Vector3.create(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z + 0.6)), look: screen }, // through the glass
+    { t: 22.3, pos: room(1.2, 1.6, -0.6), look: screen },
+    { t: 24.3, pos: room(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z - 0.7), look: screen },
+    { t: 25.8, pos: room(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z - 0.13), look: screen }
   ]
 }
 
@@ -328,7 +339,8 @@ function startZoom() {
   if (!earthEntity()) return
   setEarthFrozen(true)
   const keys = buildKeys()
-  zoom = { keys, t: 0, end: keys[keys.length - 1].t, phase: 'fly', cloudsDone: false, windowDone: false, nextLayerKey: 0, hazeDone: new Set() }
+  zoom = { keys, t: 0, end: keys[keys.length - 1].t, phase: 'fly', cloudsDone: false, windowDone: false, swapped: false }
+  townEmbedded(true)
   const start = keys[0]
   const tr = Transform.getMutable(camera)
   tr.position = Vector3.clone(start.pos)
@@ -351,14 +363,8 @@ function finishZoom() {
   zoomUi.hint = ''
   zoomUi.white = 1 // fades out below
   toast('Back on the deck. The TV down there is playing the dome video: click the Earth any time.', 6)
-  showLayer('town')
+  townEmbedded(true)
 }
-
-/** Haze white-outs covering the layer swaps: [start, full, hold-until, clear]. */
-const HAZE: [number, number, number, number][] = [
-  [14.9, 15.3, 15.8, 16.4],
-  [20.4, 20.8, 21.3, 21.9]
-]
 
 function system(dt: number) {
   // the sets ride on the Earth
@@ -386,36 +392,25 @@ function system(dt: number) {
     const dir = Vector3.subtract(look, pos)
     if (Vector3.lengthSquared(dir) > 1e-6) tr.rotation = Quaternion.lookRotation(Vector3.normalize(dir), Vector3.Up())
 
-    // layer swaps happen at their key's time, always under full white
-    while (z.nextLayerKey < z.keys.length && z.keys[z.nextLayerKey].t <= t) {
-      const k = z.keys[z.nextLayerKey++]
-      if (k.layer) showLayer(k.layer)
+    // the patch fills the frame: grow the street set around the camera, park the countryside
+    if (!z.swapped && t >= SWAP_T) {
+      z.swapped = true
+      townEmbedded(false)
     }
 
-    // clouds: full white before the Earth's surface (crossed at ~9.45) until we are inside the sky sphere
-    let c = t < 8.6 ? 0 : t < 9.2 ? (t - 8.6) / 0.6 : t < 10.7 ? 1 : t < 11.4 ? 1 - (t - 10.7) / 0.7 : 0
-    // haze between layers, with a puff of cloud in front of the lens as it starts
-    HAZE.forEach(([a, b, h, d], i) => {
-      c = Math.max(c, t < a ? 0 : t < b ? (t - a) / (b - a) : t < h ? 1 : t < d ? 1 - (t - h) / (d - h) : 0)
-      if (!z.hazeDone.has(i) && t > a) {
-        z.hazeDone.add(i)
-        const ahead = Vector3.add(pos, Vector3.scale(Vector3.normalize(dir), 1.6))
-        burstExplosion(ahead, 0.9, { ...PALETTES.cow, fire0: Color3.White(), fire1: Color3.create(0.92, 0.95, 1), smoke: Color3.White(), spark: Color3.White(), flash: Color3.White() })
-        playAt(SFX.ufoPass, pos, 0.4, 0.7)
-        if (i === 0) playGlobal(SFX.zoom, 0.6)
-      }
-    })
-    // window: a short glint at the glass (t = 27.1)
-    const w = 1 - Math.min(1, Math.abs(t - 27.1) / 0.35)
+    // clouds: full white before the Earth's surface (crossed at ~9.1) until we are inside the sky sphere (~9.7)
+    const c = t < 8.3 ? 0 : t < 8.9 ? (t - 8.3) / 0.6 : t < 10.7 ? 1 : t < 11.4 ? 1 - (t - 10.7) / 0.7 : 0
+    // window: a short glint at the glass (t = 20.3)
+    const w = 1 - Math.min(1, Math.abs(t - 20.3) / 0.35)
     // dome glass: a faint glint as the camera passes the pane (it is see-through, so keep it subtle)
     const g = 1 - Math.min(1, Math.abs(Math.hypot(pos.x - CENTER.x, pos.z - CENTER.z) - DOME_RADIUS) / 0.8)
     zoomUi.white = Math.max(c, w * 0.75, g * 0.35)
-    if (!z.cloudsDone && t > 8.6) {
+    if (!z.cloudsDone && t > 8.3) {
       z.cloudsDone = true
       burstExplosion(Vector3.add(E, Vector3.create(0, 12.8 * SET_SCALE, -2 * SET_SCALE)), 2.5, { ...PALETTES.cow, fire0: Color3.White(), fire1: Color3.create(0.9, 0.93, 1), smoke: Color3.White(), spark: Color3.White(), flash: Color3.White() })
       playAt(SFX.ufoPass, pos, 0.5, 0.6)
     }
-    if (!z.windowDone && t > 26.9) {
+    if (!z.windowDone && t > 20.1) {
       z.windowDone = true
       playGlobal(SFX.ringChime, 0.5, 1.3)
     }
