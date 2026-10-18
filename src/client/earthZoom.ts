@@ -13,7 +13,6 @@ import {
   MaterialTransparencyMode,
   MeshCollider,
   MeshRenderer,
-  TextureUnion,
   PointerEventType,
   pointerEventsSystem,
   TextureFilterMode,
@@ -73,8 +72,6 @@ const TV_SCREEN = Vector3.create(TV_POS.x - 0.185 * TV_SCALE, TV_POS.y - 0.05 * 
 const TV_SCREEN_SIZE = { w: 1.21 * TV_SCALE, h: 0.68 * TV_SCALE }
 /** Distance at which the screen exactly fills a 60 degree (16:9) view, plus a hair of margin. */
 const FIT_DISTANCE = Math.max(TV_SCREEN_SIZE.h / 2 / Math.tan(Math.PI / 6), TV_SCREEN_SIZE.w / 2 / (Math.tan(Math.PI / 6) * (16 / 9))) * 1.04
-/** Snow frames written by tools/tv-static.mjs, cycled on the CRT until the video starts. */
-const STATIC_FRAMES = 6
 /** Static stays on the fitted screen this long before the TV changes channel (s). */
 const STATIC_HOLD = 0.6
 /** The dome music drops to this while the TV plays its copy of the video (dome.ts starts it at 0.8). */
@@ -125,9 +122,9 @@ let camera: Entity
 let videoEntity: Entity
 /** the TV's own player: same film, started from the top once the screen fills the view */
 let tvPlayer: Entity
+/** a looping clip of snow (videos/tv-static.mp4), on the CRT whenever the film is not */
+let staticPlayer: Entity
 let screen: Entity
-let staticFrame = 0
-let staticClock = 0
 /** how many times the TV has been started; nudges `position` so every restart seeks to the top */
 let tvPlays = 0
 
@@ -136,39 +133,28 @@ let tvPlays = 0
 function tex(src: string) {
   return Material.Texture.Common({ src, wrapMode: TextureWrapMode.TWM_REPEAT, filterMode: TextureFilterMode.TFM_TRILINEAR })
 }
-const pbrTex = (texture: TextureUnion, extra: Partial<{ roughness: number; emissive: number; emissiveColor: Color3 }> = {}) => ({
+const pbr = (src: string, extra: Partial<{ roughness: number; emissive: number }> = {}) => ({
   material: {
     $case: 'pbr' as const,
     pbr: {
-      texture,
+      texture: tex(src),
       albedoColor: Color4.White(),
       metallic: 0,
       roughness: extra.roughness ?? 1,
       specularIntensity: 0,
       transparencyMode: MaterialTransparencyMode.MTM_OPAQUE,
       castShadows: false,
-      ...(extra.emissive ? { emissiveTexture: texture, emissiveColor: extra.emissiveColor ?? Color3.White(), emissiveIntensity: extra.emissive } : {})
+      ...(extra.emissive ? { emissiveTexture: tex(src), emissiveColor: Color3.White(), emissiveIntensity: extra.emissive } : {})
     }
   }
 })
-const pbr = (src: string, extra: Partial<{ roughness: number; emissive: number }> = {}) => pbrTex(tex(src), extra)
 
-/** Show a snow frame on the CRT (the offset scrambles it further between frames). */
-function showStatic(frame: number) {
-  const texture = Material.Texture.Common({
-    src: `images/tv-static-${frame}.png`,
-    wrapMode: TextureWrapMode.TWM_REPEAT,
-    filterMode: TextureFilterMode.TFM_BILINEAR,
-    offset: { x: Math.random(), y: Math.random() }
-  })
+/** Put a player's picture on the CRT face (same unlit video material the dome uses). */
+function tune(player: Entity) {
+  const texture = Material.Texture.Video({ videoPlayerEntity: player, wrapMode: TextureWrapMode.TWM_CLAMP, filterMode: TextureFilterMode.TFM_BILINEAR })
   GltfNodeModifiers.createOrReplace(screen, {
-    modifiers: [{ path: 'Screen', material: pbrTex(texture, { emissive: 1.1, emissiveColor: Color3.create(0.85, 0.9, 1) }), castShadows: false }]
+    modifiers: [{ path: 'Screen', material: { material: { $case: 'unlit' as const, unlit: { texture, diffuseColor: Color4.White(), castShadows: false } } }, castShadows: false }]
   })
-}
-/** Put the TV's video on the CRT. */
-function showVideo() {
-  const texture = Material.Texture.Video({ videoPlayerEntity: tvPlayer, wrapMode: TextureWrapMode.TWM_CLAMP, filterMode: TextureFilterMode.TFM_BILINEAR })
-  GltfNodeModifiers.createOrReplace(screen, { modifiers: [{ path: 'Screen', material: pbrTex(texture, { emissive: 1.0 }), castShadows: false }] })
 }
 
 /** Place a Meshy model so its bbox bottom sits on y, with the given scale and yaw. */
@@ -273,7 +259,10 @@ function buildSets() {
   tvPlayer = engine.addEntity()
   Transform.create(tvPlayer, { parent: roomRoot, position: TV_SCREEN })
   VideoPlayer.create(tvPlayer, { src: VIDEO_URL, playing: false, loop: false, volume: 1 })
-  showStatic(0)
+  staticPlayer = engine.addEntity()
+  Transform.create(staticPlayer, { parent: roomRoot, position: TV_SCREEN })
+  VideoPlayer.create(staticPlayer, { src: 'videos/tv-static.mp4', playing: true, loop: true, volume: 0 })
+  tune(staticPlayer)
   light(roomRoot, Vector3.add(TV_SCREEN, Vector3.create(0, 0.2, -0.8)), Color3.create(0.6, 0.75, 1), 110, 3.5)
 
   // click target: an invisible sphere the size of the planet
@@ -421,16 +410,7 @@ function finishZoom() {
   // the TV goes back to snow and the dome music comes back up
   VideoPlayer.getMutable(tvPlayer).playing = false
   VideoPlayer.getMutable(videoEntity).volume = MUSIC_VOLUME
-  showStatic(0)
-}
-
-/** Cycle the snow at ~24 fps. */
-function animateStatic(dt: number) {
-  staticClock += dt
-  if (staticClock < 1 / 24) return
-  staticClock = 0
-  staticFrame = (staticFrame + 1 + Math.floor(Math.random() * (STATIC_FRAMES - 1))) % STATIC_FRAMES
-  showStatic(staticFrame)
+  tune(staticPlayer)
 }
 
 function system(dt: number) {
@@ -479,7 +459,6 @@ function system(dt: number) {
       z.windowDone = true
       playAt(SFX.ufoPass, pos, 0.3, 1.2) // a breath of air through the open window
     }
-    animateStatic(dt)
     if (z.t >= z.end) {
       z.phase = 'hold'
       z.t = 0
@@ -498,12 +477,11 @@ function system(dt: number) {
     }
     const { offset, length } = videoInfo()
     if (!z.tvShowing) {
-      animateStatic(dt)
       // swap to the picture once the first frames are really playing (or stop waiting after 6 s)
       if (offset >= 0 || z.t >= STATIC_HOLD + 6) {
         z.tvShowing = true
         z.holdOffset = -1
-        showVideo()
+        tune(tvPlayer)
         zoomUi.white = 0.6 // the channel-change blink
       }
     } else {
