@@ -103,6 +103,19 @@ export function killAsteroid(a: AsteroidRef, respawnSeconds = 20) {
   Transform.getMutable(a.o.entity).scale = Vector3.Zero()
 }
 
+// ---- earth (the zoom target, see earthZoom.ts) ----------------------------------------------
+
+export const EARTH_SCALE = 14 // => ~27 m across; back wall is at R + 30, keep rho + radius under it
+let earth: Orbiter | null = null
+let earthFrozen = false
+
+export const earthEntity = () => earth?.entity ?? null
+export const earthPosition = () => (earth ? Transform.get(earth.entity).position : Vector3.Zero())
+/** Hold the Earth still (no drift, no spin) while the zoom is inside it. */
+export function setEarthFrozen(frozen: boolean) {
+  earthFrozen = frozen
+}
+
 // ---- comet ---------------------------------------------------------------------------------
 
 function createComet() {
@@ -198,8 +211,7 @@ export function createSpaceWindows() {
 
   // Planets at the back, drifting so slowly a lap takes over an hour; they tilt and turn.
   // From the plaza the window head clips the back wall above y ~26, so the planets sit low.
-  const EARTH = 14 // scale => ~27 m across; back wall is at R + 30, keep rho + radius under it
-  orbiter(model('models/space/earth.glb', EARTH), BACK - EARTH - 1.5, deg(0), 16, 0.07, Vector3.create(0, 1.6, 0), Quaternion.fromEulerDegrees(0, 0, 18))
+  earth = orbiter(model('models/space/earth.glb', EARTH_SCALE), BACK - EARTH_SCALE - 1.5, deg(0), 16, 0.07, Vector3.create(0, 1.6, 0), Quaternion.fromEulerDegrees(0, 0, 18))
   orbiter(model('models/space/moon.glb', 4.5), BACK - 10, deg(14), 23, 0.07, Vector3.create(0, 0.8, 0))
   const GIANT = 15
   orbiter(model('models/space/gas-giant.glb', GIANT), BACK - GIANT - 1.5, deg(180), 17, 0.06, Vector3.create(0, 2.4, 0), Quaternion.fromEulerDegrees(12, 0, -22))
@@ -221,6 +233,7 @@ export function createSpaceWindows() {
     clock += dt
 
     for (const o of orbiters) {
+      if (earthFrozen && o === earth) continue
       o.phi += (DIR * o.speed * dt) / o.rho
       if (o.phi > TAU) o.phi -= TAU
       const t = Transform.getMutable(o.entity)

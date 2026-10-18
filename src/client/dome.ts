@@ -130,11 +130,32 @@ export function createDome(video: Entity): Entity {
   // The back wall is plain stars too: everything with a shape out there is a model (space.ts).
   const backdrops = [0, 1, 2, 3].map((i) => ({ path: 'SpaceBack' + i, material: starsMaterial, castShadows: false }))
 
+  // The shell used to carry the video; it now plays on the TV inside the Earth (earthZoom.ts).
+  // The dome is a dark machinery ceiling: the machines tile repeated around and up the shell.
+  const ceilingTexture = Material.Texture.Common({ src: 'images/ship-machines.jpg', wrapMode: TextureWrapMode.TWM_MIRROR, filterMode: TextureFilterMode.TFM_TRILINEAR, tiling: { x: 16, y: 5 } })
+  const ceilingMaterial = {
+    material: {
+      $case: 'pbr' as const,
+      pbr: {
+        texture: ceilingTexture,
+        emissiveTexture: ceilingTexture,
+        emissiveColor: Color3.create(0.55, 0.65, 0.75),
+        emissiveIntensity: 0.35,
+        albedoColor: Color4.create(0.35, 0.4, 0.45, 1),
+        metallic: 0.4,
+        roughness: 0.7,
+        specularIntensity: 0,
+        castShadows: false
+      }
+    }
+  }
+  void screenMaterial
+
   // Node paths match the node names written by tools/build-dome.mjs.
   GltfNodeModifiers.create(dome, {
     modifiers: [
-      { path: 'DomeInner', material: screenMaterial, castShadows: false },
-      { path: 'DomeOuter', material: screenMaterial, castShadows: false },
+      { path: 'DomeInner', material: ceilingMaterial, castShadows: false },
+      { path: 'DomeOuter', material: ceilingMaterial, castShadows: false },
       { path: 'WallMachine', material: machineMaterial, castShadows: false },
       { path: 'SpaceStars', material: starsMaterial, castShadows: false },
       ...backdrops,

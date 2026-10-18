@@ -210,7 +210,7 @@ function PanelRow(props: { icon: string; value: string; caption: string; s: numb
  * (images/ui-frame.png) is a nine-slice with a transparent opening, so the scene shows through.
  */
 function KudosPanel() {
-  if (!kudosHud.synced || hud.mode !== 'hidden') return null
+  if (!kudosHud.synced || hud.mode !== 'hidden' || zoomUi.active) return null
   const k = kudosHud
   const { w, h } = canvasSize()
   const s = Math.max(0.7, Math.min(1.3, h / 1080))
@@ -247,6 +247,24 @@ function KudosPanel() {
   )
 }
 
+/** Earth zoom overlay state, driven by earthZoom.ts: a white-out level and a hint line. */
+export const zoomUi = { active: false, white: 0, hint: '' }
+
+function ZoomOverlay() {
+  if (!zoomUi.active && zoomUi.white <= 0) return null
+  const { w, h } = canvasSize()
+  return (
+    <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: 0 }, width: '100%', height: '100%' }}>
+      {zoomUi.white > 0.002 ? <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: 0 }, width: '100%', height: '100%' }} uiBackground={{ color: Color4.create(1, 1, 1, Math.min(1, zoomUi.white)) }} /> : null}
+      {zoomUi.hint ? (
+        <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: h - 70 }, width: w, justifyContent: 'center' }}>
+          <Label value={zoomUi.hint} fontSize={16} color={Color4.create(1, 1, 1, 0.8)} textAlign="middle-center" />
+        </UiEntity>
+      ) : null}
+    </UiEntity>
+  )
+}
+
 function Hud() {
   if (hud.mode === 'hidden') return null
   if (hud.mode === 'results') return <Results />
@@ -262,6 +280,7 @@ export function initUi() {
       <Hud />
       <KudosPanel />
       <Toast />
+      <ZoomOverlay />
     </UiEntity>
   ))
 }
