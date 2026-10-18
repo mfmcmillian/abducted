@@ -116,6 +116,18 @@ export function setEarthFrozen(frozen: boolean) {
   earthFrozen = frozen
 }
 
+/** Planets things must not fly through: [orbiter, radius]. */
+const bigBodies: [Orbiter, number][] = []
+/** 1 when clear of every big body, 0 when touching one (ramps over 5 m). */
+function clearance(pos: Vector3, size: number) {
+  let f = 1
+  for (const [b, r] of bigBodies) {
+    const d = Vector3.distance(pos, Transform.get(b.entity).position) - r - size
+    f = Math.min(f, Math.max(0, Math.min(1, d / 5)))
+  }
+  return f
+}
+
 // ---- comet ---------------------------------------------------------------------------------
 
 function createComet() {
@@ -214,7 +226,8 @@ export function createSpaceWindows() {
   earth = orbiter(model('models/space/earth.glb', EARTH_SCALE), BACK - EARTH_SCALE - 1.5, deg(0), 16, 0.07, Vector3.create(0, 1.6, 0), Quaternion.fromEulerDegrees(0, 0, 18))
   orbiter(model('models/space/moon.glb', 4.5), BACK - 10, deg(14), 23, 0.07, Vector3.create(0, 0.8, 0))
   const GIANT = 15
-  orbiter(model('models/space/gas-giant.glb', GIANT), BACK - GIANT - 1.5, deg(180), 17, 0.06, Vector3.create(0, 2.4, 0), Quaternion.fromEulerDegrees(12, 0, -22))
+  const giant = orbiter(model('models/space/gas-giant.glb', GIANT), BACK - GIANT - 1.5, deg(180), 17, 0.06, Vector3.create(0, 2.4, 0), Quaternion.fromEulerDegrees(12, 0, -22))
+  bigBodies.push([earth, EARTH_SCALE * 0.92], [giant, GIANT * 0.95])
 
   const comet = createComet()
   const fleet = createFleet()
@@ -249,7 +262,12 @@ export function createSpaceWindows() {
           a.o.phi = rand(0, TAU)
           rollAsteroid(a)
         }
-      } else if (a.o.phi < (DIR * a.o.speed * dt) / a.o.rho) rollAsteroid(a)
+      } else {
+        if (a.o.phi < (DIR * a.o.speed * dt) / a.o.rho) rollAsteroid(a)
+        const t = Transform.getMutable(a.o.entity)
+        const s = a.size * clearance(t.position, a.size)
+        t.scale = Vector3.create(s, s, s)
+      }
     }
 
     // Comet tail trails opposite the direction of travel (the tangent), slightly away from the glass.
@@ -261,7 +279,9 @@ export function createSpaceWindows() {
       const tail = Transform.getMutable(comet.tail)
       tail.position = Vector3.add(head, Vector3.scale(back, 11))
       tail.rotation = Quaternion.multiply(Quaternion.lookRotation(back, Vector3.Up()), Quaternion.fromEulerDegrees(-90, 0, 0))
-      tail.scale = Vector3.create(4 + Math.sin(clock * 3) * 0.3, 22, 4 + Math.cos(clock * 2.3) * 0.3)
+      const k = clearance(head, 3)
+      tail.scale = Vector3.scale(Vector3.create(4 + Math.sin(clock * 3) * 0.3, 22, 4 + Math.cos(clock * 2.3) * 0.3), k)
+      Transform.getMutable(o.entity).scale = Vector3.create(3 * k, 3 * k, 3 * k)
     }
 
     // Mothership pass: cruises a half lap with the escort in formation, then waits a while.
@@ -274,9 +294,18 @@ export function createSpaceWindows() {
         f.rho = R + rand(14, 20)
         f.y = rand(14, 20)
         f.speed = rand(2.5, 3.5)
-        f.phi = rand(0, TAU)
         f.travelled = 0
-        f.length = rand(Math.PI * 0.8, Math.PI * 1.4)
+        // the planets sit roughly opposite each other: run the lap in the gap between them,
+        // leaving room for the planet, the ship and the escorts trailing behind
+        const [from, to] = Math.random() < 0.5 ? [bigBodies[0], bigBodies[1]] : [bigBodies[1], bigBodies[0]]
+        const margin = (r: number) => (r + MOTHERSHIP_SCALE + 4) / f.rho
+        const trail = 26 / f.rho
+        let gap = to[0].phi - from[0].phi
+        gap = ((gap % TAU) + TAU) % TAU
+        if (f.dir < 0) gap = TAU - gap
+        const free = gap - margin(from[1]) - margin(to[1]) - trail
+        f.length = Math.min(rand(Math.PI * 0.45, Math.PI * 0.6), Math.max(0.6, free))
+        f.phi = from[0].phi + f.dir * (margin(from[1]) + trail + rand(0, Math.max(0, free - f.length)))
         f.leaving = false
         // drop out of warp: escorts first, the mothership last, all streaking in along the lap
         const pose = fleetPose(f, clock)

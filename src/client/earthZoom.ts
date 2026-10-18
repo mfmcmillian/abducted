@@ -10,6 +10,7 @@ import {
   LightSource,
   MainCamera,
   Material,
+  MaterialTransparencyMode,
   MeshCollider,
   MeshRenderer,
   PointerEventType,
@@ -20,6 +21,7 @@ import {
   VirtualCamera
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
+import { CENTER, DOME_RADIUS } from '../layout'
 import { EARTH_MODELS, EarthModel } from './earthManifest'
 import { burstExplosion, PALETTES, startFx } from './fx'
 import { playAt, playGlobal, SFX } from './sfx'
@@ -43,10 +45,12 @@ import { toast, zoomUi } from './ui'
 
 // ---- layout (set coordinates: origin = Earth centre, street along X on the -Z side) ----
 const GROUND_Y = -4.2 // keep in sync with tools/build-earth-sets.mjs
+/** The set is authored for a 11.6 m sky sphere; the Earth's ocean is at ~11.2 m, so shrink the lot to stay inside it. */
+const SET_SCALE = 0.8
 const ROAD_Z = -8.5
 const HOUSE_SCALE = 4.6
 const HOUSE_POS = Vector3.create(0, GROUND_Y + 0.707 * HOUSE_SCALE, 0) // model bbox y min is -0.707
-const ROOM_POS = Vector3.create(0.6, GROUND_Y, 1.23) // room front wall lands on the house front wall (z = -0.97)
+const ROOM_POS = Vector3.create(0.6, GROUND_Y + 0.04, 1.23) // room front wall lands on the house front wall (z = -0.97)
 const WINDOW_C = Vector3.create(2.16, GROUND_Y + 2.33, -0.97) // centre of the picture window, world (set) coords
 const ROOM_H = 3.2
 // room coordinates (origin: room centre on the floor)
@@ -78,6 +82,7 @@ const pbr = (src: string, extra: Partial<{ roughness: number; emissive: number }
       metallic: 0,
       roughness: extra.roughness ?? 1,
       specularIntensity: 0,
+      transparencyMode: MaterialTransparencyMode.MTM_OPAQUE,
       castShadows: false,
       ...(extra.emissive ? { emissiveTexture: tex(src), emissiveColor: Color3.White(), emissiveIntensity: extra.emissive } : {})
     }
@@ -102,7 +107,7 @@ function light(parent: Entity, pos: Vector3, color: Color3, intensity: number, r
 
 function buildSets(video: Entity) {
   setRoot = engine.addEntity()
-  Transform.create(setRoot, { position: earthPosition() })
+  Transform.create(setRoot, { position: earthPosition(), scale: Vector3.create(SET_SCALE, SET_SCALE, SET_SCALE) })
 
   // sky, lawn, street
   const sets = engine.addEntity()
@@ -110,17 +115,17 @@ function buildSets(video: Entity) {
   GltfContainer.create(sets, { src: 'models/earth-sets.glb', ...NO_COLLIDE })
   GltfNodeModifiers.create(sets, {
     modifiers: [
-      { path: 'Sky', material: { material: { $case: 'unlit', unlit: { texture: tex('images/earth-sky.png'), diffuseColor: Color4.White(), castShadows: false } } }, castShadows: false },
+      { path: 'Sky', material: pbr('images/earth-sky.png', { emissive: 1.1 }), castShadows: false },
       { path: 'Ground', material: pbr('images/earth-lawn.png'), castShadows: false },
       { path: 'Road', material: pbr('images/earth-road.png'), castShadows: false },
       { path: 'Path', material: pbr('images/earth-path.png'), castShadows: false }
     ]
   })
   // daylight: a warm "sun" high on the +Z side and a cool fill
-  light(setRoot, Vector3.create(5, 9, -8), Color3.create(1, 0.96, 0.85), 7000, 45)
-  light(setRoot, Vector3.create(-6, 5, 6), Color3.create(0.7, 0.8, 1), 1500, 30)
+  light(setRoot, Vector3.create(5, 9, -8), Color3.create(1, 0.96, 0.85), 2600, 40)
+  light(setRoot, Vector3.create(-6, 5, 6), Color3.create(0.7, 0.8, 1), 600, 26)
   // porch light: makes the picture window read as glass before we go through it
-  light(setRoot, Vector3.create(WINDOW_C.x, WINDOW_C.y + 0.6, WINDOW_C.z - 1.6), Color3.create(1, 0.85, 0.6), 500, 7)
+  light(setRoot, Vector3.create(WINDOW_C.x, WINDOW_C.y + 0.6, WINDOW_C.z - 1.6), Color3.create(1, 0.85, 0.6), 220, 6)
 
   // the street: hero house facing the road, neighbours either side, props
   prop(setRoot, 'house', 0, GROUND_Y, 0, HOUSE_SCALE, 180)
@@ -133,7 +138,7 @@ function buildSets(video: Entity) {
   for (let i = -2; i <= 2; i++) if (i !== 0) prop(setRoot, 'fence', i * 1.9 + (i > 0 ? 0.6 : -0.6), GROUND_Y, -5.6, 1)
   prop(setRoot, 'mailbox', 1.4, GROUND_Y, -5.9, 0.75, 180)
   prop(setRoot, 'car', 3.5, GROUND_Y, ROAD_Z + 1.4, 2.2)
-  prop(setRoot, 'car', -7, GROUND_Y, ROAD_Z - 1.2, 2.2, 180)
+  prop(setRoot, 'car', -5.5, GROUND_Y, ROAD_Z - 1.2, 2.2, 180)
 
   // the living room, inside the house model
   roomRoot = engine.addEntity()
@@ -147,8 +152,8 @@ function buildSets(video: Entity) {
       { path: 'RoomWalls', material: pbr('images/room-wallpaper.png'), castShadows: false }
     ]
   })
-  light(roomRoot, Vector3.create(0.4, ROOM_H - 0.3, 0.6), Color3.create(1, 0.93, 0.8), 900, 9)
-  light(roomRoot, Vector3.create(2.2, 2.4, -1.6), Color3.create(0.9, 0.95, 1), 400, 6) // window light
+  light(roomRoot, Vector3.create(0.4, ROOM_H - 0.3, 0.6), Color3.create(1, 0.93, 0.8), 320, 8)
+  light(roomRoot, Vector3.create(2.2, 2.4, -1.6), Color3.create(0.9, 0.95, 1), 140, 5) // window light
 
   // furniture (room coords, origin room centre on the floor; TV wall is +Z)
   prop(roomRoot, 'sofa', 0.4, 0, -0.9, 1.05, 0) // faces the TV (+Z)
@@ -173,7 +178,7 @@ function buildSets(video: Entity) {
     diffuseColor: Color4.White(),
     castShadows: false
   })
-  light(roomRoot, Vector3.add(TV_SCREEN, Vector3.create(0, 0.2, -0.8)), Color3.create(0.6, 0.75, 1), 250, 4)
+  light(roomRoot, Vector3.add(TV_SCREEN, Vector3.create(0, 0.2, -0.8)), Color3.create(0.6, 0.75, 1), 110, 3.5)
 
   // click target: an invisible sphere the size of the planet
   clickTarget = engine.addEntity()
@@ -230,18 +235,23 @@ function buildKeys(): Key[] {
   const forward = Vector3.rotate(Vector3.Forward(), cam.rotation)
   // horizontal direction from the Earth back to the player: we approach along it and go over the top
   const toPlayer = Vector3.normalize(Vector3.create(start.x - E.x, 0, start.z - E.z))
-  const local = (x: number, y: number, z: number) => Vector3.add(E, Vector3.create(x, y, z))
+  const local = (x: number, y: number, z: number) => Vector3.add(E, Vector3.create(x * SET_SCALE, y * SET_SCALE, z * SET_SCALE))
+  // a point on the Earth-player line at horizontal distance d from the Earth, at absolute height y
+  const onLine = (d: number, y: number) => Vector3.create(E.x + toPlayer.x * d, y, E.z + toPlayer.z * d)
   const room = (x: number, y: number, z: number) => local(ROOM_POS.x + x, ROOM_POS.y + y, ROOM_POS.z + z)
   const up = Vector3.Up()
   const far = Vector3.add(E, Vector3.scale(toPlayer, 30))
+  // horizontal distance from the Earth to the dome glass along the approach line
+  const glassD = Math.hypot(E.x - CENTER.x, E.z - CENTER.z) - DOME_RADIUS
   const streetFocus = local(0, GROUND_Y + 1, -2)
   const windowFocus = local(WINDOW_C.x, WINDOW_C.y, WINDOW_C.z)
   const screen = room(TV_SCREEN.x, TV_SCREEN.y, TV_SCREEN.z)
   return [
     { t: 0, pos: start, look: Vector3.add(start, Vector3.scale(forward, 40)) },
     { t: 3.5, pos: Vector3.add(start, Vector3.scale(Vector3.normalize(Vector3.subtract(far, start)), Vector3.distance(start, far) * 0.55)), look: E },
-    { t: 6.5, pos: Vector3.add(Vector3.add(E, Vector3.scale(toPlayer, 20)), Vector3.scale(up, 11)), look: E },
-    { t: 8.5, pos: Vector3.add(Vector3.add(E, Vector3.scale(toPlayer, 7)), Vector3.scale(up, 15.5)), look: Vector3.add(E, Vector3.scale(up, 2)) },
+    { t: 5.8, pos: onLine(glassD + 4, 11.5), look: E }, // inside, at window height
+    { t: 7.0, pos: onLine(glassD - 3, 13), look: E }, // through the glass (glint)
+    { t: 8.5, pos: Vector3.add(Vector3.add(E, Vector3.scale(toPlayer, 7)), Vector3.scale(up, 15)), look: Vector3.add(E, Vector3.scale(up, 2)) },
     { t: 9.8, pos: local(0, 12.6, -2), look: local(0, 0, -3) }, // in the clouds (shell crossing)
     { t: 11.5, pos: local(1, 7, -7.5), look: streetFocus },
     { t: 14, pos: local(2.6, GROUND_Y + 3.2, -9.5), look: windowFocus },
@@ -318,10 +328,12 @@ function system(dt: number) {
     const c = t < 8.9 ? 0 : t < 9.5 ? (t - 8.9) / 0.6 : t < 10.7 ? 1 : t < 11.4 ? 1 - (t - 10.7) / 0.7 : 0
     // window: a short glint at the glass (t = 17.5)
     const w = 1 - Math.min(1, Math.abs(t - 17.5) / 0.35)
-    zoomUi.white = Math.max(c, w * 0.75)
+    // dome glass: glint while the camera is within a metre of the wall
+    const g = 1 - Math.min(1, Math.abs(Math.hypot(pos.x - CENTER.x, pos.z - CENTER.z) - DOME_RADIUS) / 1.1)
+    zoomUi.white = Math.max(c, w * 0.75, g * 0.85)
     if (!z.cloudsDone && t > 8.9) {
       z.cloudsDone = true
-      burstExplosion(Vector3.add(E, Vector3.create(0, 12.8, -2)), 2.5, { ...PALETTES.cow, fire0: Color3.White(), fire1: Color3.create(0.9, 0.93, 1), smoke: Color3.White(), spark: Color3.White(), flash: Color3.White() })
+      burstExplosion(Vector3.add(E, Vector3.create(0, 12.8 * SET_SCALE, -2 * SET_SCALE)), 2.5, { ...PALETTES.cow, fire0: Color3.White(), fire1: Color3.create(0.9, 0.93, 1), smoke: Color3.White(), spark: Color3.White(), flash: Color3.White() })
       playAt(SFX.ufoPass, pos, 0.5, 0.6)
     }
     if (!z.windowDone && t > 17.3) {
