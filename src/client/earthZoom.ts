@@ -133,12 +133,13 @@ let tvPlays = 0
 function tex(src: string) {
   return Material.Texture.Common({ src, wrapMode: TextureWrapMode.TWM_REPEAT, filterMode: TextureFilterMode.TFM_TRILINEAR })
 }
-const pbr = (src: string, extra: Partial<{ roughness: number; emissive: number }> = {}) => ({
+// emissiveOnly: black albedo, so the scene lights add nothing and the texture shows at exactly its emissive strength
+const pbr = (src: string, extra: Partial<{ roughness: number; emissive: number; emissiveOnly: boolean }> = {}) => ({
   material: {
     $case: 'pbr' as const,
     pbr: {
       texture: tex(src),
-      albedoColor: Color4.White(),
+      albedoColor: extra.emissiveOnly ? Color4.Black() : Color4.White(),
       metallic: 0,
       roughness: extra.roughness ?? 1,
       specularIntensity: 0,
@@ -181,7 +182,7 @@ function buildSets() {
   const sky = engine.addEntity()
   Transform.create(sky, { parent: setRoot })
   GltfContainer.create(sky, { src: 'models/earth-sky.glb', ...NO_COLLIDE })
-  GltfNodeModifiers.create(sky, { modifiers: [{ path: 'Sky', material: pbr('images/earth-sky.png', { emissive: 1.1 }), castShadows: false }] })
+  GltfNodeModifiers.create(sky, { modifiers: [{ path: 'Sky', material: pbr('images/earth-sky.png', { emissive: 0.95, emissiveOnly: true }), castShadows: false }] })
   // daylight: a warm "sun" high on the +Z side and a cool fill (shared by every layer)
   light(setRoot, Vector3.create(5, 9, -8), Color3.create(1, 0.96, 0.85), 2600, 40)
   light(setRoot, Vector3.create(-6, 5, 6), Color3.create(0.7, 0.8, 1), 600, 26)
