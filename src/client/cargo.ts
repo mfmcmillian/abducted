@@ -230,11 +230,13 @@ function alignY(dir: Vector3) {
 
 /**
  * The Meshy launch pad (models/launch-pad.glb): a round hazard-striped deck with pink pylons and a
- * loading ramp on its +Z side. Model units: 1.77 wide, deck top at 0.26, 0.67 to the pylon tips.
+ * loading ramp on its +Z side. Model units: 1.77 wide, 0.67 tall with the origin at mid height
+ * (bottom at y -0.33), deck top 0.26 above the bottom.
  */
 const PAD_SCALE = 6.2
 const PAD_DECK = 0.26 * PAD_SCALE // the cannon stands on the deck
-const PAD_MODEL_CENTRE = Vector3.create(0, 0, -0.07) // the disc is a little off the model origin (ramp side is +Z)
+/** Where the disc's bottom centre sits in model space; the pad is placed so this lands on the floor at LAUNCHER. */
+const PAD_MODEL_CENTRE = Vector3.create(0.08, -0.33, -0.08)
 
 function createLauncher() {
   const out = Vector3.normalize(Vector3.create(LAUNCHER.x - CENTER.x, 0, LAUNCHER.z - CENTER.z))
@@ -254,7 +256,7 @@ function createLauncher() {
   })
   GltfContainer.create(pad, { src: 'models/launch-pad.glb', visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
 
-  const metal = { albedoColor: Color4.create(0.12, 0.13, 0.15, 1), metallic: 0.85, roughness: 0.35 }
+  const metal = { albedoColor: Color4.create(0.3, 0.32, 0.36, 1), emissiveColor: Color3.create(0.5, 0.2, 0.45), emissiveIntensity: 0.25, metallic: 0.7, roughness: 0.45 }
 
   const base = engine.addEntity()
   Transform.create(base, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 0.6, LAUNCHER.z), scale: Vector3.create(4.4, 1.2, 4.4) })
@@ -290,6 +292,10 @@ function createLauncher() {
   const light = engine.addEntity()
   Transform.create(light, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 6, LAUNCHER.z) })
   LightSource.create(light, { active: true, color: PINK, intensity: 900, range: 22, shadow: false, type: LightSource.Type.Point({}) })
+  // a low warm light so the deck, stripes and cannon read against the dark floor
+  const deckLight = engine.addEntity()
+  Transform.create(deckLight, { position: Vector3.subtract(Vector3.create(LAUNCHER.x, PAD_DECK + 3, LAUNCHER.z), Vector3.scale(out, 4)) })
+  LightSource.create(deckLight, { active: true, color: Color3.create(1, 0.85, 0.7), intensity: 700, range: 16, shadow: false, type: LightSource.Type.Point({}) })
 
   // Giant pink 3D "DROP COWS / HERE" over the cannon (models/text-drop.glb from tools/build-text.mjs,
   // origin on the bottom line's baseline, reads from -Z, so it billboards like the other signs).
