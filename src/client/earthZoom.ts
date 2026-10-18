@@ -13,17 +13,19 @@ import {
   MaterialTransparencyMode,
   MeshCollider,
   MeshRenderer,
+  TextureUnion,
   PointerEventType,
   pointerEventsSystem,
   TextureFilterMode,
   TextureWrapMode,
   Transform,
   VideoEvent,
+  VideoPlayer,
   VideoState,
   VirtualCamera
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { CENTER, DOME_RADIUS } from '../layout'
+import { CENTER, DOME_RADIUS, VIDEO_URL } from '../layout'
 import { EARTH_MODELS, EarthModel } from './earthManifest'
 import { burstExplosion, PALETTES, startFx } from './fx'
 import { playAt, playGlobal, SFX } from './sfx'
@@ -71,6 +73,13 @@ const TV_SCREEN = Vector3.create(TV_POS.x - 0.185 * TV_SCALE, TV_POS.y - 0.05 * 
 const TV_SCREEN_SIZE = { w: 1.21 * TV_SCALE, h: 0.68 * TV_SCALE }
 /** Distance at which the screen exactly fills a 60 degree (16:9) view, plus a hair of margin. */
 const FIT_DISTANCE = Math.max(TV_SCREEN_SIZE.h / 2 / Math.tan(Math.PI / 6), TV_SCREEN_SIZE.w / 2 / (Math.tan(Math.PI / 6) * (16 / 9))) * 1.04
+/** Snow frames written by tools/tv-static.mjs, cycled on the CRT until the video starts. */
+const STATIC_FRAMES = 6
+/** Static stays on the fitted screen this long before the TV changes channel (s). */
+const STATIC_HOLD = 0.6
+/** The dome music drops to this while the TV plays its copy of the video (dome.ts starts it at 0.8). */
+const MUSIC_VOLUME = 0.8
+const DUCKED_VOLUME = 0.1
 /** How long we will sit on the screen waiting for the video to finish before giving up (s). */
 const MAX_HOLD = 15 * 60
 
@@ -112,28 +121,55 @@ function townEmbedded(embedded: boolean) {
 }
 let clickTarget: Entity
 let camera: Entity
+/** the dome's shared player (music); only its volume is touched here */
 let videoEntity: Entity
+/** the TV's own player: same film, started from the top once the screen fills the view */
+let tvPlayer: Entity
+let screen: Entity
+let staticFrame = 0
+let staticClock = 0
+/** how many times the TV has been started; nudges `position` so every restart seeks to the top */
+let tvPlays = 0
 
 // ---- building the sets -----------------------------------------------------------------------
 
 function tex(src: string) {
   return Material.Texture.Common({ src, wrapMode: TextureWrapMode.TWM_REPEAT, filterMode: TextureFilterMode.TFM_TRILINEAR })
 }
-const pbr = (src: string, extra: Partial<{ roughness: number; emissive: number }> = {}) => ({
+const pbrTex = (texture: TextureUnion, extra: Partial<{ roughness: number; emissive: number; emissiveColor: Color3 }> = {}) => ({
   material: {
     $case: 'pbr' as const,
     pbr: {
-      texture: tex(src),
+      texture,
       albedoColor: Color4.White(),
       metallic: 0,
       roughness: extra.roughness ?? 1,
       specularIntensity: 0,
       transparencyMode: MaterialTransparencyMode.MTM_OPAQUE,
       castShadows: false,
-      ...(extra.emissive ? { emissiveTexture: tex(src), emissiveColor: Color3.White(), emissiveIntensity: extra.emissive } : {})
+      ...(extra.emissive ? { emissiveTexture: texture, emissiveColor: extra.emissiveColor ?? Color3.White(), emissiveIntensity: extra.emissive } : {})
     }
   }
 })
+const pbr = (src: string, extra: Partial<{ roughness: number; emissive: number }> = {}) => pbrTex(tex(src), extra)
+
+/** Show a snow frame on the CRT (the offset scrambles it further between frames). */
+function showStatic(frame: number) {
+  const texture = Material.Texture.Common({
+    src: `images/tv-static-${frame}.png`,
+    wrapMode: TextureWrapMode.TWM_REPEAT,
+    filterMode: TextureFilterMode.TFM_BILINEAR,
+    offset: { x: Math.random(), y: Math.random() }
+  })
+  GltfNodeModifiers.createOrReplace(screen, {
+    modifiers: [{ path: 'Screen', material: pbrTex(texture, { emissive: 1.1, emissiveColor: Color3.create(0.85, 0.9, 1) }), castShadows: false }]
+  })
+}
+/** Put the TV's video on the CRT. */
+function showVideo() {
+  const texture = Material.Texture.Video({ videoPlayerEntity: tvPlayer, wrapMode: TextureWrapMode.TWM_CLAMP, filterMode: TextureFilterMode.TFM_BILINEAR })
+  GltfNodeModifiers.createOrReplace(screen, { modifiers: [{ path: 'Screen', material: pbrTex(texture, { emissive: 1.0 }), castShadows: false }] })
+}
 
 /** Place a Meshy model so its bbox bottom sits on y, with the given scale and yaw. */
 function prop(parent: Entity, name: EarthModel, x: number, y: number, z: number, scale: number, yaw = 0): Entity {
@@ -151,7 +187,7 @@ function light(parent: Entity, pos: Vector3, color: Color3, intensity: number, r
   return e
 }
 
-function buildSets(video: Entity) {
+function buildSets() {
   setRoot = engine.addEntity()
   Transform.create(setRoot, { position: earthPosition(), scale: Vector3.create(SET_SCALE, SET_SCALE, SET_SCALE) })
 
@@ -229,15 +265,15 @@ function buildSets(video: Entity) {
   Material.setPbrMaterial(cabinet, { albedoColor: Color4.create(0.45, 0.3, 0.18, 1), roughness: 0.6, metallic: 0 })
   prop(roomRoot, 'tv', TV_POS.x, 0.6, TV_POS.z, TV_SCALE, 180)
 
-  // the screen: the dome's video, slightly proud of the CRT glass
-  const screen = engine.addEntity()
+  // the screen: a domed CRT face over the model's glass. It shows snow until the camera has
+  // settled on it, then the TV's own copy of the dome video, from the top.
+  screen = engine.addEntity()
   Transform.create(screen, { parent: roomRoot, position: TV_SCREEN, scale: Vector3.create(TV_SCREEN_SIZE.w, TV_SCREEN_SIZE.h, 1) })
-  MeshRenderer.setPlane(screen)
-  Material.setBasicMaterial(screen, {
-    texture: Material.Texture.Video({ videoPlayerEntity: video, wrapMode: TextureWrapMode.TWM_CLAMP, filterMode: TextureFilterMode.TFM_BILINEAR }),
-    diffuseColor: Color4.White(),
-    castShadows: false
-  })
+  GltfContainer.create(screen, { src: 'models/earth-screen.glb', ...NO_COLLIDE })
+  tvPlayer = engine.addEntity()
+  Transform.create(tvPlayer, { parent: roomRoot, position: TV_SCREEN })
+  VideoPlayer.create(tvPlayer, { src: VIDEO_URL, playing: false, loop: false, volume: 1 })
+  showStatic(0)
   light(roomRoot, Vector3.add(TV_SCREEN, Vector3.create(0, 0.2, -0.8)), Color3.create(0.6, 0.75, 1), 110, 3.5)
 
   // click target: an invisible sphere the size of the planet
@@ -270,7 +306,11 @@ interface Zoom {
   cloudsDone: boolean
   windowDone: boolean
   swapped: boolean
-  /** last seen video offset, to spot the loop wrapping */
+  /** hold: has the TV been told to play */
+  tvStarted: boolean
+  /** hold: is the video (not the snow) on the screen */
+  tvShowing: boolean
+  /** last seen video offset, to notice it stopping or wrapping */
   holdOffset: number
   /** seconds of hold left if the video events stop coming */
   holdLeft: number
@@ -353,7 +393,7 @@ function startZoom() {
   if (!earthEntity()) return
   setEarthFrozen(true)
   const keys = buildKeys()
-  zoom = { keys, t: 0, end: keys[keys.length - 1].t, phase: 'fly', cloudsDone: false, windowDone: false, swapped: false, holdOffset: -1, holdLeft: 45 }
+  zoom = { keys, t: 0, end: keys[keys.length - 1].t, phase: 'fly', cloudsDone: false, windowDone: false, swapped: false, tvStarted: false, tvShowing: false, holdOffset: -1, holdLeft: 45 }
   townEmbedded(true)
   const start = keys[0]
   const tr = Transform.getMutable(camera)
@@ -376,8 +416,21 @@ function finishZoom() {
   zoomUi.active = false
   zoomUi.hint = ''
   zoomUi.white = 1 // fades out below
-  toast('Back on the deck. The TV down there is playing the dome video: click the Earth any time.', 6)
+  toast('Back on the deck. Click the Earth any time to watch again.', 6)
   townEmbedded(true)
+  // the TV goes back to snow and the dome music comes back up
+  VideoPlayer.getMutable(tvPlayer).playing = false
+  VideoPlayer.getMutable(videoEntity).volume = MUSIC_VOLUME
+  showStatic(0)
+}
+
+/** Cycle the snow at ~24 fps. */
+function animateStatic(dt: number) {
+  staticClock += dt
+  if (staticClock < 1 / 24) return
+  staticClock = 0
+  staticFrame = (staticFrame + 1 + Math.floor(Math.random() * (STATIC_FRAMES - 1))) % STATIC_FRAMES
+  showStatic(staticFrame)
 }
 
 function system(dt: number) {
@@ -426,25 +479,43 @@ function system(dt: number) {
       z.windowDone = true
       playAt(SFX.ufoPass, pos, 0.3, 1.2) // a breath of air through the open window
     }
+    animateStatic(dt)
     if (z.t >= z.end) {
       z.phase = 'hold'
       z.t = 0
-      const v = videoInfo()
-      z.holdOffset = v.offset
-      z.holdLeft = v.offset >= 0 && v.length > 0 ? v.length - v.offset + 0.5 : 45
       zoomUi.hint = 'E to leave'
     }
   } else if (z.phase === 'hold') {
-    // sit on the screen until the video finishes (it loops: until the offset wraps), or E
+    // the snow fills the view; then the TV changes channel and we sit through the film, or E
     z.t += dt
-    zoomUi.white = 0
-    const { offset } = videoInfo()
-    const wrapped = z.holdOffset >= 0 && offset >= 0 && offset < z.holdOffset - 2
-    if (offset > z.holdOffset) z.holdOffset = offset
-    z.holdLeft -= dt
-    if (wrapped || z.holdLeft <= 0 || z.t >= MAX_HOLD) {
-      z.phase = 'out'
-      z.t = 0
+    if (zoomUi.white > 0) zoomUi.white = Math.max(0, zoomUi.white - dt * 4)
+    if (!z.tvStarted && z.t >= STATIC_HOLD) {
+      z.tvStarted = true
+      const tv = VideoPlayer.getMutable(tvPlayer)
+      tv.playing = true
+      tv.position = 0.001 * (tvPlays++ % 10) // a fresh value each time, so the seek is always sent
+      VideoPlayer.getMutable(videoEntity).volume = DUCKED_VOLUME
+    }
+    const { offset, length } = videoInfo()
+    if (!z.tvShowing) {
+      animateStatic(dt)
+      // swap to the picture once the first frames are really playing (or stop waiting after 6 s)
+      if (offset >= 0 || z.t >= STATIC_HOLD + 6) {
+        z.tvShowing = true
+        z.holdOffset = -1
+        showVideo()
+        zoomUi.white = 0.6 // the channel-change blink
+      }
+    } else {
+      // done when the player reports the end (stops, or wraps if the explorer loops it anyway)
+      const stopped = z.holdOffset > 1 && offset < 0
+      const wrapped = z.holdOffset >= 0 && offset >= 0 && offset < z.holdOffset - 2
+      if (offset > z.holdOffset) z.holdOffset = offset
+      z.holdLeft = offset >= 0 && length > 0 ? length - offset + 1 : z.holdLeft - dt
+      if (stopped || wrapped || z.holdLeft <= 0 || z.t >= MAX_HOLD) {
+        z.phase = 'out'
+        z.t = 0
+      }
     }
   } else {
     z.t += dt
@@ -453,11 +524,11 @@ function system(dt: number) {
   }
 }
 
-/** Playback position / length of the dome video in seconds (-1 / 0 if unknown or not playing). */
+/** Playback position / length of the TV's video in seconds (-1 / 0 if unknown or not playing). */
 function videoInfo(): { offset: number; length: number } {
-  if (!VideoEvent.has(videoEntity)) return { offset: -1, length: 0 }
+  if (!VideoEvent.has(tvPlayer)) return { offset: -1, length: 0 }
   let last: { state: VideoState; currentOffset: number; videoLength: number } | null = null
-  for (const ev of VideoEvent.get(videoEntity)) last = ev
+  for (const ev of VideoEvent.get(tvPlayer)) last = ev
   if (!last || last.state !== VideoState.VS_PLAYING) return { offset: -1, length: 0 }
   return { offset: last.currentOffset, length: last.videoLength }
 }
@@ -465,6 +536,6 @@ function videoInfo(): { offset: number; length: number } {
 export function createEarthZoom(video: Entity) {
   videoEntity = video
   startFx()
-  buildSets(video)
+  buildSets()
   engine.addSystem(system)
 }

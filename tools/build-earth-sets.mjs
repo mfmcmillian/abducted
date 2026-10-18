@@ -10,6 +10,8 @@
 //   RoomFloor   living room floor, planks (one tile per 2 m)
 //   RoomWalls   four walls, normals inward, with a window opening in the front (-Z) wall
 //   RoomCeiling ceiling, normals down
+// models/earth-screen.glb
+//   Screen      1 x 1 CRT face, bulging 35 mm toward -Z (its front); scaled to the TV's glass in the scene
 //
 // The room sits at the origin, front wall at z = -ROOM_D / 2. The scene positions the whole
 // room entity so the opening lines up with the house model's picture window.
@@ -25,6 +27,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'models', 'earth-sets.glb')
 const OUT_ROOM = resolve(__dirname, '..', 'models', 'earth-room.glb')
 const OUT_SKY = resolve(__dirname, '..', 'models', 'earth-sky.glb')
+const OUT_SCREEN = resolve(__dirname, '..', 'models', 'earth-screen.glb')
 
 export const SKY_R = 11.6
 export const GROUND_Y = -4.2
@@ -145,8 +148,9 @@ const ceiling = new MeshBuf('RoomCeiling', 5)
   const b = ceiling.vertex([hw, ROOM_H, -hd], n, [1, 0])
   const c = ceiling.vertex([hw, ROOM_H, hd], n, [1, 1])
   const d = ceiling.vertex([-hw, ROOM_H, hd], n, [0, 1])
-  ceiling.tri(a, c, b)
-  ceiling.tri(a, d, c)
+  // seen from below: this winding faces -Y (the old one faced up and let you see the sky through the roof)
+  ceiling.tri(a, b, c)
+  ceiling.tri(a, c, d)
 }
 const walls = new MeshBuf('RoomWalls', 6)
 {
@@ -232,22 +236,64 @@ const walls = new MeshBuf('RoomWalls', 6)
   walls.glass = glass
 }
 
+// ---- CRT screen: a gently domed 1 x 1 face, front toward -Z ------------------------------------
+// u=0 sits at +X: looking at the front (toward +Z) in glTF's right-handed space, +X is the viewer's left.
+const screen = new MeshBuf('Screen', 8)
+{
+  const NX = 24, NY = 16, BULGE = 0.035
+  const P = []
+  const idx = []
+  for (let j = 0; j <= NY; j++) {
+    const row = []
+    const v = j / NY, ny = 2 * v - 1
+    for (let i = 0; i <= NX; i++) {
+      const u = i / NX, nx = 2 * u - 1
+      const z = -BULGE * (1 - 0.5 * (nx * nx + ny * ny))
+      // dz/du, dz/dv for the normal (face points -Z)
+      const dzu = BULGE * nx * 2, dzv = BULGE * ny * 2
+      const n = [-dzu, -dzv, -1]
+      const l = Math.hypot(...n)
+      const p = [0.5 - u, 0.5 - v, z]
+      P.push(p)
+      row.push(screen.vertex(p, n.map((c) => c / l), [u, v]))
+    }
+    idx.push(row)
+  }
+  const faceOut = (a, b, c) => {
+    const [pa, pb, pc] = [P[a], P[b], P[c]]
+    const e1 = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]], e2 = [pc[0] - pa[0], pc[1] - pa[1], pc[2] - pa[2]]
+    const nz = e1[0] * e2[1] - e1[1] * e2[0]
+    if (nz < 0) screen.tri(a, b, c)
+    else screen.tri(a, c, b)
+  }
+  for (let j = 0; j < NY; j++) {
+    for (let i = 0; i < NX; i++) {
+      const a = idx[j][i], b = idx[j][i + 1], c = idx[j + 1][i + 1], d = idx[j + 1][i]
+      faceOut(a, b, c)
+      faceOut(a, c, d)
+    }
+  }
+}
+
 const materials = [
   { name: 'Sky', pbrMetallicRoughness: { baseColorFactor: [1, 1, 1, 1], metallicFactor: 0, roughnessFactor: 1 }, emissiveFactor: [1, 1, 1], doubleSided: false },
   { name: 'Lawn', pbrMetallicRoughness: { baseColorFactor: [0.45, 0.75, 0.3, 1], metallicFactor: 0, roughnessFactor: 1 } },
   { name: 'Road', pbrMetallicRoughness: { baseColorFactor: [0.25, 0.26, 0.28, 1], metallicFactor: 0, roughnessFactor: 1 } },
   { name: 'Path', pbrMetallicRoughness: { baseColorFactor: [0.7, 0.66, 0.6, 1], metallicFactor: 0, roughnessFactor: 1 } },
-  { name: 'Wood', pbrMetallicRoughness: { baseColorFactor: [0.6, 0.42, 0.25, 1], metallicFactor: 0, roughnessFactor: 0.7 } },
-  { name: 'Plaster', pbrMetallicRoughness: { baseColorFactor: [0.95, 0.94, 0.9, 1], metallicFactor: 0, roughnessFactor: 1 } },
-  { name: 'Wallpaper', pbrMetallicRoughness: { baseColorFactor: [0.85, 0.8, 0.7, 1], metallicFactor: 0, roughnessFactor: 1 } },
-  { name: 'Glass', pbrMetallicRoughness: { baseColorFactor: [0.75, 0.85, 0.95, 0.3], metallicFactor: 0, roughnessFactor: 0.1 }, alphaMode: 'BLEND', doubleSided: true }
+  // the room shell is double sided: the camera is always inside it, and nothing may show through
+  { name: 'Wood', pbrMetallicRoughness: { baseColorFactor: [0.6, 0.42, 0.25, 1], metallicFactor: 0, roughnessFactor: 0.7 }, doubleSided: true },
+  { name: 'Plaster', pbrMetallicRoughness: { baseColorFactor: [0.95, 0.94, 0.9, 1], metallicFactor: 0, roughnessFactor: 1 }, doubleSided: true },
+  { name: 'Wallpaper', pbrMetallicRoughness: { baseColorFactor: [0.85, 0.8, 0.7, 1], metallicFactor: 0, roughnessFactor: 1 }, doubleSided: true },
+  { name: 'Glass', pbrMetallicRoughness: { baseColorFactor: [0.75, 0.85, 0.95, 0.3], metallicFactor: 0, roughnessFactor: 0.1 }, alphaMode: 'BLEND', doubleSided: true },
+  { name: 'Screen', pbrMetallicRoughness: { baseColorFactor: [0.08, 0.08, 0.09, 1], metallicFactor: 0, roughnessFactor: 0.3 } }
 ]
 
 mkdirSync(dirname(OUT), { recursive: true })
 for (const [out, meshes, name] of [
   [OUT_SKY, [sky], 'EarthSky'],
   [OUT, [ground, road, path], 'EarthSets'],
-  [OUT_ROOM, [floor, ceiling, walls, walls.reveal, walls.sashes, walls.glass], 'EarthRoom']
+  [OUT_ROOM, [floor, ceiling, walls, walls.reveal, walls.sashes, walls.glass], 'EarthRoom'],
+  [OUT_SCREEN, [screen], 'EarthScreen']
 ]) {
   const glb = buildGlb(meshes, materials, name, 'abducted-dome build-earth-sets.mjs')
   writeFileSync(out, glb)
