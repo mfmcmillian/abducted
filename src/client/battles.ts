@@ -3,7 +3,7 @@ import { Color3, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { CENTER, DOME_RADIUS } from '../layout'
 import { room } from '../shared/messages'
 import { claimFloatingCow, CowTarget } from './cargo'
-import { burstExplosion, burstImpact, fireBolt, Palette, PALETTES, puffTrail, startFx } from './fx'
+import { burstExplosion, burstImpact, fireBolt, Palette, PALETTES, puffTrail, startFx, warpIn, warpOut } from './fx'
 import { playAt, SFX } from './sfx'
 import { asteroidPosition, AsteroidRef, killAsteroid, pickAsteroidTarget } from './space'
 import { toast } from './ui'
@@ -52,7 +52,7 @@ function saucer(): Saucer | null {
   if (!s) {
     if (saucers.length >= 4) return null
     const entity = engine.addEntity()
-    Transform.create(entity, { position: Vector3.clone(HIDDEN), scale: Vector3.create(SAUCER_SCALE, SAUCER_SCALE, SAUCER_SCALE) })
+    Transform.create(entity, { position: Vector3.clone(HIDDEN), scale: Vector3.Zero() })
     GltfContainer.create(entity, { src: 'models/ufo.glb', ...NO_COLLIDE })
     s = { entity, busy: false, trail: 0 }
     saucers.push(s)
@@ -63,8 +63,25 @@ function saucer(): Saucer | null {
 
 function parkSaucer(s: Saucer) {
   s.busy = false
-  Transform.getMutable(s.entity).position = Vector3.clone(HIDDEN)
+  const t = Transform.getMutable(s.entity)
+  t.position = Vector3.clone(HIDDEN)
+  t.scale = Vector3.Zero()
 }
+
+/** Saucer rotation for a heading (what placeSaucer would set, minus the spin). */
+function saucerRotation(heading: Vector3, bank: number) {
+  const flat = Vector3.normalize(Vector3.create(heading.x, 0, heading.z))
+  const yaw = (Math.atan2(flat.x, flat.z) * 180) / Math.PI
+  return Quaternion.fromEulerDegrees(0, yaw, bank)
+}
+
+/** Streak away along heading and park when gone. */
+function warpSaucerOut(s: Saucer, pos: Vector3, heading: Vector3, color: Color3) {
+  playAt(SFX.ufoPass, pos, 0.7, 1.3)
+  warpOut(s.entity, pos, heading, SAUCER_SCALE, color, 0, () => parkSaucer(s))
+}
+
+const WARP_IN = 0.7
 
 /** Place a saucer: nose along `heading`, banked by `bank` degrees, spinning on its axis. */
 function placeSaucer(s: Saucer, pos: Vector3, heading: Vector3, bank: number, clock: number, dt: number, trailColor: Color3) {
@@ -155,7 +172,7 @@ function explode(target: Target) {
 
 // ---- raids -----------------------------------------------------------------------------------
 
-type Phase = 'approach' | 'fire' | 'leave'
+type Phase = 'warpin' | 'approach' | 'fire' | 'leave'
 interface Raid {
   s: Saucer
   target: Target
@@ -186,8 +203,10 @@ function startRaid(target: Target, color: Color3) {
   if (!s) return false
   const c = cyl(target.position())
   const start = polar(c.rho - 1, c.phi - (DIR * 38) / c.rho, c.y + 10)
-  const raid: Raid = { s, target, phase: 'approach', t: 0, start, pos: start, heading: tangentAt(c.phi), shots: 0, nextShot: 0.2, leaveFrom: start, color }
+  const heading = Vector3.scale(tangentAt(c.phi), DIR)
+  const raid: Raid = { s, target, phase: 'warpin', t: 0, start, pos: start, heading, shots: 0, nextShot: 0.2, leaveFrom: start, color }
   raids.push(raid)
+  warpIn(s.entity, start, heading, saucerRotation(heading, DIR * 18), SAUCER_SCALE, color)
   playAt(SFX.ufoPass, start, 0.7, rand(0.9, 1.1))
   return true
 }
@@ -195,7 +214,14 @@ function startRaid(target: Target, color: Color3) {
 function updateRaid(r: Raid, dt: number, clock: number) {
   r.t += dt
   let next: Vector3
-  if (r.phase === 'approach') {
+  if (r.phase === 'warpin') {
+    // fx.ts owns the transform until the streak has settled
+    if (r.t >= WARP_IN) {
+      r.phase = 'approach'
+      r.t = 0
+    }
+    return true
+  } else if (r.phase === 'approach') {
     const k = smooth(r.t / APPROACH)
     next = Vector3.lerp(r.start, firingSpot(r.target), k)
     if (r.t >= APPROACH) {
@@ -229,7 +255,7 @@ function updateRaid(r: Raid, dt: number, clock: number) {
     const dist = 45 * k * k + 6 * k
     next = polar(c.rho + 6 * k, c.phi + (DIR * dist) / c.rho, c.y + 9 * k)
     if (r.t >= LEAVE) {
-      parkSaucer(r.s)
+      warpSaucerOut(r.s, r.pos, r.heading, r.color)
       return false
     }
   }
@@ -269,8 +295,14 @@ function startDogfight() {
   }
   const rho = R + rand(9, 17)
   const phi0 = rand(0, TAU)
-  dogfight = { lead, chase, t: 0, length: rand(9, 13), rho, phi0, y: rand(9, 22), speed: rand(6.5, 8.5), nextShot: 1, leadDead: false, leadPos: polar(rho, phi0, 10), chasePos: polar(rho, phi0, 10) }
-  playAt(SFX.ufoPass, dogfight.leadPos, 0.8)
+  const d: Dogfight = { lead, chase, t: -WARP_IN, length: rand(9, 13), rho, phi0, y: rand(9, 22), speed: rand(6.5, 8.5), nextShot: 1, leadDead: false, leadPos: polar(rho, phi0, 10), chasePos: polar(rho, phi0, 10) }
+  d.leadPos = dogfightPath(d, 0, 0)
+  d.chasePos = dogfightPath(d, 0, 9)
+  const heading = Vector3.scale(tangentAt(phi0), DIR)
+  warpIn(lead.entity, d.leadPos, heading, saucerRotation(heading, 0), SAUCER_SCALE, PINK)
+  warpIn(chase.entity, d.chasePos, heading, saucerRotation(heading, 0), SAUCER_SCALE, GREEN, 0.15)
+  dogfight = d
+  playAt(SFX.ufoPass, d.leadPos, 0.8)
   return true
 }
 
@@ -282,6 +314,7 @@ function dogfightPath(d: Dogfight, t: number, lag: number) {
 
 function updateDogfight(d: Dogfight, dt: number, clock: number) {
   d.t += dt
+  if (d.t < 0) return true // still dropping out of warp
   const leadNext = dogfightPath(d, d.t, 0)
   const chaseNext = dogfightPath(d, d.t, 9)
   const leadHeading = safeNormalize(Vector3.subtract(leadNext, d.leadPos), tangentAt(d.phi0))
@@ -313,7 +346,7 @@ function updateDogfight(d: Dogfight, dt: number, clock: number) {
       playAt(SFX.explosion, pos, 1, 1.05)
     }
   } else if (d.t >= d.length + 3) {
-    parkSaucer(d.chase)
+    warpSaucerOut(d.chase, chaseNext, chaseHeading, GREEN)
     return false
   }
   return true

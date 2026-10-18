@@ -347,6 +347,88 @@ export function puffTrail(pos: Vector3, color: Color3, size = 0.6) {
   spawn({ sprite: 'puff', pos, vel: Vector3.create(rand(-0.3, 0.3), rand(-0.3, 0.3), rand(-0.3, 0.3)), life: rand(0.5, 0.9), size0: size, size1: size * 2.5, color0: color, alpha0: 0.6, alpha1: 0, glow: 2 })
 }
 
+// ---- warp in / out ---------------------------------------------------------------------------
+
+interface Warp {
+  entity: Entity
+  anchor: Vector3
+  heading: Vector3
+  scale: number
+  rotation: Quaternion
+  color: Color3
+  age: number
+  life: number
+  out: boolean
+  done?: () => void
+}
+const warps: Warp[] = []
+const WARP_DIST = 160
+
+/** Local-axis stretch: how much of `heading` lies along each of the entity's own axes. */
+function warpScale(w: Warp, stretch: number, thin: number) {
+  const r = w.rotation
+  const l = Vector3.rotate(w.heading, Quaternion.create(-r.x, -r.y, -r.z, r.w)) // conjugate = inverse for a unit quaternion
+  const ax = Math.abs(l.x)
+  const ay = Math.abs(l.y)
+  const az = Math.abs(l.z)
+  return Vector3.create(w.scale * (thin + (stretch - thin) * ax), w.scale * (thin + (stretch - thin) * ay), w.scale * (thin + (stretch - thin) * az))
+}
+
+function warpFlash(pos: Vector3, heading: Vector3, color: Color3, scale: number) {
+  spawn({ sprite: 'flare', pos, life: 0.5, size0: scale * 1.5, size1: scale * 5, color0: color, alpha0: 1, alpha1: 0, glow: 4 })
+  spawn({ sprite: 'spark', pos, vel: Vector3.scale(heading, 90), life: 0.5, size0: scale * 1.2, size1: scale * 0.3, color0: Color3.White(), color1: color, alpha0: 1, alpha1: 0, glow: 4 })
+  for (let i = 0; i < 8; i++) {
+    const side = Vector3.scale(randomDir(), 0.35)
+    spawn({ sprite: 'spark', pos: Vector3.add(pos, Vector3.scale(side, scale)), vel: Vector3.scale(Vector3.add(heading, side), rand(20, 50)), drag: 1.5, life: rand(0.4, 0.8), size0: scale * 0.3, size1: 0.02, color0: color, alpha0: 1, alpha1: 0, glow: 4 })
+  }
+  flash(pos, color, 2500 * Math.max(1, scale * 0.4), 30, 0.4)
+}
+
+/**
+ * Jump to warp: the model stretches along `heading`, thins, streaks off and is parked (scale 0,
+ * out of sight). `done` runs when it is gone. Reads the entity's current rotation.
+ */
+export function warpOut(entity: Entity, from: Vector3, heading: Vector3, scale: number, color: Color3, delay = 0, done?: () => void) {
+  const h = Vector3.normalize(heading)
+  warps.push({ entity, anchor: Vector3.clone(from), heading: h, scale, rotation: Transform.get(entity).rotation, color, age: -delay, life: 0.55, out: true, done })
+}
+
+/** Drop out of warp: a streak arrives along `heading` and settles at `to` with `rotation` and `scale`. */
+export function warpIn(entity: Entity, to: Vector3, heading: Vector3, rotation: Quaternion, scale: number, color: Color3, delay = 0, done?: () => void) {
+  const h = Vector3.normalize(heading)
+  const t = Transform.getMutable(entity)
+  t.scale = Vector3.Zero()
+  t.position = Vector3.clone(HIDDEN)
+  warps.push({ entity, anchor: Vector3.clone(to), heading: h, scale, rotation, color, age: -delay, life: 0.7, out: false, done })
+}
+
+function updateWarps(dt: number) {
+  for (let i = warps.length - 1; i >= 0; i--) {
+    const w = warps[i]
+    const wasWaiting = w.age < 0
+    w.age += dt
+    if (w.age < 0) continue
+    if (wasWaiting) warpFlash(w.anchor, w.out ? w.heading : Vector3.scale(w.heading, -1), w.color, w.scale)
+    const k = Math.min(1, w.age / w.life)
+    const q = w.out ? k : 1 - k
+    const t = Transform.getMutable(w.entity)
+    t.rotation = w.rotation
+    t.position = Vector3.add(w.anchor, Vector3.scale(w.heading, (w.out ? 1 : -1) * q * q * q * WARP_DIST))
+    t.scale = warpScale(w, 1 + 9 * q, 1 - 0.55 * q)
+    if (k >= 1) {
+      if (w.out) {
+        t.scale = Vector3.Zero()
+        t.position = Vector3.clone(HIDDEN)
+      } else {
+        t.scale = Vector3.create(w.scale, w.scale, w.scale)
+        t.position = Vector3.clone(w.anchor)
+      }
+      warps.splice(i, 1)
+      w.done?.()
+    }
+  }
+}
+
 // ---- system ------------------------------------------------------------------------------
 
 let started = false
@@ -355,6 +437,7 @@ export function startFx() {
   if (started) return
   started = true
   engine.addSystem((dt) => {
+    updateWarps(dt)
     for (const p of particles) {
       if (p.free) continue
       p.age += dt

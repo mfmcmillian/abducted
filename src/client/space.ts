@@ -2,6 +2,7 @@ import { ColliderLayer, engine, Entity, GltfContainer, LightSource, Material, Ma
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { CENTER, DOME_RADIUS } from '../layout'
 import { playAt, SFX } from './sfx'
+import { startFx, warpIn, warpOut } from './fx'
 
 /**
  * The universe outside the observation deck. dome.glb (tools/build-dome-pods.mjs) carries a
@@ -135,6 +136,9 @@ interface Fleet {
   dir: number
   travelled: number
   length: number
+  /** seconds left in the warp-in / warp-out animation, during which the formation holds still */
+  hold: number
+  leaving: boolean
 }
 
 const ESCORT_OFFSETS = [
@@ -146,14 +150,35 @@ const ESCORT_OFFSETS = [
 ] // [tangential m behind, radial m (negative = closer to glass), height m]
 
 function createFleet(): Fleet {
-  const ship = model('models/space/mothership.glb', 11)
-  const escorts = ESCORT_OFFSETS.map(() => model('models/ufo.glb', 2.6))
-  return { ship, escorts, active: false, timer: rand(20, 40), rho: R + 18, phi: 0, y: 16, speed: 3, dir: DIR, travelled: 0, length: Math.PI }
+  const ship = model('models/space/mothership.glb', MOTHERSHIP_SCALE)
+  const escorts = ESCORT_OFFSETS.map(() => model('models/ufo.glb', ESCORT_SCALE))
+  return { ship, escorts, active: false, timer: rand(20, 40), rho: R + 18, phi: 0, y: 16, speed: 3, dir: DIR, travelled: 0, length: Math.PI, hold: 0, leaving: false }
 }
 
 function hideFleet(f: Fleet) {
   for (const e of [f.ship, ...f.escorts]) Transform.getMutable(e).position = Vector3.create(CENTER.x, -40, CENTER.z)
 }
+
+const MOTHERSHIP_SCALE = 11
+const ESCORT_SCALE = 2.6
+const WARP_COLOR = Color3.create(0.55, 1, 0.75)
+
+/** Where every ship of the formation is right now (position + rotation), without touching entities. */
+function fleetPose(f: Fleet, clock: number) {
+  const ship = {
+    position: polar(f.rho, f.phi, f.y + Math.sin(clock * 0.5) * 0.6),
+    // nose along the lap, slow spin on top of it
+    rotation: Quaternion.multiply(Quaternion.fromEulerDegrees(0, (f.phi * 180) / Math.PI + (f.dir > 0 ? 90 : -90), f.dir * 6), Quaternion.fromEulerDegrees(0, clock * 8, 0))
+  }
+  const escorts = ESCORT_OFFSETS.map(([behind, radial, up], i) => {
+    const rho = f.rho + radial
+    const phi = f.phi - (f.dir * behind) / rho
+    return { position: polar(rho, phi, f.y + up + Math.sin(clock * 1.1 + i) * 0.5), rotation: Quaternion.fromEulerDegrees(Math.sin(clock * 0.9 + i) * 4, clock * 140, f.dir * 10) }
+  })
+  return { ship, escorts }
+}
+
+const fleetHeading = (f: Fleet) => Vector3.scale(Vector3.create(Math.cos(f.phi), 0, -Math.sin(f.phi)), f.dir)
 
 // ---- lights ----------------------------------------------------------------------------------
 
@@ -168,6 +193,7 @@ function createLights() {
 // ---- main ----------------------------------------------------------------------------------
 
 export function createSpaceWindows() {
+  startFx()
   createLights()
 
   // Planets at the back, drifting so slowly a lap takes over an hour; they tilt and turn.
@@ -238,28 +264,42 @@ export function createSpaceWindows() {
         f.phi = rand(0, TAU)
         f.travelled = 0
         f.length = rand(Math.PI * 0.8, Math.PI * 1.4)
+        f.leaving = false
+        // drop out of warp: escorts first, the mothership last, all streaking in along the lap
+        const pose = fleetPose(f, clock)
+        const heading = fleetHeading(f)
+        pose.escorts.forEach((p, i) => warpIn(f.escorts[i], p.position, heading, p.rotation, ESCORT_SCALE, WARP_COLOR, i * 0.12))
+        warpIn(f.ship, pose.ship.position, heading, pose.ship.rotation, MOTHERSHIP_SCALE, WARP_COLOR, 0.7)
+        f.hold = 1.5
         playAt(SFX.ufoArrive, polar(f.rho, f.phi, f.y), 0.5, 0.6)
+      }
+    } else if (f.hold > 0) {
+      f.hold -= dt
+      if (f.hold <= 0 && f.leaving) {
+        f.active = false
+        f.timer = rand(60, 120)
       }
     } else {
       const step = (f.speed * dt) / f.rho
       f.phi += f.dir * step
       f.travelled += step
+      const pose = fleetPose(f, clock)
       if (f.travelled >= f.length) {
-        f.active = false
-        f.timer = rand(60, 120)
-        hideFleet(f)
+        // jump to warp: the mothership goes first, the escorts peel off after it
+        const heading = fleetHeading(f)
+        warpOut(f.ship, pose.ship.position, heading, MOTHERSHIP_SCALE, WARP_COLOR, 0)
+        pose.escorts.forEach((p, i) => warpOut(f.escorts[i], p.position, heading, ESCORT_SCALE, WARP_COLOR, 0.35 + i * 0.12))
+        playAt(SFX.ufoPass, pose.ship.position, 0.8, 0.8)
+        f.leaving = true
+        f.hold = 1.6
       } else {
         const ship = Transform.getMutable(f.ship)
-        ship.position = polar(f.rho, f.phi, f.y + Math.sin(clock * 0.5) * 0.6)
-        // nose along the lap, slow spin on top of it
-        ship.rotation = Quaternion.multiply(Quaternion.fromEulerDegrees(0, (f.phi * 180) / Math.PI + (f.dir > 0 ? 90 : -90), f.dir * 6), Quaternion.fromEulerDegrees(0, clock * 8, 0))
+        ship.position = pose.ship.position
+        ship.rotation = pose.ship.rotation
         f.escorts.forEach((e, i) => {
-          const [behind, radial, up] = ESCORT_OFFSETS[i]
-          const rho = f.rho + radial
-          const phi = f.phi - (f.dir * behind) / rho
           const t = Transform.getMutable(e)
-          t.position = polar(rho, phi, f.y + up + Math.sin(clock * 1.1 + i) * 0.5)
-          t.rotation = Quaternion.fromEulerDegrees(Math.sin(clock * 0.9 + i) * 4, clock * 140, f.dir * 10)
+          t.position = pose.escorts[i].position
+          t.rotation = pose.escorts[i].rotation
         })
       }
     }
