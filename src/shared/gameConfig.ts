@@ -56,5 +56,7 @@ export const KUDOS = {
   /** floating cows the ring will hold; beyond this the oldest are swallowed early */
   maxFloating: 60,
   /** cows shown in the cargo bay pen at once (the rest are 'more in the hold') */
-  penCapacity: 20
+  penCapacity: 20,
+  /** a raider saucer shoots one floating cow about this often (seconds, jittered); owner still gets perCow */
+  raidPeriodSeconds: 70
 }

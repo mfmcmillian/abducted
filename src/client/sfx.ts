@@ -19,7 +19,10 @@ export const SFX = {
   roundStart: 'sounds/round-start.mp3',
   roundEnd: 'sounds/round-end.mp3',
   launch: 'sounds/launch.mp3',
-  blackHole: 'sounds/black-hole.mp3'
+  blackHole: 'sounds/black-hole.mp3',
+  laser: 'sounds/laser.mp3',
+  explosion: 'sounds/explosion.mp3',
+  ufoPass: 'sounds/ufo-pass.mp3'
 } as const
 
 const POOL = 6

@@ -383,7 +383,7 @@ function onBlackHole(data: { phi: number; seconds: number; ids: number[] }) {
   hole.phi0 = data.phi
   hole.seconds = Math.max(6, data.seconds)
   hole.t = 0
-  const ids = data.ids.filter((id) => floating.has(id))
+  const ids = data.ids.filter((id) => floating.has(id) && !doomed.has(id))
   const first = 3
   const last = hole.seconds - 4
   hole.queue = ids.map((id, i) => ({ id, at: first + ((last - first) * (i + 0.5)) / Math.max(1, ids.length) }))
@@ -508,6 +508,29 @@ function removeFloating(id: number) {
   if (!cow) return
   engine.removeEntity(cow.entity)
   floating.delete(id)
+  doomed.delete(id)
+}
+
+/** Floating cows a raider has picked: the black hole leaves them alone, battles.ts finishes them. */
+const doomed = new Set<number>()
+
+export interface CowTarget {
+  id: number
+  position: () => Vector3
+  /** Blow it up: removes the cow entity. */
+  destroy: () => void
+}
+
+/** Hand a floating cow over to the raiders. Null when this client never saw it. */
+export function claimFloatingCow(id: number): CowTarget | null {
+  const cow = floating.get(id)
+  if (!cow || doomed.has(id)) return null
+  doomed.add(id)
+  return {
+    id,
+    position: () => (floating.has(id) ? Vector3.clone(Transform.get(cow.entity).position) : polar(cow.rho, cow.phi, cow.y)),
+    destroy: () => removeFloating(id)
+  }
 }
 
 // ---- wiring --------------------------------------------------------------------------------
@@ -538,7 +561,7 @@ export function createCargoLoop() {
   room.onMessage('blackHole', (data) => {
     if (hole) {
       // a second pass while one is running (overflow): just take the cows
-      for (const id of data.ids) removeFloating(id)
+      for (const id of data.ids) if (!doomed.has(id)) removeFloating(id)
       return
     }
     if (holeSpare) {

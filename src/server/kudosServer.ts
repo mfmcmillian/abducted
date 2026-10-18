@@ -149,6 +149,19 @@ async function blackHole() {
   if (swallowed.length) await credit(swallowed, 'The black hole swallowed')
 }
 
+/** A raider saucer picks off one floating cow. The owner is paid as if the hole had taken it. */
+async function raid() {
+  if (!floating.length) return
+  const i = Math.floor(Math.random() * floating.length)
+  const [cow] = floating.splice(i, 1)
+  room.send('cowShot', { id: cow.id, owner: cow.owner })
+  console.log(`[Kudos] raid: cow ${cow.id} of ${cow.owner}`)
+  void saveFloating()
+  await credit([cow], 'A raider saucer vaporised your cow. Hazard pay:')
+}
+
+let raidIn = KUDOS.raidPeriodSeconds
+
 export function initKudosServer() {
   void loadFloating()
 
@@ -165,6 +178,12 @@ export function initKudosServer() {
   })
 
   engine.addSystem((dt) => {
+    raidIn -= dt
+    if (raidIn <= 0) {
+      raidIn = KUDOS.raidPeriodSeconds * (0.7 + Math.random() * 0.6)
+      // not in the last stretch before the hole: the client needs ~8 s to play the attack
+      if (holeIn > 12) void raid()
+    }
     holeIn -= dt
     if (holeIn > 0) return
     holeIn = KUDOS.holePeriodSeconds

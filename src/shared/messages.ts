@@ -46,7 +46,9 @@ export const Messages = {
     cows: Schemas.Array(Schemas.Map({ id: Schemas.Int, owner: Schemas.String, rho: Schemas.Float, phi: Schemas.Float, y: Schemas.Float }))
   }),
   /** server -> all clients: the black hole is passing; it swallows these cows */
-  blackHole: Schemas.Map({ phi: Schemas.Float, seconds: Schemas.Int, ids: Schemas.Array(Schemas.Int) })
+  blackHole: Schemas.Map({ phi: Schemas.Float, seconds: Schemas.Int, ids: Schemas.Array(Schemas.Int) }),
+  /** server -> all clients: a raider saucer is coming for this floating cow (owner already paid) */
+  cowShot: Schemas.Map({ id: Schemas.Int, owner: Schemas.String })
 }
 
 export const room = registerMessages(Messages)

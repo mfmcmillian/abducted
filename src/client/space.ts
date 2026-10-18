@@ -38,7 +38,7 @@ function model(src: string, scale: number): Entity {
 }
 
 /** Something on a circular lap around the dome. All models are ~1.9 m across at scale 1. */
-interface Orbiter {
+export interface Orbiter {
   entity: Entity
   rho: number
   phi: number
@@ -68,14 +68,38 @@ const BANDS = [
 ]
 const ASTEROID_COUNT = 30
 
-function rollAsteroid(o: Orbiter, band: number) {
-  const b = BANDS[band]
+export interface AsteroidRef {
+  o: Orbiter
+  band: number
+  model: string
+  size: number
+  dead: number // seconds until it comes back after being blown up; 0 = alive
+}
+const asteroids: AsteroidRef[] = []
+
+function rollAsteroid(a: AsteroidRef) {
+  const b = BANDS[a.band]
+  const o = a.o
   o.rho = R + rand(b.depth[0], b.depth[1])
-  const size = rand(b.size[0], b.size[1])
+  a.size = rand(b.size[0], b.size[1])
   o.speed = rand(b.speed[0], b.speed[1])
-  o.y = rand(Math.max(3, size + 1), Math.min(POD_TOP - size - 1, 30))
+  o.y = rand(Math.max(3, a.size + 1), Math.min(POD_TOP - a.size - 1, 30))
   o.spin = Vector3.create(rand(-14, 14), rand(-14, 14), rand(-14, 14))
-  Transform.getMutable(o.entity).scale = Vector3.create(size, size, size)
+  Transform.getMutable(o.entity).scale = Vector3.create(a.size, a.size, a.size)
+}
+
+/** A live asteroid for the raiders to shoot at: mid/far band so the blast has room, not too high. */
+export function pickAsteroidTarget(): AsteroidRef | null {
+  const pool = asteroids.filter((a) => a.dead <= 0 && a.band > 0 && a.o.y < 24)
+  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null
+}
+
+export const asteroidPosition = (a: AsteroidRef) => Transform.get(a.o.entity).position
+
+/** Hide an asteroid now; it rolls back in as a new one after `respawnSeconds`. */
+export function killAsteroid(a: AsteroidRef, respawnSeconds = 20) {
+  a.dead = respawnSeconds
+  Transform.getMutable(a.o.entity).scale = Vector3.Zero()
 }
 
 // ---- comet ---------------------------------------------------------------------------------
@@ -158,12 +182,12 @@ export function createSpaceWindows() {
   const fleet = createFleet()
   hideFleet(fleet)
 
-  const asteroids: { o: Orbiter; band: number }[] = []
   for (let i = 0; i < ASTEROID_COUNT; i++) {
-    const band = i % BANDS.length
-    const o = orbiter(model(ASTEROID_MODELS[i % ASTEROID_MODELS.length], 1), R + 10, rand(0, TAU), 10, 1, Vector3.Zero())
-    rollAsteroid(o, band)
-    asteroids.push({ o, band })
+    const src = ASTEROID_MODELS[i % ASTEROID_MODELS.length]
+    const o = orbiter(model(src, 1), R + 10, rand(0, TAU), 10, 1, Vector3.Zero())
+    const a: AsteroidRef = { o, band: i % BANDS.length, model: src, size: 1, dead: 0 }
+    rollAsteroid(a)
+    asteroids.push(a)
   }
 
   let clock = 0
@@ -178,7 +202,16 @@ export function createSpaceWindows() {
       t.rotation = Quaternion.multiply(o.tilt, Quaternion.fromEulerDegrees(clock * o.spin.x, clock * o.spin.y, clock * o.spin.z))
     }
     // Each lap an asteroid comes back as a different one, so the sky never repeats exactly.
-    for (const a of asteroids) if (a.o.phi < (DIR * a.o.speed * dt) / a.o.rho) rollAsteroid(a.o, a.band)
+    for (const a of asteroids) {
+      if (a.dead > 0) {
+        a.dead -= dt
+        if (a.dead <= 0) {
+          a.dead = 0
+          a.o.phi = rand(0, TAU)
+          rollAsteroid(a)
+        }
+      } else if (a.o.phi < (DIR * a.o.speed * dt) / a.o.rho) rollAsteroid(a)
+    }
 
     // Comet tail trails opposite the direction of travel (the tangent), slightly away from the glass.
     {

@@ -9,6 +9,7 @@ import { createApexUfo, createDiorama, createDome, createHeroCow, createInterior
 import { createSpaceWindows } from './client/space'
 import { createCowGame } from './client/game'
 import { createCargoLoop } from './client/cargo'
+import { createSpaceBattles } from './client/battles'
 import { initMusic } from './client/music'
 import { createBarrier, createDecor, createGround, createKiosk, createNightSky, createPortals } from './client/plaza'
 import { createRingAltar } from './client/ring'
@@ -56,4 +57,5 @@ function initClient() {
   createBarrier()
   createCowGame()
   createCargoLoop()
+  createSpaceBattles()
 }
