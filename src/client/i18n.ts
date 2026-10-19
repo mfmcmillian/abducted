@@ -64,20 +64,35 @@ function retranslateWorld() {
   }
 }
 
-/** Pick up the player's wallet once the explorer provides it, then read the wearable's setting. */
+/**
+ * Pick up the player's wallet once the explorer provides it, then read the wearable's setting and
+ * keep re-reading it: the wearable has no channel into the scene, so a change made in the ring
+ * shows up here on the next poll. Fast for the first minute, then relaxed.
+ */
+const POLL_FAST = 3
+const POLL_SLOW = 15
+const FAST_FOR = 60
+
 export function initLanguage() {
   let tries = 0
-  let done = false
-  engine.addSystem(function languageProbe() {
-    if (done) return
-    const id = getPlayer()?.userId
-    if (!id || !/^0x[a-fA-F0-9]{40}$/.test(id)) {
-      if (++tries > 600) engine.removeSystem(languageProbe) // ~10 s at 60 fps: a guest or no identity
-      return
+  let wallet = ''
+  let elapsed = 0
+  let nextPoll = 0
+  let busy = false
+  engine.addSystem(function languageProbe(dt) {
+    if (!wallet) {
+      const id = getPlayer()?.userId
+      if (!id || !/^0x[a-fA-F0-9]{40}$/.test(id)) {
+        if (++tries > 600) engine.removeSystem(languageProbe) // ~10 s at 60 fps: a guest or no identity
+        return
+      }
+      wallet = id.toLowerCase()
     }
-    done = true
-    engine.removeSystem(languageProbe)
-    void load(id.toLowerCase())
+    elapsed += dt
+    if (busy || elapsed < nextPoll) return
+    nextPoll = elapsed + (elapsed < FAST_FOR ? POLL_FAST : POLL_SLOW)
+    busy = true
+    void load(wallet).finally(() => (busy = false))
   })
 }
 
