@@ -1,5 +1,6 @@
 import { AudioSource, engine, Entity, Transform } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
+import { ROOT } from './root'
 
 /**
  * Sound effects. Clips live in sounds/ (generated with ElevenLabs sound generation, trimmed
@@ -33,7 +34,7 @@ let next = 0
 function emitter(): Entity {
   if (pool.length < POOL) {
     const e = engine.addEntity()
-    Transform.create(e, { position: Vector3.Zero() })
+    Transform.create(e, { parent: ROOT, position: Vector3.Zero() })
     pool.push(e)
     return e
   }

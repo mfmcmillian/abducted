@@ -7,6 +7,7 @@ import { burstExplosion, burstImpact, fireBolt, Palette, PALETTES, puffTrail, st
 import { playAt, SFX } from './sfx'
 import { asteroidPosition, AsteroidRef, killAsteroid, pickAsteroidTarget } from './space'
 import { toast } from './ui'
+import { ROOT } from './root'
 
 /**
  * Space battles outside the observation deck.
@@ -52,7 +53,7 @@ function saucer(): Saucer | null {
   if (!s) {
     if (saucers.length >= 4) return null
     const entity = engine.addEntity()
-    Transform.create(entity, { position: Vector3.clone(HIDDEN), scale: Vector3.Zero() })
+    Transform.create(entity, { parent: ROOT, position: Vector3.clone(HIDDEN), scale: Vector3.Zero() })
     GltfContainer.create(entity, { src: 'models/ufo.glb', ...NO_COLLIDE })
     s = { entity, busy: false, trail: 0 }
     saucers.push(s)
@@ -118,7 +119,7 @@ function throwDebris(src: string, pos: Vector3, size: number, count: number) {
     if (!d) {
       if (debris.length >= 16) return
       const entity = engine.addEntity()
-      Transform.create(entity, { position: Vector3.clone(HIDDEN), scale: Vector3.Zero() })
+      Transform.create(entity, { parent: ROOT, position: Vector3.clone(HIDDEN), scale: Vector3.Zero() })
       GltfContainer.create(entity, { src, ...NO_COLLIDE })
       d = { entity, pos: Vector3.Zero(), vel: Vector3.Zero(), spin: Vector3.Zero(), age: 0, life: 1, size: 1, free: true }
       debris.push(d)
@@ -295,7 +296,7 @@ function startDogfight() {
   }
   const rho = R + rand(9, 17)
   const phi0 = rand(0, TAU)
-  const d: Dogfight = { lead, chase, t: -WARP_IN, length: rand(9, 13), rho, phi0, y: rand(16, 25), speed: rand(6.5, 8.5), nextShot: 1, leadDead: false, leadPos: polar(rho, phi0, 10), chasePos: polar(rho, phi0, 10) }
+  const d: Dogfight = { lead, chase, t: -WARP_IN, length: rand(9, 13), rho, phi0, y: rand(6, 15), speed: rand(6.5, 8.5), nextShot: 1, leadDead: false, leadPos: polar(rho, phi0, 10), chasePos: polar(rho, phi0, 10) }
   d.leadPos = dogfightPath(d, 0, 0)
   d.chasePos = dogfightPath(d, 0, 9)
   const heading = Vector3.scale(tangentAt(phi0), DIR)

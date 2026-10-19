@@ -21,6 +21,7 @@ import { CENTER, FORMATION, RING_VIDEO_URL } from '../layout'
 import { room } from '../shared/messages'
 import { toast } from './ui'
 import { playAt, playGlobal, SFX } from './sfx'
+import { ROOT } from './root'
 
 /**
  * The ring altar on the south-west crop circle. One Antrom Guildstone Ring per wallet;
@@ -33,7 +34,7 @@ let pending = 0 // seconds left waiting for the server, 0 = idle
 function createAltar(): Entity {
   const c = FORMATION.SW
   const plinth = engine.addEntity()
-  Transform.create(plinth, { position: Vector3.create(c.x, 0.6, c.z), scale: Vector3.create(2.6, 1.2, 2.6) })
+  Transform.create(plinth, { parent: ROOT, position: Vector3.create(c.x, 0.6, c.z), scale: Vector3.create(2.6, 1.2, 2.6) })
   MeshRenderer.setCylinder(plinth, 1, 0.75)
   MeshCollider.setCylinder(plinth, 1, 0.75, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
   Material.setPbrMaterial(plinth, {
@@ -45,7 +46,7 @@ function createAltar(): Entity {
   })
 
   const ring = engine.addEntity()
-  Transform.create(ring, {
+  Transform.create(ring, { parent: ROOT,
     position: Vector3.create(c.x, 2.5, c.z),
     rotation: Quaternion.fromEulerDegrees(0, 0, 0),
     scale: Vector3.create(30, 30, 30)
@@ -57,7 +58,7 @@ function createAltar(): Entity {
   })
 
   const light = engine.addEntity()
-  Transform.create(light, { position: Vector3.create(c.x, 3.2, c.z) })
+  Transform.create(light, { parent: ROOT, position: Vector3.create(c.x, 3.2, c.z) })
   LightSource.create(light, {
     active: true,
     color: Color3.create(1, 0.78, 0.3),
@@ -68,7 +69,7 @@ function createAltar(): Entity {
   })
 
   const anchor = engine.addEntity()
-  Transform.create(anchor, { position: Vector3.create(c.x, 0, c.z) })
+  Transform.create(anchor, { parent: ROOT, position: Vector3.create(c.x, 0, c.z) })
   // Giant extruded 3D letters ("FREE TO CLAIM" / "CLICK ME!", models/text-claim.glb, built by
   // tools/build-text.mjs at em = 1, readable side -Z like TextShape) hovering above everything.
   const CTA_SCALE = 3.2 // em -> metres; the model is ~4.7 em wide, 1.9 em tall
@@ -151,7 +152,7 @@ function createPoster(domeVideo: Entity) {
   const facing = Quaternion.fromEulerDegrees(0, yaw + 180, 0)
 
   const root = engine.addEntity()
-  Transform.create(root, { position, rotation: facing })
+  Transform.create(root, { parent: ROOT, position, rotation: facing })
 
   // Dark frame with a soft gold rim behind the poster.
   const frame = engine.addEntity()
