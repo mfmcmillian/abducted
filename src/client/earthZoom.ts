@@ -165,8 +165,7 @@ function buildSets() {
   GltfContainer.create(sky, { src: 'models/earth-sky.glb', ...NO_COLLIDE })
   // plain albedo texture: the same modifier path the lawn/road/wallpaper use (known to render). The
   // emissive-only variant came out flat white (emissiveTexture is dropped by the explorer).
-  // TEST: solid red, no texture. Red street background => the sphere renders and only the texture is the problem.
-  GltfNodeModifiers.create(sky, { modifiers: [{ path: 'Sky', material: { material: { $case: 'pbr' as const, pbr: { albedoColor: Color4.create(1, 0, 0, 1), metallic: 0, roughness: 1, castShadows: false } } }, castShadows: false }] })
+  // the sky picture is baked into the GLB (double-sided, emissive); node modifiers never took on this mesh
   // daylight: a warm "sun" high on the +Z side and a cool fill (shared by every layer)
   light(setRoot, Vector3.create(5, 9, -8), Color3.create(1, 0.96, 0.85), 2600, 40)
   light(setRoot, Vector3.create(-6, 5, 6), Color3.create(0.7, 0.8, 1), 600, 26)
