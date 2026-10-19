@@ -360,20 +360,19 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
     castShadows: false
   })
 
+  // The stage (models/emote-stage.glb, Meshy: wide gunmetal disc, chrome rims, glowing cyan ring
+  // grooves; 1.9 wide x 0.18 tall, centred on its origin). An invisible cylinder takes walking and clicks.
+  const STAGE_SCALE = 2.9
+  const STAGE_H = 0.184 * STAGE_SCALE
   const plinth = engine.addEntity()
-  Transform.create(plinth, { parent: board, position: Vector3.create(stand.x, 0.3, stand.z), scale: Vector3.create(4.4, 0.6, 4.4) })
-  MeshRenderer.setCylinder(plinth, 1, 0.9)
-  MeshCollider.setCylinder(plinth, 1, 0.9, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
-  Material.setPbrMaterial(plinth, {
-    albedoColor: Color4.create(0.025, 0.035, 0.055, 1),
-    emissiveColor: glowColor,
-    emissiveIntensity: 2.2,
-    metallic: 0.65,
-    roughness: 0.25
-  })
+  Transform.create(plinth, { parent: board, position: Vector3.create(stand.x, STAGE_H / 2, stand.z), scale: Vector3.create(1.9 * STAGE_SCALE, STAGE_H, 1.9 * STAGE_SCALE) })
+  MeshCollider.setCylinder(plinth, 1, 1, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
+  const stage = engine.addEntity()
+  Transform.create(stage, { parent: board, position: Vector3.create(stand.x, STAGE_H / 2, stand.z), scale: Vector3.create(STAGE_SCALE, STAGE_SCALE, STAGE_SCALE) })
+  GltfContainer.create(stage, { src: 'models/emote-stage.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
 
   const avatar = engine.addEntity()
-  Transform.create(avatar, { parent: board, position: Vector3.create(stand.x, 0.6, stand.z), rotation: Quaternion.fromEulerDegrees(0, 180, 0) })
+  Transform.create(avatar, { parent: board, position: Vector3.create(stand.x, STAGE_H, stand.z), rotation: Quaternion.fromEulerDegrees(0, 180, 0) })
   AvatarShape.create(avatar, {
     id: `${kind}-showcase`,
     name: kind === 'emote' ? 'Abducted! Emote' : 'Alien Costume',
