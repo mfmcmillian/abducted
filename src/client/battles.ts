@@ -295,7 +295,7 @@ function startDogfight() {
   }
   const rho = R + rand(9, 17)
   const phi0 = rand(0, TAU)
-  const d: Dogfight = { lead, chase, t: -WARP_IN, length: rand(9, 13), rho, phi0, y: rand(5, 11), speed: rand(6.5, 8.5), nextShot: 1, leadDead: false, leadPos: polar(rho, phi0, 10), chasePos: polar(rho, phi0, 10) }
+  const d: Dogfight = { lead, chase, t: -WARP_IN, length: rand(9, 13), rho, phi0, y: rand(6, 15), speed: rand(6.5, 8.5), nextShot: 1, leadDead: false, leadPos: polar(rho, phi0, 10), chasePos: polar(rho, phi0, 10) }
   d.leadPos = dogfightPath(d, 0, 0)
   d.chasePos = dogfightPath(d, 0, 9)
   const heading = Vector3.scale(tangentAt(phi0), DIR)
