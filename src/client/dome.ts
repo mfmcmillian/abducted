@@ -8,6 +8,7 @@ import {
   InputAction,
   LightSource,
   Material,
+  MaterialTransparencyMode,
   MeshRenderer,
   pointerEventsSystem,
   TextureFilterMode,
@@ -94,7 +95,8 @@ export function createDome(video: Entity): Entity {
           wrapMode: TextureWrapMode.TWM_MIRROR,
           filterMode: TextureFilterMode.TFM_TRILINEAR
         }),
-        albedoColor: Color4.create(0.85, 1, 0.9, 1),
+        albedoColor: Color4.create(0.85, 1, 0.9, 0.08),
+        transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
         metallic: 0,
         roughness: 1,
         specularIntensity: 0,
