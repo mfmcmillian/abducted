@@ -148,11 +148,13 @@ function createPoster(domeVideo: Entity) {
   const c = FORMATION.SW
   const dx = c.x - CENTER.x
   const dz = c.z - CENTER.z
-  const len = Math.hypot(dx, dz)
+  const panelStep = Math.PI / 8 // window mullions are 22.5 degrees apart
+  const formationAngle = Math.atan2(dx, dz)
+  const panelAngle = (Math.round(formationAngle / panelStep - 0.5) + 0.5) * panelStep
   const position = Vector3.create(
-    CENTER.x + (dx / len) * (DOME_RADIUS - 0.12),
+    CENTER.x + Math.sin(panelAngle) * (DOME_RADIUS - 0.12),
     0,
-    CENTER.z + (dz / len) * (DOME_RADIUS - 0.12)
+    CENTER.z + Math.cos(panelAngle) * (DOME_RADIUS - 0.12)
   )
   const yaw = (Math.atan2(CENTER.x - position.x, CENTER.z - position.z) * 180) / Math.PI
   // Plane fronts face local -Z, so add 180 to look toward the centre.
