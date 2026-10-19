@@ -27,13 +27,14 @@ import { zoomUi } from './ui'
  */
 
 // Meshy model fit. The capsule is 1.08 wide x 1.9 tall, origin mid-height, bottom at y -0.953,
-// body radius 0.39. The doorway (cut in Blender, 0.4 wide, floor to y 0.45) faces model +Z, and
-// the shell is double-sided so the inside of the skin is the pod's interior.
-const POD_SCALE = 2.4 // model units -> metres: 4.6 m tall, 1.9 m inside, 0.96 m doorway
-const POD_BOTTOM = -0.953
-const DOOR_W = 0.4 * POD_SCALE
-const DOOR_H = (0.45 + 0.953) * POD_SCALE
-const DOOR_Z = 0.36 * POD_SCALE // force field plane, just inside the doorway (+Z local = toward the dome centre)
+// inner radius ~0.31, interior floor at y -0.623 and ceiling at 0.474. The doorway (cut in Blender,
+// 0.54 wide, up to y 0.5) faces model +Z; the shell is double-sided so the inside of the skin is
+// the pod's interior. The pod is sunk so its interior floor is the dome floor: no step to climb.
+const POD_SCALE = 3.4 // model units -> metres: 5.4 m visible, 2.1 m across inside, 1.8 x 3.8 m doorway
+const POD_FLOOR = -0.623
+const DOOR_W = 0.54 * POD_SCALE
+const DOOR_H = (0.5 - POD_FLOOR) * POD_SCALE
+const DOOR_Z = 0.33 * POD_SCALE // force field plane, just inside the doorway (+Z local = toward the dome centre)
 const GREEN = Color3.create(0.35, 1, 0.5)
 const WHITE = Color3.create(1, 1, 1)
 
@@ -59,7 +60,7 @@ export function createPod(board: () => void) {
   Transform.create(root, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, 0, LAUNCH_PAD.z), rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
 
   const shell = engine.addEntity()
-  Transform.create(shell, { parent: root, position: Vector3.create(0, 0.02 - POD_BOTTOM * POD_SCALE, 0), scale: Vector3.create(POD_SCALE, POD_SCALE, POD_SCALE) })
+  Transform.create(shell, { parent: root, position: Vector3.create(0, 0.02 - POD_FLOOR * POD_SCALE, 0), scale: Vector3.create(POD_SCALE, POD_SCALE, POD_SCALE) })
   GltfContainer.create(shell, { src: 'models/abduction-pod.glb', visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
 
   // Force field across the doorway: invisible while open, a green shimmer when sealed.
@@ -69,7 +70,7 @@ export function createPod(board: () => void) {
   setField(0)
 
   innerLight = engine.addEntity()
-  Transform.create(innerLight, { parent: root, position: Vector3.create(0, 2.2, 0) })
+  Transform.create(innerLight, { parent: root, position: Vector3.create(0, 2.6, 0) })
   LightSource.create(innerLight, { active: true, color: GREEN, intensity: 300, range: 9, shadow: false, type: LightSource.Type.Point({}) })
   ringLight = engine.addEntity()
   Transform.create(ringLight, { parent: root, position: Vector3.create(0, 0.4, 0.6) })
@@ -91,7 +92,7 @@ export function createPod(board: () => void) {
 
   // Inside the capsule.
   const inside = engine.addEntity()
-  Transform.create(inside, { parent: root, position: Vector3.create(0, 1.4, 0), scale: Vector3.create(1.3, 2.8, 1.3) })
+  Transform.create(inside, { parent: root, position: Vector3.create(0, 1.6, 0), scale: Vector3.create(1.4, 3.2, 1.4) })
   TriggerArea.setBox(inside)
   triggerAreaEventsSystem.onTriggerEnter(inside, () => {
     pod.inside = true
