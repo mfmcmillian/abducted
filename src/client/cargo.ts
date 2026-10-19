@@ -110,8 +110,8 @@ function setPlasma(glow: number) {
 
 function createCargoBay() {
   // The Meshy pen (models/cow-pen.glb): round fence of gunmetal posts and green rails on a base
-  // plate, gate gap on its +Z side. Model 1.73 wide, 0.42 tall, origin mid-height: the plate top is
-  // at y -0.06, so the model is lifted until the plate top sits just proud of the floor.
+  // plate, gate gap on its +Z side. Model 1.73 wide, 0.42 tall, origin mid-height, bottom at
+  // y -0.204 (plate top -0.10, rails at 0.00 / 0.10 / 0.17): lifted so the plate stands on the floor.
   const PEN_SCALE = 5.8
   const GATE_FROM = -15 // the fence gap in model degrees from +Z (towards +X)
   const GATE_TO = 45
@@ -120,14 +120,14 @@ function createCargoBay() {
   const penRoot = engine.addEntity()
   Transform.create(penRoot, { parent: ROOT, position: Vector3.create(CARGO_BAY.x, 0, CARGO_BAY.z), rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
   const pen3d = engine.addEntity()
-  Transform.create(pen3d, { parent: penRoot, position: Vector3.create(0, 0.05 + 0.06 * PEN_SCALE, 0), scale: Vector3.create(PEN_SCALE, PEN_SCALE, PEN_SCALE) })
+  Transform.create(pen3d, { parent: penRoot, position: Vector3.create(0, 0.02 + 0.204 * PEN_SCALE, 0), scale: Vector3.create(PEN_SCALE, PEN_SCALE, PEN_SCALE) })
   GltfContainer.create(pen3d, { src: 'models/cow-pen.glb', visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
 
   // Plasma bars: a translucent green energy band between the two rails, in segments around the
   // fence (none across the gate), pulsing together.
   const BAR_R = 4.7
-  const BAR_Y = 1.1
-  const BAR_H = 0.62
+  const BAR_Y = 0.02 + (0.204 + 0.05) * PEN_SCALE // between the lower rail (model y 0) and the middle one (0.10)
+  const BAR_H = 0.5
   const SEGS = 24
   for (let i = 0; i < SEGS; i++) {
     const a0 = (i / SEGS) * 360
