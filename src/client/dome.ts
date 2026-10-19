@@ -107,8 +107,13 @@ export function createDome(video: Entity): Entity {
   // below, glass between, and outside it dome.glb carries a 30 m deep star ring; the planets,
   // ships and rocks out there are models driven by src/client/space.ts. Same PBR-with-texture path as the floor (which the Explorer honours);
   // the emissive copy keeps everything readable in the dark. MIRROR wrap hides tile seams.
-  const wallMaterialFor = (src: string, wrapMode: TextureWrapMode, emissiveIntensity = 0.9) => {
-    const texture = Material.Texture.Common({ src, wrapMode, filterMode: TextureFilterMode.TFM_TRILINEAR })
+  const wallMaterialFor = (
+    src: string,
+    wrapMode: TextureWrapMode,
+    emissiveIntensity = 0.9,
+    filterMode = TextureFilterMode.TFM_TRILINEAR
+  ) => {
+    const texture = Material.Texture.Common({ src, wrapMode, filterMode })
     return {
       material: {
         $case: 'pbr' as const,
@@ -127,7 +132,14 @@ export function createDome(video: Entity): Entity {
     }
   }
   const machineMaterial = wallMaterialFor('images/ship-machines.jpg', TextureWrapMode.TWM_MIRROR)
-  const starsMaterial = wallMaterialFor('images/space-stars.jpg', TextureWrapMode.TWM_MIRROR, 1)
+  // Bilinear filtering keeps the stars visible on the horizontal space floor at a
+  // shallow viewing angle; trilinear mipmaps averaged it into a matte-black strip.
+  const starsMaterial = wallMaterialFor(
+    'images/space-stars.jpg',
+    TextureWrapMode.TWM_MIRROR,
+    1,
+    TextureFilterMode.TFM_BILINEAR
+  )
   // The back wall is plain stars too: everything with a shape out there is a model (space.ts).
   const backdrops = [0, 1, 2, 3].map((i) => ({ path: 'SpaceBack' + i, material: starsMaterial, castShadows: false }))
 
