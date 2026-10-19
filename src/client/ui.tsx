@@ -200,7 +200,7 @@ const icon = (src: string) => ({ textureMode: 'stretch' as const, texture: { src
 function hudLayout() {
   const info = UiCanvasInformation.getOrNull(engine.RootEntity)
   const area = info?.interactableArea
-  const canvas = { w: info?.width || 1920, h: info?.height || 1080, left: area?.left ?? 0, top: area?.top ?? 0, bottom: area?.bottom ?? 0 }
+  const canvas = { w: info?.width || 1920, h: info?.height || 1080, left: area?.left ?? 0, right: area?.right ?? 0, top: area?.top ?? 0, bottom: area?.bottom ?? 0 }
   const scale = info?.width ? Math.max(0.55, Math.min(1.3, (canvas.h - canvas.top - canvas.bottom) / 1080)) : 1
   return { canvas, S: (n: number) => Math.round(n * scale * 100) / 100 }
 }
@@ -224,16 +224,24 @@ function PanelRow(props: { icon: string; value: string; caption: string; S: (n: 
  * Antrom AFK dock (same panel texture, 420 design px wide, 18 px padding). The header tab above
  * it drags the whole thing; a double tap on the tab snaps it home.
  */
+let kudosMinimized = false
+
 function KudosPanel() {
   if (!kudosHud.synced || hud.mode !== 'hidden' || zoomUi.active) return null
   const k = kudosHud
   const { canvas, S } = hudLayout()
   const { dx, dy } = dragOffsetPx('kudos')
   return (
-    <UiEntity uiTransform={{ positionType: 'absolute', position: { top: canvas.top + S(120) + dy, left: canvas.left + S(18) + dx }, flexDirection: 'column', alignItems: 'center' }}>
-      <UiEntity uiTransform={{ width: S(260), height: S(44), alignItems: 'center', justifyContent: 'center', margin: { bottom: -S(6) } }} uiBackground={PILL_TEX} onMouseDown={() => startDrag('kudos')}>
-        <Label value="ABDUCTED!  KUDOS" fontSize={S(20)} color={GREEN} textAlign="middle-center" uiTransform={{ width: '100%', height: S(32) }} />
+    <UiEntity uiTransform={{ positionType: 'absolute', position: { top: canvas.top + S(120) + dy, right: canvas.right + S(18) - dx }, flexDirection: 'column', alignItems: 'flex-end' }}>
+      <UiEntity uiTransform={{ width: S(420), height: S(44), flexDirection: 'row', alignItems: 'center', justifyContent: 'center', margin: { bottom: kudosMinimized ? 0 : -S(6) } }}>
+        <UiEntity uiTransform={{ width: S(300), height: S(44), alignItems: 'center', justifyContent: 'center' }} uiBackground={PILL_TEX} onMouseDown={() => startDrag('kudos')}>
+          <Label value={kudosMinimized ? `ABDUCTED!  KUDOS   ${k.kudos}` : 'ABDUCTED!  KUDOS'} fontSize={S(20)} color={GREEN} textAlign="middle-center" uiTransform={{ width: '100%', height: S(32) }} />
+        </UiEntity>
+        <UiEntity uiTransform={{ width: S(36), height: S(36), margin: { left: S(6) }, alignItems: 'center', justifyContent: 'center' }} uiBackground={{ color: Color4.create(0.02, 0.05, 0.03, 0.9) }} onMouseDown={() => (kudosMinimized = !kudosMinimized)}>
+          <Label value={kudosMinimized ? '+' : '–'} fontSize={S(24)} color={GREEN} textAlign="middle-center" uiTransform={{ width: '100%', height: S(32) }} />
+        </UiEntity>
       </UiEntity>
+      {kudosMinimized ? null : (
       <UiEntity uiTransform={{ width: S(420), padding: S(18), flexDirection: 'column' }} uiBackground={PANEL_TEX}>
         {/* header: icon, title, the number */}
         <UiEntity uiTransform={{ width: '100%', height: S(64), flexDirection: 'row', alignItems: 'center', margin: { bottom: S(6) } }}>
@@ -251,6 +259,7 @@ function KudosPanel() {
         <Label value="KUDOS buy Alien Costumes from Nov 7" fontSize={S(18)} color={GREEN} textAlign="middle-left" uiTransform={{ width: '100%', height: S(28), margin: { top: S(12) } }} />
         <Label value="hold the tab to move  ·  double-tap resets" fontSize={S(14)} color={DIM} textAlign="middle-left" uiTransform={{ width: '100%', height: S(20), margin: { top: S(4) } }} />
       </UiEntity>
+      )}
     </UiEntity>
   )
 }
