@@ -8,8 +8,8 @@ import { Vector3 } from '@dcl/sdk/math'
 export const PLOT = 192
 export const CENTER = Vector3.create(96, 0, 96)
 export const DOME_RADIUS = 43 // the glass; keep in sync with tools/build-dome.mjs RADIUS
-export const DOME_WALL = 14 // keep in sync with tools/build-dome.mjs WALL_HEIGHT
-export const DOME_CAP = DOME_RADIUS * 0.65 // cap height; keep in sync with CAP_RATIO
+export const DOME_WALL = 11 // keep in sync with tools/build-dome.mjs WALL_HEIGHT
+export const DOME_CAP = DOME_RADIUS * 0.45 // cap height; keep in sync with CAP_RATIO
 /** Where players arrive: in the middle of the dome, directly under the diorama's ship. */
 export const SPAWN = Vector3.create(96, 0, 96)
 

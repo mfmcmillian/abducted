@@ -551,7 +551,7 @@ interface Hole {
 let hole: Hole | null = null
 let holeSpare: Hole | null = null
 const HOLE_RHO = R + 23
-const HOLE_Y = 14
+const HOLE_Y = 10
 
 function createHoleEntities(): Hole {
   const root = engine.addEntity()

@@ -33,8 +33,8 @@ const OUT = resolve(__dirname, '..', 'models', 'dome.glb')
 // ---- parameters -----------------------------------------------------------
 export const RADIUS = 43 // inner radius (m); centred on the 192 m plot, the star ring reaches 73 m
 const SHELL_GAP = 0.08 // outer shell = RADIUS + SHELL_GAP
-export const WALL_HEIGHT = 14 // vertical wall before the cap
-export const CAP_RATIO = 0.65 // cap height as a fraction of the radius (a flattened dome; apex at 14 + 0.65 * 43 = 42 m)
+export const WALL_HEIGHT = 11 // vertical wall before the cap
+export const CAP_RATIO = 0.45 // cap height as a fraction of the radius (a flattened dome; apex at 11 + 0.45 * 43 = 30 m)
 const SEGMENTS = 128 // around (must be even: two video wraps)
 const WALL_RINGS = 10 // 2 m each
 const CAP_RINGS = 24
