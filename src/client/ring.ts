@@ -39,21 +39,21 @@ function createAltar(): Entity {
   // Beside the poster (toward the dungeon portal side), back near the glass but inside the walk
   // barrier so it can be reached. Nothing stands in front of the art.
   const c = altarAt
+  // The stand (models/ring-stand.glb, Meshy: dark iridescent column, gold trim, amber crystal
+  // inlays; 1.37 x 1.9 m centred on its origin). An invisible cylinder takes walking and clicks.
+  const STAND_SCALE = 1.15
+  const STAND_H = 1.9 * STAND_SCALE
   const plinth = engine.addEntity()
-  Transform.create(plinth, { parent: ROOT, position: Vector3.create(c.x, 0.6, c.z), scale: Vector3.create(2.6, 1.2, 2.6) })
-  MeshRenderer.setCylinder(plinth, 1, 0.75)
-  MeshCollider.setCylinder(plinth, 1, 0.75, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
-  Material.setPbrMaterial(plinth, {
-    albedoColor: Color4.create(0.1, 0.08, 0.04, 1),
-    emissiveColor: Color3.create(1, 0.75, 0.25),
-    emissiveIntensity: 0.5,
-    metallic: 0.6,
-    roughness: 0.35
-  })
+  Transform.create(plinth, { parent: ROOT, position: Vector3.create(c.x, STAND_H / 2, c.z), scale: Vector3.create(1.5, STAND_H, 1.5) })
+  MeshCollider.setCylinder(plinth, 1, 0.6, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
+  const stand = engine.addEntity()
+  Transform.create(stand, { parent: ROOT, position: Vector3.create(c.x, STAND_H / 2, c.z), scale: Vector3.create(STAND_SCALE, STAND_SCALE, STAND_SCALE) })
+  GltfContainer.create(stand, { src: 'models/ring-stand.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
+  const RING_Y = STAND_H + 1.05
 
   const ring = engine.addEntity()
   Transform.create(ring, { parent: ROOT,
-    position: Vector3.create(c.x, 2.5, c.z),
+    position: Vector3.create(c.x, RING_Y, c.z),
     rotation: Quaternion.fromEulerDegrees(0, 0, 0),
     scale: Vector3.create(30, 30, 30)
   })
@@ -64,7 +64,7 @@ function createAltar(): Entity {
   })
 
   const light = engine.addEntity()
-  Transform.create(light, { parent: ROOT, position: Vector3.create(c.x, 3.2, c.z) })
+  Transform.create(light, { parent: ROOT, position: Vector3.create(c.x, RING_Y + 0.7, c.z) })
   LightSource.create(light, {
     active: true,
     color: Color3.create(1, 0.78, 0.3),
@@ -117,7 +117,7 @@ function createAltar(): Entity {
     LightSource.getMutable(ctaLight).intensity = 120 + glow * 120
     const t = Transform.getMutable(ring)
     t.rotation = Quaternion.fromEulerDegrees(0, clock * 45, 0)
-    t.position.y = 2.5 + Math.sin(clock * 1.3) * 0.15
+    t.position.y = RING_Y + Math.sin(clock * 1.3) * 0.15
     const l = LightSource.getMutable(light)
     l.intensity = 600 + Math.sin(clock * 2.1) * 150
   })
@@ -257,7 +257,7 @@ export function createRingAltar(domeVideo: Entity) {
   room.onMessage('ringStatus', (data) => {
     claimed = data.claimed
     pending = 0
-    if (data.ok) playAt(SFX.ringChime, Vector3.create(altarAt.x, 2.5, altarAt.z), 1)
+    if (data.ok) playAt(SFX.ringChime, Vector3.create(altarAt.x, 3, altarAt.z), 1)
     if (data.text) toast(t(data.text), data.ok ? 10 : 7)
   })
 
