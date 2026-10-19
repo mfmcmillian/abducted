@@ -21,6 +21,22 @@ export const PANE_Y = (PANE_BOTTOM + PANE_TOP) / 2
  * The poster is pulled in just enough that its edges stay inside the glass (and in front of
  * any mullion it covers).
  */
+/**
+ * A spot beside a poster: `lateral` metres along the poster's face from its centre, pulled in
+ * from the glass so it sits `radius` from the dome centre (the walk barrier is at DOME_RADIUS - 4).
+ * Returns the point in the mount's local frame (x along the face, -z toward the centre).
+ */
+export function besidePaneLocal(mount: { position: Vector3 }, lateral: number, radius: number) {
+  const rm = Math.hypot(mount.position.x - CENTER.x, mount.position.z - CENTER.z)
+  const depth = rm - Math.sqrt(Math.max(0, radius * radius - lateral * lateral))
+  return Vector3.create(lateral, 0, -depth)
+}
+
+/** Same spot in world (scene) coordinates. */
+export function besidePane(mount: { position: Vector3; rotation: Quaternion }, lateral: number, radius: number) {
+  return Vector3.add(mount.position, Vector3.rotate(besidePaneLocal(mount, lateral, radius), mount.rotation))
+}
+
 export function paneMount(toward: Vector3, panes = 1) {
   const angle = Math.atan2(toward.x - CENTER.x, toward.z - CENTER.z)
   const half = panes % 2 ? 0.5 : 0

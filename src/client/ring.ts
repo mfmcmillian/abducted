@@ -17,8 +17,8 @@ import {
   VideoPlayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { CENTER, FORMATION, RING_VIDEO_URL } from '../layout'
-import { PANE_H, PANE_TOP, PANE_W, PANE_Y, paneMount } from './pane'
+import { CENTER, DOME_RADIUS, FORMATION, RING_VIDEO_URL } from '../layout'
+import { besidePane, PANE_H, PANE_TOP, PANE_W, PANE_Y, paneMount } from './pane'
 import { room } from '../shared/messages'
 import { toast } from './ui'
 import { playAt, playGlobal, SFX } from './sfx'
@@ -33,8 +33,12 @@ import { t } from './i18n'
 let claimed: boolean | null = null
 let pending = 0 // seconds left waiting for the server, 0 = idle
 
+const altarAt = besidePane(paneMount(FORMATION.SW), PANE_W / 2 + 2.6, DOME_RADIUS - 4.8)
+
 function createAltar(): Entity {
-  const c = FORMATION.SW
+  // Beside the poster (toward the dungeon portal side), back near the glass but inside the walk
+  // barrier so it can be reached. Nothing stands in front of the art.
+  const c = altarAt
   const plinth = engine.addEntity()
   Transform.create(plinth, { parent: ROOT, position: Vector3.create(c.x, 0.6, c.z), scale: Vector3.create(2.6, 1.2, 2.6) })
   MeshRenderer.setCylinder(plinth, 1, 0.75)
@@ -75,7 +79,7 @@ function createAltar(): Entity {
   // pane, facing the dome centre. Set 2.5 m in from the glass so it clears the low ceiling there.
   const CTA_SCALE = 2.2 // em -> metres; the model is ~4.7 em wide, 1.9 em tall
   const CTA_Y = PANE_TOP + 2.6
-  const mount = paneMount(c)
+  const mount = paneMount(FORMATION.SW)
   const inward = Vector3.normalize(Vector3.create(CENTER.x - mount.position.x, 0, CENTER.z - mount.position.z))
   const anchor = engine.addEntity()
   Transform.create(anchor, { parent: ROOT, position: Vector3.add(mount.position, Vector3.scale(inward, 2.5)), rotation: mount.rotation })
@@ -253,7 +257,7 @@ export function createRingAltar(domeVideo: Entity) {
   room.onMessage('ringStatus', (data) => {
     claimed = data.claimed
     pending = 0
-    if (data.ok) playAt(SFX.ringChime, Vector3.create(FORMATION.SW.x, 2.5, FORMATION.SW.z), 1)
+    if (data.ok) playAt(SFX.ringChime, Vector3.create(altarAt.x, 2.5, altarAt.z), 1)
     if (data.text) toast(t(data.text), data.ok ? 10 : 7)
   })
 

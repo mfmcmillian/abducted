@@ -42,7 +42,7 @@ import { toast } from './ui'
 import { moo, playGlobal, SFX } from './sfx'
 import { FLOOR_Y, ROOT } from './root'
 import { t } from './i18n'
-import { PANE_H, PANE_W, PANE_Y, paneMount, paneWidth } from './pane'
+import { besidePaneLocal, PANE_H, PANE_W, PANE_Y, paneMount, paneWidth } from './pane'
 
 /** Permanent night: 01:00. */
 export function createNightSky() {
@@ -336,7 +336,15 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   const bx = (x: number) => x * sx
   const by = (y: number) => PANE_Y + (y - BOARD_Y) * sy
   const board = engine.addEntity()
-  Transform.create(board, { parent: ROOT, ...paneMount(position, 2) })
+  const mount = paneMount(position, 2)
+  Transform.create(board, { parent: ROOT, ...mount })
+
+  // The display and the Marketplace cow flank the poster, tucked back by the glass so neither
+  // stands in front of the art: avatar on one side, cow on the other, just outside the barrier.
+  const SIDE = W / 2 + 3
+  const stand = besidePaneLocal(mount, SIDE, DOME_RADIUS - 3.4)
+  const cowSpot = besidePaneLocal(mount, -SIDE, DOME_RADIUS - 3.4)
+  const statusSpot = besidePaneLocal(mount, SIDE, DOME_RADIUS - 5.6)
 
   const backdrop = engine.addEntity()
   Transform.create(backdrop, { parent: board, position: Vector3.create(0, PANE_Y, 0), scale: Vector3.create(W, PANE_H, 0.15) })
@@ -353,7 +361,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   })
 
   const plinth = engine.addEntity()
-  Transform.create(plinth, { parent: root, position: Vector3.create(0, 0.3, -2), scale: Vector3.create(4.4, 0.6, 4.4) })
+  Transform.create(plinth, { parent: board, position: Vector3.create(stand.x, 0.3, stand.z), scale: Vector3.create(4.4, 0.6, 4.4) })
   MeshRenderer.setCylinder(plinth, 1, 0.9)
   MeshCollider.setCylinder(plinth, 1, 0.9, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
   Material.setPbrMaterial(plinth, {
@@ -365,7 +373,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   })
 
   const avatar = engine.addEntity()
-  Transform.create(avatar, { parent: root, position: Vector3.create(0, 0.6, -2), rotation: Quaternion.fromEulerDegrees(0, 180, 0) })
+  Transform.create(avatar, { parent: board, position: Vector3.create(stand.x, 0.6, stand.z), rotation: Quaternion.fromEulerDegrees(0, 180, 0) })
   AvatarShape.create(avatar, {
     id: `${kind}-showcase`,
     name: kind === 'emote' ? 'Abducted! Emote' : 'Alien Costume',
@@ -396,7 +404,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   MeshCollider.setBox(hit, ColliderLayer.CL_POINTER)
 
   const status = engine.addEntity()
-  Transform.create(status, { parent: root, position: Vector3.create(0, 1.15, -3.65) })
+  Transform.create(status, { parent: board, position: Vector3.create(statusSpot.x, 1.15, statusSpot.z) })
   TextShape.create(status, {
     text: `${kind === 'emote' ? EMOTE_NAMES[0] : COSTUME_NAMES[0]}  ·  1 / 4`,
     fontSize: 2,
@@ -410,8 +418,8 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   // The Marketplace control is an anti-gravity cow, not a UI-looking box.
   const marketCow = engine.addEntity()
   Transform.create(marketCow, {
-    parent: root,
-    position: Vector3.create(3.8, 1.7, -3.4),
+    parent: board,
+    position: Vector3.create(cowSpot.x, 1.7, cowSpot.z),
     rotation: Quaternion.fromEulerDegrees(-8, 0, 10),
     scale: Vector3.create(1.15, 1.15, 1.15)
   })
@@ -424,7 +432,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   Transform.create(cowGlow, { parent: marketCow, position: Vector3.create(0, -0.5, 0) })
   LightSource.create(cowGlow, { active: true, color: glowColor, intensity: 700, range: 7, shadow: false, type: LightSource.Type.Point({}) })
   const cowAction = engine.addEntity()
-  Transform.create(cowAction, { parent: root, position: Vector3.create(3.8, 0.55, -3.45) })
+  Transform.create(cowAction, { parent: board, position: Vector3.create(cowSpot.x, 0.55, cowSpot.z) })
   TextShape.create(cowAction, {
     text: kind === 'emote' ? t('CLICK COW TO OPEN\nMARKETPLACE ITEM') : t('NOT FOR SALE\nEARNED IN DUNGEONS OF ANTROM'),
     fontSize: kind === 'emote' ? 1.15 : 1.05,
@@ -437,7 +445,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   })
 
   const light = engine.addEntity()
-  Transform.create(light, { parent: root, position: Vector3.create(0, 3.5, -2) })
+  Transform.create(light, { parent: board, position: Vector3.create(stand.x, 3.5, stand.z) })
   LightSource.create(light, { active: true, color: glowColor, intensity: 1500, range: 14, shadow: false, type: LightSource.Type.Point({}) })
 
   const display: Showcase = { kind, avatar, status, marketCow, index: 0, replay: 8, cowPhase: kind === 'emote' ? 0 : Math.PI }
@@ -446,7 +454,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   if (kind === 'emote') {
     // 3D "BUY HERE" floating over the Marketplace cow (built by tools/build-text.mjs, reads from -Z).
     const buyText = engine.addEntity()
-    Transform.create(buyText, { parent: root, position: Vector3.create(3.8, 3.4, -3.4), scale: Vector3.create(0.7, 0.7, 0.7) })
+    Transform.create(buyText, { parent: board, position: Vector3.create(cowSpot.x, 3.4, cowSpot.z), scale: Vector3.create(0.7, 0.7, 0.7) })
     GltfContainer.create(buyText, { src: 'models/text-buy.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
     Billboard.create(buyText, { billboardMode: BillboardMode.BM_Y })
     display.buyText = buyText

@@ -1,7 +1,8 @@
 import { AvatarShape, engine, Entity, InputAction, MeshCollider, pointerEventsSystem, ColliderLayer, Transform } from '@dcl/sdk/ecs'
 import { Quaternion, Vector3 } from '@dcl/sdk/math'
 import { openExternalUrl } from '~system/RestrictedActions'
-import { ABDUCTED_EMOTE_URN, CENTER, COSTUME_COLLECTION, COSTUME_URNS, FORMATION } from '../layout'
+import { ABDUCTED_EMOTE_URN, CENTER, COSTUME_COLLECTION, COSTUME_URNS, DOME_RADIUS, FORMATION } from '../layout'
+import { besidePane, PANE_W, paneMount } from './pane'
 import { ROOT } from './root'
 import { t } from './i18n'
 
@@ -32,18 +33,13 @@ interface Dancer {
 const dancers: Dancer[] = []
 
 function createDancer(index: number): Dancer {
-  const portal = FORMATION.NW
-  const dx = CENTER.x - portal.x
-  const dz = CENTER.z - portal.z
-  const length = Math.sqrt(dx * dx + dz * dz)
-  const forwardX = dx / length
-  const forwardZ = dz / length
-  const rightX = forwardZ
-  const rightZ = -forwardX
-  const row = Math.floor(index / 4)
-  const across = (index % 4 - 1.5) * 2.4
-  const depth = 5 + row * 3
-  const position = Vector3.create(portal.x + forwardX * depth + rightX * across, 0, portal.z + forwardZ * depth + rightZ * across)
+  // Two groups of four flanking the portal poster, back by the glass just outside the walk
+  // barrier, so nobody stands in front of the art.
+  const mount = paneMount(FORMATION.NW)
+  const side = index % 2 === 0 ? 1 : -1
+  const slot = Math.floor(index / 2) // 0..3 within the group
+  const lateral = side * (PANE_W / 2 + 2 + slot * 1.9)
+  const position = besidePane(mount, lateral, DOME_RADIUS - 3.6 + (slot % 2) * 1.1)
   const entity = engine.addEntity()
   const costume = index % COSTUME_URNS.length
   // Face visitors approaching from the middle of the dome.
