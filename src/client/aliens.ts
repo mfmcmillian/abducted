@@ -2,6 +2,7 @@ import { AvatarShape, engine, Entity, InputAction, MeshCollider, pointerEventsSy
 import { Quaternion, Vector3 } from '@dcl/sdk/math'
 import { openExternalUrl } from '~system/RestrictedActions'
 import { ABDUCTED_EMOTE_URN, CENTER, COSTUME_COLLECTION, COSTUME_URNS, FORMATION } from '../layout'
+import { ROOT } from './root'
 
 /**
  * Eight NPC avatars in the alien costumes dance in front of the Dungeons of Antrom
@@ -46,7 +47,7 @@ function createDancer(index: number): Dancer {
   const costume = index % COSTUME_URNS.length
   // Face visitors approaching from the middle of the dome.
   const yaw = (Math.atan2(CENTER.x - position.x, CENTER.z - position.z) * 180) / Math.PI
-  Transform.create(entity, { position, rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
+  Transform.create(entity, { parent: ROOT, position, rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
   AvatarShape.create(entity, {
     id: `alien-${index}`,
     name: NAMES[index],

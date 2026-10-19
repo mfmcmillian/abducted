@@ -38,6 +38,7 @@ import { ARENA_FLY_HEIGHT, ARENA_SIZE, ARENA_Y, CENTER, LANDING, LAUNCH_PAD, LEA
 import { GAME, RULESET } from '../shared/gameConfig'
 import { room } from '../shared/messages'
 import { hud, toast, type BeamState } from './ui'
+import { FLOOR_Y, ROOT, sceneToWorld } from './root'
 
 /**
  * The cow game (TheCowCatchingGame PRD v1.0, P0).
@@ -143,7 +144,7 @@ function createLaunchPad() {
   // Broad call zone: approaching the pad brings the UFO down before the player
   // reaches the narrow beam in the middle.
   const callZone = engine.addEntity()
-  Transform.create(callZone, { position: Vector3.create(LAUNCH_PAD.x, 1.5, LAUNCH_PAD.z), scale: Vector3.create(10, 3, 10) })
+  Transform.create(callZone, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, 1.5, LAUNCH_PAD.z), scale: Vector3.create(10, 3, 10) })
   TriggerArea.setBox(callZone)
   triggerAreaEventsSystem.onTriggerEnter(callZone, () => {
     if (phase === 'idle') {
@@ -157,7 +158,7 @@ function createLaunchPad() {
   // Small boarding zone at the centre. Walking into the thin guide beam expands it
   // and starts the lift; being merely near the pad is not enough.
   const beamZone = engine.addEntity()
-  Transform.create(beamZone, { position: Vector3.create(LAUNCH_PAD.x, 1.5, LAUNCH_PAD.z), scale: Vector3.create(2.4, 3, 2.4) })
+  Transform.create(beamZone, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, 1.5, LAUNCH_PAD.z), scale: Vector3.create(2.4, 3, 2.4) })
   TriggerArea.setBox(beamZone)
   triggerAreaEventsSystem.onTriggerEnter(beamZone, () => {
     insideBeam = true
@@ -173,15 +174,15 @@ function createLaunchPad() {
   })
 
   const glow = engine.addEntity()
-  Transform.create(glow, { position: Vector3.create(LAUNCH_PAD.x, 3, LAUNCH_PAD.z) })
+  Transform.create(glow, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, 3, LAUNCH_PAD.z) })
   LightSource.create(glow, { active: true, color: Color3.create(0.4, 0.9, 1), intensity: 500, range: 12, shadow: false, type: LightSource.Type.Point({}) })
 
   liftUfo = engine.addEntity()
-  Transform.create(liftUfo, { position: Vector3.clone(liftIdle), scale: Vector3.create(3.5, 3.5, 3.5) })
+  Transform.create(liftUfo, { parent: ROOT, position: Vector3.clone(liftIdle), scale: Vector3.create(3.5, 3.5, 3.5) })
   GltfContainer.create(liftUfo, { src: 'models/ufo.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
   setPadHum = attachLoop(liftUfo, SFX.beamHum, 0.15)
   liftBeam = engine.addEntity()
-  Transform.create(liftBeam, { position: Vector3.create(LAUNCH_PAD.x, liftDown.y / 2, LAUNCH_PAD.z), scale: Vector3.Zero() })
+  Transform.create(liftBeam, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, liftDown.y / 2, LAUNCH_PAD.z), scale: Vector3.Zero() })
   MeshRenderer.setCylinder(liftBeam, 3.2, 1.2)
   Material.setPbrMaterial(liftBeam, {
     albedoColor: Color4.create(0.4, 0.9, 1, 0.3),
@@ -191,7 +192,7 @@ function createLaunchPad() {
     castShadows: false
   })
   liftLight = engine.addEntity()
-  Transform.create(liftLight, { position: Vector3.create(LAUNCH_PAD.x, 12, LAUNCH_PAD.z), rotation: Quaternion.fromEulerDegrees(90, 0, 0) })
+  Transform.create(liftLight, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, 12, LAUNCH_PAD.z), rotation: Quaternion.fromEulerDegrees(90, 0, 0) })
   LightSource.create(liftLight, {
     active: false,
     color: Color3.create(0.4, 0.9, 1),
@@ -204,14 +205,14 @@ function createLaunchPad() {
   // Giant pink 3D "PLAY ME! / STAND HERE" beside the beam (models/text-play.glb, tools/build-text.mjs).
   const PLAY_SCALE = 2.6
   const sign = engine.addEntity()
-  Transform.create(sign, {
+  Transform.create(sign, { parent: ROOT,
     position: Vector3.create(LAUNCH_PAD.x, 5.5, LAUNCH_PAD.z),
     scale: Vector3.create(PLAY_SCALE, PLAY_SCALE, PLAY_SCALE)
   })
   GltfContainer.create(sign, { src: 'models/text-play.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
   Billboard.create(sign, { billboardMode: BillboardMode.BM_Y })
   const signLight = engine.addEntity()
-  Transform.create(signLight, { position: Vector3.create(LAUNCH_PAD.x, 7.5, LAUNCH_PAD.z) })
+  Transform.create(signLight, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, 7.5, LAUNCH_PAD.z) })
   LightSource.create(signLight, { active: true, color: Color3.create(1, 0.35, 0.8), intensity: 200, range: 14, shadow: false, type: LightSource.Type.Point({}) })
   let signClock = 0
   engine.addSystem((dt) => {
@@ -244,7 +245,7 @@ const farmers: { avatar: Entity; next: number; emote: number }[] = []
 function createArenaDressing() {
   const prop = (model: string, dx: number, dz: number, rot: number, scale: number) => {
     const e = engine.addEntity()
-    Transform.create(e, {
+    Transform.create(e, { parent: ROOT,
       position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y, ARENA_CENTER.z + dz),
       rotation: Quaternion.fromEulerDegrees(0, rot, 0),
       scale: Vector3.create(scale, scale, scale)
@@ -254,7 +255,7 @@ function createArenaDressing() {
   }
   const bale = (dx: number, dz: number, rot: number, tipped = false) => {
     const e = engine.addEntity()
-    Transform.create(e, {
+    Transform.create(e, { parent: ROOT,
       position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y + (tipped ? 0.75 : 0.6), ARENA_CENTER.z + dz),
       rotation: tipped ? Quaternion.fromEulerDegrees(0, rot, 90) : Quaternion.fromEulerDegrees(0, rot, 0),
       scale: Vector3.create(1.5, 1.2, 1.5)
@@ -264,15 +265,15 @@ function createArenaDressing() {
   }
   const lantern = (dx: number, dz: number) => {
     const post = engine.addEntity()
-    Transform.create(post, { position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y + 1.6, ARENA_CENTER.z + dz), scale: Vector3.create(0.14, 3.2, 0.14) })
+    Transform.create(post, { parent: ROOT, position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y + 1.6, ARENA_CENTER.z + dz), scale: Vector3.create(0.14, 3.2, 0.14) })
     MeshRenderer.setBox(post)
     Material.setPbrMaterial(post, { albedoColor: Color4.create(0.12, 0.08, 0.05, 1), roughness: 1 })
     const bulb = engine.addEntity()
-    Transform.create(bulb, { position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y + 3.3, ARENA_CENTER.z + dz), scale: Vector3.create(0.45, 0.45, 0.45) })
+    Transform.create(bulb, { parent: ROOT, position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y + 3.3, ARENA_CENTER.z + dz), scale: Vector3.create(0.45, 0.45, 0.45) })
     MeshRenderer.setSphere(bulb)
     Material.setPbrMaterial(bulb, { albedoColor: Color4.create(1, 0.6, 0.2, 1), emissiveColor: Color3.create(1, 0.55, 0.15), emissiveIntensity: 3 })
     const light = engine.addEntity()
-    Transform.create(light, { position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y + 3.2, ARENA_CENTER.z + dz) })
+    Transform.create(light, { parent: ROOT, position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y + 3.2, ARENA_CENTER.z + dz) })
     LightSource.create(light, { active: true, color: Color3.create(1, 0.6, 0.25), intensity: 400, range: 12, shadow: false, type: LightSource.Type.Point({}) })
   }
 
@@ -313,7 +314,7 @@ function createArenaDressing() {
     const dx = side === 0 ? along : side === 1 ? out : side === 2 ? along : -out
     const dz = side === 0 ? out : side === 1 ? along : side === 2 ? -out : along
     const avatar = engine.addEntity()
-    Transform.create(avatar, {
+    Transform.create(avatar, { parent: ROOT,
       position: Vector3.create(ARENA_CENTER.x + dx, ARENA_Y, ARENA_CENTER.z + dz),
       rotation: Quaternion.fromEulerDegrees(0, (Math.atan2(-dx, -dz) * 180) / Math.PI, 0)
     })
@@ -346,28 +347,28 @@ function createArenaDressing() {
 
 function createArena() {
   const pasture = engine.addEntity()
-  Transform.create(pasture, { position: Vector3.clone(ARENA_CENTER), rotation: Quaternion.fromEulerDegrees(90, 0, 0), scale: Vector3.create(ARENA_SIZE, ARENA_SIZE, 1) })
+  Transform.create(pasture, { parent: ROOT, position: Vector3.clone(ARENA_CENTER), rotation: Quaternion.fromEulerDegrees(90, 0, 0), scale: Vector3.create(ARENA_SIZE, ARENA_SIZE, 1) })
   MeshRenderer.setPlane(pasture)
   Material.setPbrMaterial(pasture, { albedoColor: Color4.create(0.07, 0.14, 0.07, 1), emissiveColor: Color3.create(0.02, 0.05, 0.02), emissiveIntensity: 1, roughness: 1 })
 
   // The playable field: brighter grass, glowing fence line, and invisible walls so the
   // saucer slides along the edge instead of leaving.
   const field = engine.addEntity()
-  Transform.create(field, { position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 0.02, ARENA_CENTER.z), rotation: Quaternion.fromEulerDegrees(90, 0, 0), scale: Vector3.create(GAME.fieldSize, GAME.fieldSize, 1) })
+  Transform.create(field, { parent: ROOT, position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 0.02, ARENA_CENTER.z), rotation: Quaternion.fromEulerDegrees(90, 0, 0), scale: Vector3.create(GAME.fieldSize, GAME.fieldSize, 1) })
   MeshRenderer.setPlane(field)
   Material.setPbrMaterial(field, { albedoColor: Color4.create(0.1, 0.2, 0.09, 1), emissiveColor: Color3.create(0.03, 0.08, 0.03), emissiveIntensity: 1, roughness: 1 })
   for (let i = 0; i < 4; i++) {
     const along = i < 2
     const sign = i % 2 === 0 ? -1 : 1
     const edge = engine.addEntity()
-    Transform.create(edge, {
+    Transform.create(edge, { parent: ROOT,
       position: Vector3.create(ARENA_CENTER.x + (along ? 0 : sign * HALF), ARENA_Y + 0.3, ARENA_CENTER.z + (along ? sign * HALF : 0)),
       scale: along ? Vector3.create(GAME.fieldSize + 0.4, 0.6, 0.25) : Vector3.create(0.25, 0.6, GAME.fieldSize + 0.4)
     })
     MeshRenderer.setBox(edge)
     Material.setPbrMaterial(edge, { albedoColor: Color4.create(0.1, 0.3, 0.2, 1), emissiveColor: Color3.create(0.3, 1, 0.6), emissiveIntensity: 2 })
     const wall = engine.addEntity()
-    Transform.create(wall, {
+    Transform.create(wall, { parent: ROOT,
       position: Vector3.create(ARENA_CENTER.x + (along ? 0 : sign * (HALF + 0.5)), FLY_Y + 4, ARENA_CENTER.z + (along ? sign * (HALF + 0.5) : 0)),
       scale: along ? Vector3.create(GAME.fieldSize + 2, 12, 1) : Vector3.create(1, 12, GAME.fieldSize + 2)
     })
@@ -376,7 +377,7 @@ function createArena() {
   for (let i = 0; i < 5; i++) {
     const a = (i / 5) * Math.PI * 2 + 0.4
     const ring = engine.addEntity()
-    Transform.create(ring, {
+    Transform.create(ring, { parent: ROOT,
       position: Vector3.create(ARENA_CENTER.x + Math.sin(a) * 14, ARENA_Y + 0.04, ARENA_CENTER.z + Math.cos(a) * 14),
       rotation: Quaternion.fromEulerDegrees(90, 0, 0),
       scale: Vector3.create(6, 6, 1)
@@ -387,14 +388,14 @@ function createArena() {
 
   // Invisible deck the player (saucer) hovers on.
   const deck = engine.addEntity()
-  Transform.create(deck, { position: Vector3.create(ARENA_CENTER.x, FLY_Y - 0.1, ARENA_CENTER.z), scale: Vector3.create(ARENA_SIZE, 0.2, ARENA_SIZE) })
+  Transform.create(deck, { parent: ROOT, position: Vector3.create(ARENA_CENTER.x, FLY_Y - 0.1, ARENA_CENTER.z), scale: Vector3.create(ARENA_SIZE, 0.2, ARENA_SIZE) })
   MeshCollider.setBox(deck, ColliderLayer.CL_PHYSICS)
 
   // Up here you are a saucer: first person so nothing blocks the view of the field.
   const mods = engine.addEntity()
   // Covers the whole pasture volume, from below the grass to well above flying height, so
   // other players are hidden whether they are flying, landing or standing on the field.
-  Transform.create(mods, { position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 14, ARENA_CENTER.z) })
+  Transform.create(mods, { parent: ROOT, position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 14, ARENA_CENTER.z) })
   AvatarModifierArea.create(mods, {
     area: Vector3.create(ARENA_SIZE + 4, 44, ARENA_SIZE + 4),
     modifiers: [AvatarModifierType.AMT_HIDE_AVATARS, AvatarModifierType.AMT_DISABLE_PASSPORTS],
@@ -403,16 +404,16 @@ function createArena() {
   CameraModeArea.create(mods, { area: Vector3.create(ARENA_SIZE + 4, 44, ARENA_SIZE + 4), mode: CameraType.CT_FIRST_PERSON })
 
   const moon = engine.addEntity()
-  Transform.create(moon, { position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 30, ARENA_CENTER.z) })
+  Transform.create(moon, { parent: ROOT, position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 30, ARENA_CENTER.z) })
   LightSource.create(moon, { active: true, color: Color3.create(0.6, 0.7, 1), intensity: 3000, range: 90, shadow: false, type: LightSource.Type.Point({}) })
 
   playerUfo = engine.addEntity()
-  Transform.create(playerUfo, { position: Vector3.create(ARENA_CENTER.x, FLY_Y, ARENA_CENTER.z), scale: Vector3.create(1.6, 1.6, 1.6) })
+  Transform.create(playerUfo, { parent: ROOT, position: Vector3.create(ARENA_CENTER.x, FLY_Y, ARENA_CENTER.z), scale: Vector3.create(1.6, 1.6, 1.6) })
   GltfContainer.create(playerUfo, { src: 'models/ufo.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
   VisibilityComponent.create(playerUfo, { visible: false })
 
   playerBeam = engine.addEntity()
-  Transform.create(playerBeam, { position: Vector3.create(ARENA_CENTER.x, ARENA_Y + BEAM_H / 2, ARENA_CENTER.z), scale: Vector3.Zero() })
+  Transform.create(playerBeam, { parent: ROOT, position: Vector3.create(ARENA_CENTER.x, ARENA_Y + BEAM_H / 2, ARENA_CENTER.z), scale: Vector3.Zero() })
   // (radiusBottom, radiusTop): wide where it meets the grass, narrow up at the saucer
   MeshRenderer.setCylinder(playerBeam, GAME.beamRadius, 0.6)
   Material.setPbrMaterial(playerBeam, {
@@ -423,7 +424,7 @@ function createArena() {
     castShadows: false
   })
   playerLight = engine.addEntity()
-  Transform.create(playerLight, { position: Vector3.create(ARENA_CENTER.x, FLY_Y - 1, ARENA_CENTER.z), rotation: Quaternion.fromEulerDegrees(90, 0, 0) })
+  Transform.create(playerLight, { parent: ROOT, position: Vector3.create(ARENA_CENTER.x, FLY_Y - 1, ARENA_CENTER.z), rotation: Quaternion.fromEulerDegrees(90, 0, 0) })
   LightSource.create(playerLight, {
     active: false,
     color: Color3.create(0.4, 1, 0.6),
@@ -435,14 +436,14 @@ function createArena() {
 
   // Target ring on the grass (unit radius GLB: ring, ticks, centre dot), coloured by beam state.
   aimMarker = engine.addEntity()
-  Transform.create(aimMarker, { position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 0.08, ARENA_CENTER.z), scale: Vector3.create(GAME.beamRadius, 1, GAME.beamRadius) })
+  Transform.create(aimMarker, { parent: ROOT, position: Vector3.create(ARENA_CENTER.x, ARENA_Y + 0.08, ARENA_CENTER.z), scale: Vector3.create(GAME.beamRadius, 1, GAME.beamRadius) })
   GltfContainer.create(aimMarker, { src: 'models/marker.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
   VisibilityComponent.create(aimMarker, { visible: false })
   tintMarker('ready')
 
   for (let i = 0; i < GAME.cowCount; i++) {
     const entity = engine.addEntity()
-    Transform.create(entity, { position: Vector3.clone(ARENA_CENTER), scale: Vector3.create(COW_SCALE, COW_SCALE, COW_SCALE) })
+    Transform.create(entity, { parent: ROOT, position: Vector3.clone(ARENA_CENTER), scale: Vector3.create(COW_SCALE, COW_SCALE, COW_SCALE) })
     GltfContainer.create(entity, { src: 'models/cow.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
     VisibilityComponent.create(entity, { visible: false })
     cows.push({ entity, enabled: false, state: 'gone', x: ARENA_CENTER.x, z: ARENA_CENTER.z, heading: 0, tx: 0, tz: 0, speed: 1.5, timer: 0, delay: 0, exposure: 0, lift: 0, bob: Math.random() * 6 })
@@ -621,7 +622,7 @@ function aimPoint(px: number, pz: number) {
   if (cam) {
     const fwd = Vector3.rotate(Vector3.Forward(), cam.rotation)
     if (fwd.y < -0.05) {
-      const t = (ARENA_Y - cam.position.y) / fwd.y
+      const t = (ARENA_Y - (cam.position.y - FLOOR_Y)) / fwd.y
       x = cam.position.x + fwd.x * t
       z = cam.position.z + fwd.z * t
     }
@@ -899,7 +900,7 @@ function returnToDome(message: string) {
   }
   resetBeam()
   setInputLocked(false)
-  void movePlayerTo({ newRelativePosition: Vector3.create(LANDING.x, 0.2, LANDING.z), cameraTarget: Vector3.create(CENTER.x, 3, CENTER.z) })
+  void movePlayerTo({ newRelativePosition: sceneToWorld(Vector3.create(LANDING.x, 0.2, LANDING.z)), cameraTarget: sceneToWorld(Vector3.create(CENTER.x, 3, CENTER.z)) })
   if (message) toast(message, 8)
   phase = 'idle'
   phaseTime = 0
@@ -947,7 +948,7 @@ function gameSystem(dt: number) {
     LightSource.getMutable(liftLight).active = true
     if (phaseTime > 0.7 && !pickupMoved) {
       pickupMoved = true
-      void movePlayerTo({ newRelativePosition: Vector3.create(LAUNCH_PAD.x, liftDown.y - 2.5, LAUNCH_PAD.z), duration: 1.45 })
+      void movePlayerTo({ newRelativePosition: sceneToWorld(Vector3.create(LAUNCH_PAD.x, liftDown.y - 2.5, LAUNCH_PAD.z)), duration: 1.45 })
     }
     if (phaseTime > 2.45) {
       phase = 'arriving'
@@ -955,8 +956,8 @@ function gameSystem(dt: number) {
       beamT.scale = Vector3.Zero()
       LightSource.getMutable(liftLight).active = false
       void movePlayerTo({
-        newRelativePosition: Vector3.create(ARENA_CENTER.x, FLY_Y + 0.5, ARENA_CENTER.z),
-        cameraTarget: Vector3.create(ARENA_CENTER.x + 10, ARENA_Y, ARENA_CENTER.z + 10)
+        newRelativePosition: sceneToWorld(Vector3.create(ARENA_CENTER.x, FLY_Y + 0.5, ARENA_CENTER.z)),
+        cameraTarget: sceneToWorld(Vector3.create(ARENA_CENTER.x + 10, ARENA_Y, ARENA_CENTER.z + 10))
       })
     }
   } else {
@@ -986,7 +987,7 @@ function gameSystem(dt: number) {
 
   if (phase === 'arriving') {
     // The explorer takes a moment to apply movePlayerTo; nothing starts until we are up there.
-    if (player.position.y > ARENA_Y + 2) {
+    if (player.position.y - FLOOR_Y > ARENA_Y + 2) {
       if (practiced) beginCountdown(px, pz)
       else beginPractice(px, pz)
     } else if (phaseTime > 8) {
@@ -996,14 +997,14 @@ function gameSystem(dt: number) {
   }
 
   // Left the pasture (fell, teleported, walked out): the run is abandoned, nothing is submitted.
-  if (player.position.y < ARENA_Y - 2) {
+  if (player.position.y - FLOOR_Y < ARENA_Y - 2) {
     returnToDome('You slipped out of the saucer. The round does not count.')
     return
   }
 
   // Saucer under your feet; in first person you see its rim when you look down.
   const ut = Transform.getMutable(playerUfo)
-  ut.position = Vector3.lerp(ut.position, Vector3.create(px, player.position.y - 2.2, pz), Math.min(1, dt * 12))
+  ut.position = Vector3.lerp(ut.position, Vector3.create(px, player.position.y - FLOOR_Y - 2.2, pz), Math.min(1, dt * 12))
   ut.rotation = Quaternion.fromEulerDegrees(0, phaseTime * 60, 0)
   hud.edge = Math.abs(px - ARENA_CENTER.x) > HALF - 3 || Math.abs(pz - ARENA_CENTER.z) > HALF - 3
 
@@ -1062,7 +1063,7 @@ function createLeaderboard() {
   // Plane/Text fronts face local -Z, so turn that side toward the launch pad.
   const yaw = (Math.atan2(LAUNCH_PAD.x - LEADERBOARD.x, LAUNCH_PAD.z - LEADERBOARD.z) * 180) / Math.PI + 180
   const root = engine.addEntity()
-  Transform.create(root, { position: Vector3.clone(LEADERBOARD), rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
+  Transform.create(root, { parent: ROOT, position: Vector3.clone(LEADERBOARD), rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
 
   const panel = engine.addEntity()
   Transform.create(panel, { parent: root, position: Vector3.create(0, 6.75, 0), scale: Vector3.create(10.5, 13.5, 0.2) })

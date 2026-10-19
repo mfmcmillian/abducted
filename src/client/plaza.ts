@@ -39,6 +39,7 @@ import {
 import { music } from './music'
 import { toast } from './ui'
 import { moo, playGlobal, SFX } from './sfx'
+import { ROOT } from './root'
 
 /** Permanent night: 01:00. */
 export function createNightSky() {
@@ -48,7 +49,7 @@ export function createNightSky() {
 /** Ground, crop circles and the path to the door (models/plaza.glb, tools/build-plaza.mjs). */
 export function createGround(): Entity {
   const plaza = engine.addEntity()
-  Transform.create(plaza, { position: CENTER })
+  Transform.create(plaza, { parent: ROOT, position: CENTER })
   GltfContainer.create(plaza, {
     src: 'models/plaza.glb',
     visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS,
@@ -72,7 +73,7 @@ export function createRimPylons() {
   for (let i = 0; i < COUNT; i++) {
     const a = (i / COUNT) * Math.PI * 2
     const pylon = engine.addEntity()
-    Transform.create(pylon, {
+    Transform.create(pylon, { parent: ROOT,
       position: Vector3.create(CENTER.x + radius * Math.sin(a), 1.5, CENTER.z + radius * Math.cos(a)),
       scale: Vector3.create(0.5, 3, 0.5)
     })
@@ -135,7 +136,7 @@ function createPortal(position: Vector3, world: string, title: string, texture: 
   // Plane/Text fronts face local -Z. Rotate the portal's back toward the centre so its
   // illustrated front is what players approaching from the dome centre see.
   const facing = facingCenter(position)
-  Transform.create(portal, {
+  Transform.create(portal, { parent: ROOT,
     position,
     rotation: Quaternion.multiply(facing, Quaternion.fromEulerDegrees(0, 180, 0))
   })
@@ -263,7 +264,7 @@ const TILE_GAP = 2.35
 function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, texture: string, glowColor: Color3) {
   const root = engine.addEntity()
   const towardCentre = facingCenter(position)
-  Transform.create(root, {
+  Transform.create(root, { parent: ROOT,
     position,
     // Plane/Text fronts face local -Z.
     rotation: Quaternion.multiply(towardCentre, Quaternion.fromEulerDegrees(0, 180, 0))
@@ -491,7 +492,7 @@ export function createBarrier() {
   for (let i = 0; i < SEGMENTS; i++) {
     const a = (i + 0.5) * step
     const wall = engine.addEntity()
-    Transform.create(wall, {
+    Transform.create(wall, { parent: ROOT,
       position: Vector3.create(CENTER.x + Math.sin(a) * RADIUS, HEIGHT / 2, CENTER.z + Math.cos(a) * RADIUS),
       rotation: Quaternion.fromEulerDegrees(0, (a * 180) / Math.PI, 0),
       scale: Vector3.create(width, HEIGHT, 0.4)

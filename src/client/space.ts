@@ -3,6 +3,7 @@ import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { CENTER, SPACE_RADIUS } from '../layout'
 import { playAt, SFX } from './sfx'
 import { startFx, warpIn, warpOut } from './fx'
+import { ROOT } from './root'
 
 /**
  * The universe outside the observation deck. dome.glb (tools/build-dome-pods.mjs) carries a
@@ -33,7 +34,7 @@ const deg = (d: number) => (d * Math.PI) / 180
 
 function model(src: string, scale: number): Entity {
   const e = engine.addEntity()
-  Transform.create(e, { position: Vector3.create(CENTER.x, -40, CENTER.z), scale: Vector3.create(scale, scale, scale) })
+  Transform.create(e, { parent: ROOT, position: Vector3.create(CENTER.x, -40, CENTER.z), scale: Vector3.create(scale, scale, scale) })
   GltfContainer.create(e, { src, ...NO_COLLIDE })
   return e
 }
@@ -135,7 +136,7 @@ function createComet() {
   const o = orbiter(body, R + 16, rand(0, TAU), 24, 1.4, Vector3.create(10, 25, 5))
   // Tail: a long soft cone trailing the nucleus, pointing away from the direction of travel.
   const tail = engine.addEntity()
-  Transform.create(tail, { position: Vector3.Zero(), scale: Vector3.create(4, 22, 4) })
+  Transform.create(tail, { parent: ROOT, position: Vector3.Zero(), scale: Vector3.create(4, 22, 4) })
   MeshRenderer.setCylinder(tail, 0.05, 1)
   Material.setPbrMaterial(tail, {
     albedoColor: Color4.create(0.6, 0.85, 1, 0.22),
@@ -177,7 +178,7 @@ const ESCORT_OFFSETS = [
 function createFleet(): Fleet {
   const ship = model('models/space/mothership.glb', MOTHERSHIP_SCALE)
   const escorts = ESCORT_OFFSETS.map(() => model('models/ufo.glb', ESCORT_SCALE))
-  return { ship, escorts, active: false, timer: rand(20, 40), rho: R + 18, phi: 0, y: 22, speed: 3, dir: DIR, travelled: 0, length: Math.PI, hold: 0, leaving: false }
+  return { ship, escorts, active: false, timer: rand(20, 40), rho: R + 18, phi: 0, y: 12, speed: 3, dir: DIR, travelled: 0, length: Math.PI, hold: 0, leaving: false }
 }
 
 function hideFleet(f: Fleet) {
@@ -210,7 +211,7 @@ const fleetHeading = (f: Fleet) => Vector3.scale(Vector3.create(Math.cos(f.phi),
 function createLights() {
   for (let i = 0; i < LIGHT_COUNT; i++) {
     const light = engine.addEntity()
-    Transform.create(light, { position: polar(R + 4, (i / LIGHT_COUNT) * TAU + Math.PI / 4, 26) })
+    Transform.create(light, { parent: ROOT, position: polar(R + 4, (i / LIGHT_COUNT) * TAU + Math.PI / 4, 26) })
     LightSource.create(light, { active: true, color: Color3.create(0.6, 0.8, 1), intensity: 2200, range: 60, shadow: false, type: LightSource.Type.Point({}) })
   }
 }
@@ -223,13 +224,13 @@ export function createSpaceWindows() {
 
   // Planets at the back, drifting so slowly a lap takes over an hour; they tilt and turn.
   // From the plaza the window head clips the back wall above y ~26, so the planets sit low.
-  earth = orbiter(model('models/space/earth.glb', EARTH_SCALE), BACK - EARTH_SCALE - 1.5, deg(0), 25, 0.07, Vector3.create(0, 1.6, 0), Quaternion.fromEulerDegrees(0, 0, 18))
-  orbiter(model('models/space/moon.glb', 4.5), BACK - 10, deg(14), 30, 0.07, Vector3.create(0, 0.8, 0))
+  earth = orbiter(model('models/space/earth.glb', EARTH_SCALE), BACK - EARTH_SCALE - 1.5, deg(0), 15, 0.07, Vector3.create(0, 1.6, 0), Quaternion.fromEulerDegrees(0, 0, 18))
+  orbiter(model('models/space/moon.glb', 4.5), BACK - 10, deg(14), 20, 0.07, Vector3.create(0, 0.8, 0))
   const GIANT = 15
-  const giant = orbiter(model('models/space/gas-giant.glb', GIANT), BACK - GIANT - 1.5, deg(180), 26, 0.06, Vector3.create(0, 2.4, 0), Quaternion.fromEulerDegrees(12, 0, -22))
+  const giant = orbiter(model('models/space/gas-giant.glb', GIANT), BACK - GIANT - 1.5, deg(180), 16, 0.06, Vector3.create(0, 2.4, 0), Quaternion.fromEulerDegrees(12, 0, -22))
   bigBodies.push([earth, EARTH_SCALE * 0.92], [giant, GIANT * 0.95])
   // somebody's hatchback, tumbling slowly in orbit just below the Earth (it tested well)
-  orbiter(model('models/earth/car.glb', 2.2), BACK - 22, deg(-11), 16, 0.07, Vector3.create(4, 17, 7))
+  orbiter(model('models/earth/car.glb', 2.2), BACK - 22, deg(-11), 6, 0.07, Vector3.create(4, 17, 7))
 
   const comet = createComet()
   const fleet = createFleet()
