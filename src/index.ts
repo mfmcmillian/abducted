@@ -17,6 +17,8 @@ import { createBarrier, createGround, createKiosk, createNightSky, createPortals
 import { createRingAltar } from './client/ring'
 import { initUi } from './client/ui'
 import { initLanguage } from './client/i18n'
+import { createCosmos } from './client/cosmos'
+import { createRadio } from './client/radio'
 
 /**
  * Abducted! - They appear to be enjoying it. An 8x8 World: a closed video dome with the
@@ -60,6 +62,8 @@ function initClient() {
   createBarrier()
   createCowGame()
   createCargoLoop()
+  createCosmos()
+  createRadio()
   createSpaceBattles()
   createEarthZoom(video)
 }

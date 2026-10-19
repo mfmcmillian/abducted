@@ -290,7 +290,69 @@ const ROWS: ReadonlyArray<readonly [string, string, string, string]> = [
     '« Voilà la visite. La capsule attend. Rapportez-nous des vaches. Et si vous croisez le couple... ce sont ceux qui apprécient. »',
     '"Ese es el recorrido. La cápsula espera. Tráenos vacas. Y si ves a la pareja... son los que lo están disfrutando."',
     '“导览到此结束。舱体在等你。给我们带奶牛来。如果你遇到那对情侣……他们就是乐在其中的那两位。”'
-  ]
+  ],
+  // --- shared cosmos ---
+  ['The black hole has fed on {0} cows. It is bigger now.', 'Le trou noir a avalé {0} vaches. Il a grossi.', 'El agujero negro se ha comido {0} vacas. Ahora es más grande.', '黑洞已经吞下 {0} 头奶牛。它变大了。'],
+  ['A second ship has warped in alongside. Word is getting around.', 'Un second vaisseau vient de sortir de distorsion à côté de nous. La nouvelle se répand.', 'Una segunda nave acaba de salir del warp a nuestro lado. Se está corriendo la voz.', '第二艘飞船跃迁到了我们旁边。消息传开了。'],
+  ['{0} cows fed by everyone', '{0} vaches données par tout le monde', '{0} vacas entregadas entre todos', '大家共投喂 {0} 头奶牛'],
+  ['{0} more and the hole grows', 'encore {0} et le trou grossit', '{0} más y el agujero crece', '再喂 {0} 头黑洞就会变大'],
+  ['the hole is as big as it gets', 'le trou est au maximum', 'el agujero ya no crece más', '黑洞已达到最大'],
+  // --- radio ---
+  ['Listen to the radio', 'Écouter la radio', 'Escuchar la radio', '收听广播'],
+  ['DALE & TAMMY  ·  LIVE FROM THE COW SHIP', 'DALE & TAMMY  ·  EN DIRECT DU VAISSEAU À VACHES', 'DALE Y TAMMY  ·  EN VIVO DESDE LA NAVE DE LAS VACAS', 'DALE 和 TAMMY  ·  奶牛飞船现场直播'],
+  ['ON AIR  ·  Episode {0}: {1}', 'À L’ANTENNE  ·  Épisode {0} : {1}', 'AL AIRE  ·  Episodio {0}: {1}', '直播中  ·  第 {0} 集：{1}'],
+  ['{0} episodes on the dial  ·  click to listen', '{0} épisodes sur le cadran  ·  cliquez pour écouter', '{0} episodios en el dial  ·  haz clic para escuchar', '频道里有 {0} 集  ·  点击收听'],
+  ['click to listen', 'cliquez pour écouter', 'haz clic para escuchar', '点击收听'],
+  ['next episode when the hole has eaten {0} cows', 'prochain épisode quand le trou aura avalé {0} vaches', 'próximo episodio cuando el agujero se haya comido {0} vacas', '黑洞吃掉 {0} 头奶牛后解锁下一集'],
+  ['New episode on the radio by the door: "{0}"', 'Nouvel épisode à la radio près de la porte : « {0} »', 'Nuevo episodio en la radio junto a la puerta: "{0}"', '门边的收音机有新一集：“{0}”'],
+  ['Day One', 'Premier jour', 'Primer día', '第一天'],
+  ['Ten Cows', 'Dix vaches', 'Diez vacas', '十头奶牛'],
+  ['Thirty', 'Trente', 'Treinta', '三十'],
+  ['Seventy-Five', 'Soixante-quinze', 'Setenta y cinco', '七十五'],
+  ['Company', 'De la compagnie', 'Compañía', '有伴了'],
+  ['Three Hundred', 'Trois cents', 'Trescientas', '三百'],
+  // ep1
+  ['Good evening from somewhere above Nebraska, this is Dale and Tammy, live from the cow ship.', 'Bonsoir de quelque part au-dessus du Nebraska, ici Dale et Tammy, en direct du vaisseau à vaches.', 'Buenas noches desde algún lugar sobre Nebraska, somos Dale y Tammy, en vivo desde la nave de las vacas.', '晚上好，这里是内布拉斯加上空某处，我们是 Dale 和 Tammy，奶牛飞船现场直播。'],
+  ['We were arguing about the air filter in the truck and then the sky went green.', 'On se disputait à propos du filtre à air du pick-up et puis le ciel est devenu vert.', 'Estábamos discutiendo por el filtro de aire de la camioneta y de repente el cielo se puso verde.', '我们正为皮卡的空气滤芯吵架，然后天空就变绿了。'],
+  ['He was arguing. I was correct.', 'Lui se disputait. Moi, j’avais raison.', 'Él discutía. Yo tenía razón.', '是他在吵。我是对的。'],
+  ['Anyway. The aliens said sorry, we are not cows, would we like to go back.', 'Bref. Les aliens ont dit pardon, vous n’êtes pas des vaches, voulez-vous rentrer.', 'En fin. Los alienígenas dijeron perdón, no son vacas, ¿quieren volver?', '总之。外星人说抱歉，你们不是奶牛，要不要送你们回去。'],
+  ["And we looked at each other, and we looked at the truck, and we said, you know what, we're good.", 'Et on s’est regardés, on a regardé le pick-up, et on a dit, vous savez quoi, ça ira.', 'Y nos miramos, miramos la camioneta, y dijimos, ¿saben qué? Estamos bien así.', '我们看了看彼此，又看了看皮卡，然后说，算了，我们挺好的。'],
+  ['Honestly, best vacation we have ever had. The beds hum.', 'Franchement, nos meilleures vacances. Les lits ronronnent.', 'La verdad, las mejores vacaciones de nuestra vida. Las camas zumban.', '说实话，这是我们过得最好的假期。床会嗡嗡响。'],
+  // ep2
+  ['Big news on the ship today. The black hole out the window ate its tenth cow.', 'Grande nouvelle à bord. Le trou noir derrière la fenêtre a avalé sa dixième vache.', 'Gran noticia en la nave. El agujero negro de la ventana se comió su décima vaca.', '今天船上有大新闻。窗外的黑洞吃掉了第十头奶牛。'],
+  ['He named them. All ten. We did not know them.', 'Il leur a donné des noms. Aux dix. On ne les connaissait pas.', 'Les puso nombre. A las diez. No las conocíamos.', '他给它们都起了名字。十头全起了。我们根本不认识它们。'],
+  ['Number seven was a Gerald. You could tell.', 'La numéro sept, c’était un Gerald. Ça se voyait.', 'La número siete era un Gerald. Se notaba.', '第七头叫 Gerald。一看就知道。'],
+  ['The crew says the hole purrs when it eats. I say that is a stomach noise.', 'L’équipage dit que le trou ronronne quand il mange. Moi je dis que c’est un bruit d’estomac.', 'La tripulación dice que el agujero ronronea cuando come. Yo digo que es ruido de estómago.', '船员说黑洞吃东西时会打呼噜。我说那是肚子叫。'],
+  ['Either way, the lights in the hallway stopped flickering. So, thank you Gerald.', 'En tout cas, les lumières du couloir ne clignotent plus. Alors merci Gerald.', 'Sea como sea, las luces del pasillo dejaron de parpadear. Así que gracias, Gerald.', '不管怎样，走廊的灯不再闪了。所以，谢谢你 Gerald。'],
+  ['Keep sending cows, folks. The hallway appreciates it.', 'Continuez à envoyer des vaches. Le couloir vous remercie.', 'Sigan mandando vacas, amigos. El pasillo lo agradece.', '大家继续送奶牛来。走廊很感激。'],
+  // ep3
+  ['Thirty cows in, and the black hole has, and I am quoting the captain here, filled out.', 'Trente vaches, et le trou noir s’est, je cite le capitaine, étoffé.', 'Treinta vacas, y el agujero negro se ha, y cito al capitán, rellenado.', '吃了三十头奶牛后，黑洞——这是船长的原话——丰满了。'],
+  ['It is bigger. It is noticeably bigger. I measured it with my thumb.', 'Il est plus gros. Nettement plus gros. Je l’ai mesuré avec mon pouce.', 'Es más grande. Notablemente más grande. Lo medí con el pulgar.', '它更大了。明显更大了。我用拇指量过。'],
+  ['He held his thumb up to a window. That is not measuring.', 'Il a levé le pouce devant une fenêtre. Ce n’est pas mesurer.', 'Levantó el pulgar frente a una ventana. Eso no es medir.', '他对着窗户竖了个拇指。那不叫量。'],
+  ['Also the whole ship feels warmer. Tammy has started redecorating the pod bay.', 'Et tout le vaisseau semble plus chaud. Tammy a commencé à redécorer la baie des capsules.', 'Además toda la nave se siente más cálida. Tammy empezó a redecorar la bahía de las cápsulas.', '整艘船也感觉更暖和了。Tammy 开始重新装修舱室了。'],
+  ['Somebody has to. Teal and chrome everywhere. It is like living inside a toaster.', 'Il faut bien que quelqu’un le fasse. Du bleu canard et du chrome partout. On dirait l’intérieur d’un grille-pain.', 'Alguien tiene que hacerlo. Verde azulado y cromo por todas partes. Es como vivir dentro de una tostadora.', '总得有人来。到处是蓝绿色和铬。像住在烤面包机里。'],
+  ['A very comfortable toaster. We are not leaving.', 'Un grille-pain très confortable. On ne part pas.', 'Una tostadora muy cómoda. No nos vamos.', '一台非常舒服的烤面包机。我们不走了。'],
+  // ep4
+  ['Folks, the sky outside changed colour overnight. Seventy-five cows will do that, apparently.', 'Le ciel dehors a changé de couleur pendant la nuit. Soixante-quinze vaches, ça fait ça, paraît-il.', 'Amigos, el cielo de afuera cambió de color durante la noche. Setenta y cinco vacas hacen eso, al parecer.', '各位，外面的天空一夜之间变了颜色。七十五头奶牛就有这效果，显然。'],
+  ['It is mauve.', 'C’est mauve.', 'Es malva.', '是淡紫色。'],
+  ['It is purple.', 'C’est violet.', 'Es morado.', '是紫色。'],
+  ['Dale, I sold curtains for eleven years. It is mauve.', 'Dale, j’ai vendu des rideaux pendant onze ans. C’est mauve.', 'Dale, vendí cortinas durante once años. Es malva.', 'Dale，我卖了十一年窗帘。是淡紫色。'],
+  ['The captain says the hole is bending light now. I say it is bending my marriage.', 'Le capitaine dit que le trou courbe la lumière maintenant. Moi je dis qu’il courbe mon mariage.', 'El capitán dice que el agujero ya curva la luz. Yo digo que curva mi matrimonio.', '船长说黑洞现在能弯曲光线了。我说它在弯曲我的婚姻。'],
+  ['Nothing is bending your marriage, honey. Send more cows, people. He needs a hobby.', 'Rien ne courbe ton mariage, chéri. Envoyez plus de vaches, les gens. Il lui faut un passe-temps.', 'Nada está curvando tu matrimonio, cariño. Manden más vacas, gente. Necesita un pasatiempo.', '没什么在弯曲你的婚姻，亲爱的。大家多送点奶牛。他需要个爱好。'],
+  // ep5
+  ['Okay, so, a second ship just warped in next to us. Hundred and fifty cows and we have neighbours.', 'Bon, alors, un second vaisseau vient de sortir de distorsion à côté de nous. Cent cinquante vaches et on a des voisins.', 'Bueno, una segunda nave acaba de salir del warp junto a nosotros. Ciento cincuenta vacas y ya tenemos vecinos.', '好吧，第二艘飞船刚跃迁到我们旁边。一百五十头奶牛，我们有邻居了。'],
+  ['I think it is the in-laws.', 'Je crois que c’est la belle-famille.', 'Creo que son los suegros.', '我觉得是岳父岳母。'],
+  ['It is not my mother, Dale. It is a different species.', 'Ce n’est pas ma mère, Dale. C’est une autre espèce.', 'No es mi madre, Dale. Es otra especie.', '那不是我妈，Dale。那是另一个物种。'],
+  ['That is what I said.', 'C’est ce que j’ai dit.', 'Eso dije.', '我就是这么说的。'],
+  ['The crew is thrilled. Apparently a hole this size draws a crowd. We are famous out here.', 'L’équipage est ravi. Apparemment un trou de cette taille attire du monde. On est célèbres par ici.', 'La tripulación está encantada. Al parecer un agujero de este tamaño atrae gente. Somos famosos por aquí.', '船员们很兴奋。显然这么大的黑洞会引来围观。我们在这儿出名了。'],
+  ['Wave at the new ship if you see it. And if it waves back with a tentacle, that is Carol.', 'Faites signe au nouveau vaisseau si vous le voyez. Et s’il répond avec un tentacule, c’est Carol.', 'Saluden a la nave nueva si la ven. Y si responde con un tentáculo, esa es Carol.', '看到新飞船就挥挥手。如果它用触手回应，那就是 Carol。'],
+  // ep6
+  ['Three hundred cows. The black hole is enormous. You can see it from the bathroom.', 'Trois cents vaches. Le trou noir est énorme. On le voit depuis la salle de bain.', 'Trescientas vacas. El agujero negro es enorme. Se ve desde el baño.', '三百头奶牛。黑洞大得惊人。从浴室都能看见。'],
+  ['It has a glow now. Like a nightlight. I have grown very fond of it.', 'Il a une lueur maintenant. Comme une veilleuse. Je m’y suis beaucoup attachée.', 'Ahora tiene un brillo. Como una lamparita de noche. Le he tomado mucho cariño.', '它现在会发光。像小夜灯。我对它很有感情了。'],
+  ['The captain gave us a plaque. It says, honorary cargo. We are very proud.', 'Le capitaine nous a offert une plaque. Il y est écrit : cargaison honoraire. On est très fiers.', 'El capitán nos dio una placa. Dice: carga honoraria. Estamos muy orgullosos.', '船长给了我们一块牌匾。上面写着：荣誉货物。我们非常自豪。'],
+  ['We talked about going home. For about a minute.', 'On a parlé de rentrer. Pendant environ une minute.', 'Hablamos de volver a casa. Como un minuto.', '我们谈过回家。大概谈了一分钟。'],
+  ['Then the beds started humming again, and, well.', 'Puis les lits se sont remis à ronronner, et, bon.', 'Luego las camas empezaron a zumbar otra vez, y, bueno.', '然后床又开始嗡嗡响了，然后，嗯。'],
+  ['This is Dale and Tammy, live from the cow ship. We are enjoying it. Good night, Earth.', 'Ici Dale et Tammy, en direct du vaisseau à vaches. On apprécie. Bonne nuit, la Terre.', 'Somos Dale y Tammy, en vivo desde la nave de las vacas. Lo estamos disfrutando. Buenas noches, Tierra.', '我们是 Dale 和 Tammy，奶牛飞船现场直播。我们很享受。晚安，地球。']
 ]
 
 const MAP = new Map<string, readonly [string, string, string, string]>(ROWS.map((r) => [r[0], r]))

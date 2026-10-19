@@ -208,9 +208,17 @@ const fleetHeading = (f: Fleet) => Vector3.scale(Vector3.create(Math.cos(f.phi),
 
 // ---- lights ----------------------------------------------------------------------------------
 
+const spaceLights: Entity[] = []
+
+/** Recolour the light outside the windows (the shared cosmos shifts it as the hole feeds). */
+export function setSpaceTint(color: Color3) {
+  for (const l of spaceLights) LightSource.getMutable(l).color = color
+}
+
 function createLights() {
   for (let i = 0; i < LIGHT_COUNT; i++) {
     const light = engine.addEntity()
+    spaceLights.push(light)
     Transform.create(light, { parent: ROOT, position: polar(R + 4, (i / LIGHT_COUNT) * TAU + Math.PI / 4, 26) })
     LightSource.create(light, { active: true, color: Color3.create(0.6, 0.8, 1), intensity: 2200, range: 60, shadow: false, type: LightSource.Type.Point({}) })
   }

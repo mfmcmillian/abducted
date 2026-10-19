@@ -41,7 +41,7 @@ export const hud = {
 }
 
 /** Kudos loop readout (cargo bay / launcher / black hole), written by client/cargo.ts. */
-export const kudosHud = { synced: false, kudos: 0, cargo: 0, launched: 0, nextHoleIn: 0, carrying: false }
+export const kudosHud = { synced: false, kudos: 0, cargo: 0, launched: 0, nextHoleIn: 0, carrying: false, mass: 0, toNext: 0 }
 
 const GREEN = Color4.create(0.6, 1, 0.75, 1)
 const DIM = Color4.create(0.7, 0.8, 0.9, 0.9)
@@ -253,6 +253,7 @@ function KudosPanel() {
         </UiEntity>
         <PanelRow icon="images/ui-icon-cow.png" value={t('{0} in the cargo bay', k.cargo)} caption={t('{0} of yours floating outside', k.launched)} S={S} />
         <PanelRow icon="images/ui-icon-hole.png" value={t('black hole in {0}', formatTime(k.nextHoleIn))} caption={t('10 kudos per floating cow it eats')} S={S} color={PURPLE_UI} />
+        <PanelRow icon="images/ui-icon-hole.png" value={t('{0} cows fed by everyone', k.mass)} caption={k.toNext > 0 ? t('{0} more and the hole grows', k.toNext) : t('the hole is as big as it gets')} S={S} color={PURPLE_UI} />
         {k.carrying ? (
           <UiEntity uiTransform={{ width: '100%', height: S(44), margin: { top: S(12) }, justifyContent: 'center', alignItems: 'center' }} uiBackground={{ color: Color4.create(0.35, 0.05, 0.25, 0.9) }}>
             <Label value={t('Carrying a cow: click the COW LAUNCHER')} fontSize={S(18)} color={PINK} textAlign="middle-center" uiTransform={{ width: '100%', height: S(30) }} />

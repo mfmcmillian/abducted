@@ -590,6 +590,11 @@ interface Hole {
 }
 let hole: Hole | null = null
 let holeSpare: Hole | null = null
+let holeSize = 1
+/** The shared cosmos grows the hole: a multiplier on its size and glow. */
+export function setHoleSize(k: number) {
+  holeSize = k
+}
 const HOLE_RHO = R + 23
 const HOLE_Y = 14
 
@@ -702,11 +707,12 @@ function system(dt: number) {
     const grow = Math.min(1, h.t / 3, Math.max(0, (h.seconds - h.t) / 3))
     const root = Transform.getMutable(h.root)
     root.position = pos
-    root.scale = Vector3.create(grow, grow, grow)
+    const size = grow * holeSize
+    root.scale = Vector3.create(size, size, size)
     // disc faces the dome centre, slightly tilted, spinning
     const inward = Vector3.normalize(Vector3.create(CENTER.x - pos.x, 0.35, CENTER.z - pos.z))
     Transform.getMutable(h.disc).rotation = Quaternion.multiply(alignY(inward), Quaternion.fromEulerDegrees(0, clock * 90, 0))
-    LightSource.getMutable(h.light).intensity = 2200 + Math.sin(clock * 5) * 800
+    LightSource.getMutable(h.light).intensity = (2200 + Math.sin(clock * 5) * 800) * holeSize
     h.setHum(grow * 0.9)
 
     while (h.queue.length && h.queue[0].at <= h.t) {

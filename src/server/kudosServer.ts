@@ -16,6 +16,7 @@ import { room } from '../shared/messages'
  */
 const PLAYER_KEY = 'kudos'
 const FLOATING_KEY = 'floatingCows'
+const COSMOS_KEY = 'cosmos'
 const TAU = Math.PI * 2
 const RING_INNER = 43 // layout.ts SPACE_RADIUS; keep in sync
 const LAUNCHER_AZ = Math.atan2(14, -22) // layout.ts LAUNCHER relative to CENTER; cows fly roughly that way
@@ -42,6 +43,30 @@ let floating: Floating[] = []
 let nextId = 1
 let holeIn = KUDOS.holePeriodSeconds
 let loaded = false
+
+/** The shared cosmos (src/shared/cosmos.ts): every cow anyone has ever fed to the hole. */
+let mass = 0
+
+async function loadCosmos() {
+  try {
+    const saved = await Storage.get<string>(COSMOS_KEY)
+    if (saved) mass = (JSON.parse(saved) as { mass?: number }).mass ?? 0
+  } catch (error) {
+    console.log(`[Kudos] cosmos load failed: ${String(error)}`)
+  }
+  console.log(`[Kudos] cosmos mass ${mass}`)
+}
+
+async function feedCosmos(cows: number) {
+  if (cows <= 0) return
+  mass += cows
+  room.send('cosmos', { mass })
+  try {
+    await Storage.set(COSMOS_KEY, JSON.stringify({ mass }))
+  } catch (error) {
+    console.log(`[Kudos] cosmos save failed: ${String(error)}`)
+  }
+}
 
 async function loadFloating() {
   try {
@@ -144,6 +169,7 @@ async function launch(address: string) {
 }
 
 async function credit(cows: Floating[], reason: string) {
+  void feedCosmos(cows.length)
   const perOwner = new Map<string, number>()
   for (const c of cows) perOwner.set(c.owner, (perOwner.get(c.owner) ?? 0) + 1)
   for (const [owner, count] of perOwner) {
@@ -182,11 +208,13 @@ let raidIn = KUDOS.raidPeriodSeconds
 
 export function initKudosServer() {
   void loadFloating()
+  void loadCosmos()
 
   room.onMessage('cargoGet', (_data, context) => {
     if (!context || !loaded) return
     const address = context.from.toLowerCase()
     room.send('cowsFloating', { cows: floating }, { to: [context.from] })
+    room.send('cosmos', { mass }, { to: [context.from] })
     void wallet(address).then(async (w) => {
       const gifted = await topUpFreeCows(address, w)
       sendState(address, w, gifted ? `${KUDOS.freeCows} free cows are waiting in the CARGO BAY. Carry one to the launcher.` : '')

@@ -1,0 +1,83 @@
+{
+  "voices": { "dale": "iP95p4xoKVk53GoZ742B", "tammy": "FGY2WhTYpPnrIDTdsKH5" },
+  "episodes": [
+    {
+      "id": "ep1",
+      "title": "Day One",
+      "tier": 0,
+      "lines": [
+        ["tammy", "Good evening from somewhere above Nebraska, this is Dale and Tammy, live from the cow ship."],
+        ["dale", "We were arguing about the air filter in the truck and then the sky went green."],
+        ["tammy", "He was arguing. I was correct."],
+        ["dale", "Anyway. The aliens said sorry, we are not cows, would we like to go back."],
+        ["tammy", "And we looked at each other, and we looked at the truck, and we said, you know what, we're good."],
+        ["dale", "Honestly, best vacation we have ever had. The beds hum."]
+      ]
+    },
+    {
+      "id": "ep2",
+      "title": "Ten Cows",
+      "tier": 1,
+      "lines": [
+        ["dale", "Big news on the ship today. The black hole out the window ate its tenth cow."],
+        ["tammy", "He named them. All ten. We did not know them."],
+        ["dale", "Number seven was a Gerald. You could tell."],
+        ["tammy", "The crew says the hole purrs when it eats. I say that is a stomach noise."],
+        ["dale", "Either way, the lights in the hallway stopped flickering. So, thank you Gerald."],
+        ["tammy", "Keep sending cows, folks. The hallway appreciates it."]
+      ]
+    },
+    {
+      "id": "ep3",
+      "title": "Thirty",
+      "tier": 2,
+      "lines": [
+        ["tammy", "Thirty cows in, and the black hole has, and I am quoting the captain here, filled out."],
+        ["dale", "It is bigger. It is noticeably bigger. I measured it with my thumb."],
+        ["tammy", "He held his thumb up to a window. That is not measuring."],
+        ["dale", "Also the whole ship feels warmer. Tammy has started redecorating the pod bay."],
+        ["tammy", "Somebody has to. Teal and chrome everywhere. It is like living inside a toaster."],
+        ["dale", "A very comfortable toaster. We are not leaving."]
+      ]
+    },
+    {
+      "id": "ep4",
+      "title": "Seventy-Five",
+      "tier": 3,
+      "lines": [
+        ["dale", "Folks, the sky outside changed colour overnight. Seventy-five cows will do that, apparently."],
+        ["tammy", "It is mauve."],
+        ["dale", "It is purple."],
+        ["tammy", "Dale, I sold curtains for eleven years. It is mauve."],
+        ["dale", "The captain says the hole is bending light now. I say it is bending my marriage."],
+        ["tammy", "Nothing is bending your marriage, honey. Send more cows, people. He needs a hobby."]
+      ]
+    },
+    {
+      "id": "ep5",
+      "title": "Company",
+      "tier": 4,
+      "lines": [
+        ["tammy", "Okay, so, a second ship just warped in next to us. Hundred and fifty cows and we have neighbours."],
+        ["dale", "I think it is the in-laws."],
+        ["tammy", "It is not my mother, Dale. It is a different species."],
+        ["dale", "That is what I said."],
+        ["tammy", "The crew is thrilled. Apparently a hole this size draws a crowd. We are famous out here."],
+        ["dale", "Wave at the new ship if you see it. And if it waves back with a tentacle, that is Carol."]
+      ]
+    },
+    {
+      "id": "ep6",
+      "title": "Three Hundred",
+      "tier": 5,
+      "lines": [
+        ["dale", "Three hundred cows. The black hole is enormous. You can see it from the bathroom."],
+        ["tammy", "It has a glow now. Like a nightlight. I have grown very fond of it."],
+        ["dale", "The captain gave us a plaque. It says, honorary cargo. We are very proud."],
+        ["tammy", "We talked about going home. For about a minute."],
+        ["dale", "Then the beds started humming again, and, well."],
+        ["tammy", "This is Dale and Tammy, live from the cow ship. We are enjoying it. Good night, Earth."]
+      ]
+    }
+  ]
+}

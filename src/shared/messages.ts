@@ -48,7 +48,10 @@ export const Messages = {
   /** server -> all clients: the black hole is passing; it swallows these cows */
   blackHole: Schemas.Map({ phi: Schemas.Float, seconds: Schemas.Int, ids: Schemas.Array(Schemas.Int) }),
   /** server -> all clients: a raider saucer is coming for this floating cow (owner already paid) */
-  cowShot: Schemas.Map({ id: Schemas.Int, owner: Schemas.String })
+  cowShot: Schemas.Map({ id: Schemas.Int, owner: Schemas.String }),
+
+  /** server -> clients: the shared cosmos; mass = cows everyone has ever fed to the hole */
+  cosmos: Schemas.Map({ mass: Schemas.Int })
 }
 
 export const room = registerMessages(Messages)
