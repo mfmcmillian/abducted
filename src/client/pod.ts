@@ -7,6 +7,7 @@ import {
   Material,
   MaterialTransparencyMode,
   MeshRenderer,
+  VisibilityComponent,
   Transform,
   TriggerArea,
   triggerAreaEventsSystem
@@ -30,11 +31,11 @@ import { zoomUi } from './ui'
 // inner radius ~0.31, interior floor at y -0.623 and ceiling at 0.474. The doorway (cut in Blender,
 // 0.54 wide, up to y 0.5) faces model +Z; the shell is double-sided so the inside of the skin is
 // the pod's interior. The pod is sunk so its interior floor is the dome floor: no step to climb.
-const POD_SCALE = 3.4 // model units -> metres: 5.4 m visible, 2.1 m across inside, 1.8 x 3.8 m doorway
+const POD_SCALE = 7 // comically large: 11 m visible, 4.3 m across inside, 3.8 x 7.9 m doorway
 const POD_FLOOR = -0.623
 const DOOR_W = 0.54 * POD_SCALE
 const DOOR_H = (0.5 - POD_FLOOR) * POD_SCALE
-const DOOR_Z = 0.33 * POD_SCALE // force field plane, just inside the doorway (+Z local = toward the dome centre)
+const DOOR_Z = 0.3 * POD_SCALE // force field plane, flush with the inner wall at the doorway (+Z local = toward the dome centre)
 const GREEN = Color3.create(0.35, 1, 0.5)
 const WHITE = Color3.create(1, 1, 1)
 
@@ -67,19 +68,20 @@ export function createPod(board: () => void) {
   field = engine.addEntity()
   Transform.create(field, { parent: root, position: Vector3.create(0, DOOR_H / 2 + 0.02, DOOR_Z), scale: Vector3.create(DOOR_W, DOOR_H, 1) })
   MeshRenderer.setPlane(field)
+  VisibilityComponent.create(field, { visible: false })
   setField(0)
 
   innerLight = engine.addEntity()
-  Transform.create(innerLight, { parent: root, position: Vector3.create(0, 2.6, 0) })
+  Transform.create(innerLight, { parent: root, position: Vector3.create(0, 0.6 * POD_SCALE, 0) })
   LightSource.create(innerLight, { active: true, color: GREEN, intensity: 300, range: 9, shadow: false, type: LightSource.Type.Point({}) })
   ringLight = engine.addEntity()
-  Transform.create(ringLight, { parent: root, position: Vector3.create(0, 0.4, 0.6) })
+  Transform.create(ringLight, { parent: root, position: Vector3.create(0, 0.6, 0.3 * POD_SCALE) })
   LightSource.create(ringLight, { active: true, color: GREEN, intensity: 250, range: 6, shadow: false, type: LightSource.Type.Point({}) })
   setHum = attachLoop(root, SFX.beamHum, 0.1)
 
   // Approach zone: the pod invites you once per visit.
   const near = engine.addEntity()
-  Transform.create(near, { parent: root, position: Vector3.create(0, 1.5, 2), scale: Vector3.create(10, 3, 10) })
+  Transform.create(near, { parent: root, position: Vector3.create(0, 1.5, 0.7 * POD_SCALE), scale: Vector3.create(12, 3, 12) })
   TriggerArea.setBox(near)
   triggerAreaEventsSystem.onTriggerEnter(near, () => {
     pod.nearby = true
@@ -92,7 +94,7 @@ export function createPod(board: () => void) {
 
   // Inside the capsule.
   const inside = engine.addEntity()
-  Transform.create(inside, { parent: root, position: Vector3.create(0, 1.6, 0), scale: Vector3.create(1.4, 3.2, 1.4) })
+  Transform.create(inside, { parent: root, position: Vector3.create(0, 0.5 * POD_SCALE, 0), scale: Vector3.create(0.4 * POD_SCALE, POD_SCALE, 0.4 * POD_SCALE) })
   TriggerArea.setBox(inside)
   triggerAreaEventsSystem.onTriggerEnter(inside, () => {
     pod.inside = true
@@ -110,6 +112,7 @@ function podPoint(y: number) {
 }
 
 function setField(k: number) {
+  VisibilityComponent.getMutable(field).visible = k > 0
   Material.setPbrMaterial(field, {
     albedoColor: Color4.create(0.4, 1, 0.55, 0.05 + 0.3 * k),
     emissiveColor: GREEN,

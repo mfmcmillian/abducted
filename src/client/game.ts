@@ -133,7 +133,7 @@ function createLaunchPad() {
   const PLAY_SCALE = 2.6
   const sign = engine.addEntity()
   Transform.create(sign, { parent: ROOT,
-    position: Vector3.create(LAUNCH_PAD.x, 7.6, LAUNCH_PAD.z),
+    position: Vector3.create(LAUNCH_PAD.x, 13.5, LAUNCH_PAD.z),
     scale: Vector3.create(PLAY_SCALE, PLAY_SCALE, PLAY_SCALE)
   })
   GltfContainer.create(sign, { src: 'models/text-play.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
@@ -148,7 +148,7 @@ function createLaunchPad() {
     const s = PLAY_SCALE * (1 + glow * 0.04)
     const t = Transform.getMutable(sign)
     t.scale = Vector3.create(s, s, s)
-    t.position.y = 7.6 + Math.sin(signClock * 0.9) * 0.25
+    t.position.y = 13.5 + Math.sin(signClock * 0.9) * 0.25
     LightSource.getMutable(signLight).intensity = 130 + glow * 140
   })
 }
