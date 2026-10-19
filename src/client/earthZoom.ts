@@ -276,6 +276,10 @@ interface Zoom {
   double: Entity | null
   stage: number
   leg: Leg | null
+  /** walk: the camera blends from camFrom to the current shot over BLEND_T seconds after each cut */
+  camFrom: { cam: Vector3; look: Vector3 }
+  camCur: { cam: Vector3; look: Vector3 }
+  blendT: number
   /** white-out left over from the pod launch, fading through the first seconds of flight */
   flash: number
   /** porch: the double beamed down in front of the house, walking to the window */
@@ -315,12 +319,13 @@ function startZoom() {
   const P = toScene(pt.position)
   hidePlayerAt(P)
   const double = spawnDouble(ROOT, P, Quaternion.toEulerAngles(pt.rotation).y)
-  zoom = { path, frames, swapT: path.key('swap').t, t: 0, end: path.end, phase: 'walk', double, stage: 0, leg: null, flash: 0, townDouble: null, porchDone: false, porchT: 0, flyT: 0, cloudsDone: false, windowDone: false, swapped: false, tvStarted: false, tvShowing: false, holdOffset: -1, holdLeft: 45 }
+  const cam0 = Transform.get(engine.CameraEntity)
+  const view = { cam: toScene(cam0.position), look: Vector3.add(toScene(cam0.position), Vector3.rotate(Vector3.Forward(), cam0.rotation)) }
+  zoom = { path, frames, swapT: path.key('swap').t, t: 0, end: path.end, phase: 'walk', double, stage: 0, leg: null, camFrom: view, camCur: view, blendT: 0, flash: 0, townDouble: null, porchDone: false, porchT: 0, flyT: 0, cloudsDone: false, windowDone: false, swapped: false, tvStarted: false, tvShowing: false, holdOffset: -1, holdLeft: 45 }
   townEmbedded(true)
   const tr = Transform.getMutable(camera)
-  const shot = walkShot(P)
-  tr.position = shot.cam
-  tr.rotation = Quaternion.fromLookAt(shot.cam, shot.look)
+  tr.position = view.cam
+  tr.rotation = Quaternion.fromLookAt(view.cam, view.look)
   MainCamera.createOrReplace(engine.CameraEntity, { virtualCameraEntity: camera })
   setPlayerLocked(true)
   zoomUi.active = true
@@ -349,6 +354,13 @@ function finishZoom() {
   VideoPlayer.getMutable(tvPlayer).playing = false
   VideoPlayer.getMutable(videoEntity).volume = MUSIC_VOLUME
   tune(staticPlayer)
+}
+
+const BLEND_T = 1.2
+/** A camera cut during the walk: start blending from the current pose. */
+function cut(z: Zoom) {
+  z.camFrom = z.camCur
+  z.blendT = 0
 }
 
 /** Tracking shot on the walking double: ahead and to the side, looking back at it. */
@@ -393,6 +405,7 @@ function system(dt: number) {
       if (stepLeg(z.leg, dt)) {
         z.stage = 1
         z.leg = beginLeg(dbl, LAUNCH_PAD, 2.5)
+        cut(z)
       }
     } else if (z.stage === 1) {
       if (stepLeg(z.leg!, dt)) {
@@ -419,10 +432,15 @@ function system(dt: number) {
         return
       }
     }
+    // the shot itself moves linearly with the double (no per-frame chasing); only the first second
+    // after a cut is a smoothstep blend from where the camera was
+    z.blendT += dt
+    const b = Math.min(1, z.blendT / BLEND_T)
+    const k = b * b * (3 - 2 * b)
+    z.camCur = { cam: Vector3.lerp(z.camFrom.cam, shot.cam, k), look: Vector3.lerp(z.camFrom.look, shot.look, k) }
     const tr = Transform.getMutable(camera)
-    const k = Math.min(1, dt * 3)
-    tr.position = Vector3.lerp(tr.position, shot.cam, k)
-    tr.rotation = Quaternion.slerp(tr.rotation, Quaternion.fromLookAt(tr.position, shot.look), Math.min(1, dt * 4))
+    tr.position = z.camCur.cam
+    tr.rotation = Quaternion.fromLookAt(z.camCur.cam, z.camCur.look)
     zoomUi.white = 0
   } else if (z.phase === 'porch') {
     // dropped off on the lawn: beam down, walk up to the window, then the flight carries on inside
