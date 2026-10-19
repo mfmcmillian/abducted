@@ -104,7 +104,7 @@ function portalSystem(dt: number) {
   if (p.t < OPEN_T) {
     // tear open: overshoot and settle, with a flicker
     const u = p.t / OPEN_T
-    k = ease(u) * (1 + 0.18 * Math.sin(u * Math.PI * 3) * (1 - u)) * (0.85 + 0.15 * Math.random())
+    k = ease(u) * (1 + 0.18 * Math.sin(u * Math.PI * 3) * (1 - u))
   } else if (p.t < end) {
     k = 1 + 0.04 * Math.sin(p.t * 9)
   } else if (p.t < end + CLOSE_T) {
@@ -118,7 +118,7 @@ function portalSystem(dt: number) {
   const tr = Transform.getMutable(plane)
   // squashed a little while it opens, round once it has settled
   tr.scale = Vector3.create(SIZE * k, SIZE * k * (0.75 + 0.25 * Math.min(1, k)), 1)
-  LightSource.getMutable(light).intensity = 600 + 1400 * k + (Math.random() - 0.5) * 300
+  LightSource.getMutable(light).intensity = 600 + 1400 * k
   if (Math.random() < 0.25) {
     const a = Math.random() * Math.PI * 2
     const r = (SIZE / 2) * k

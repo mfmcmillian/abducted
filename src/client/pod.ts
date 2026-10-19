@@ -217,7 +217,7 @@ function dressingSystem(dt: number) {
   dressTick += dt
   if (dressTick < 0.08) return
   dressTick = 0
-  const rate = charging ? 9 : 2.4
+  const rate = charging ? 5 : 2.4
   for (const g of glowEntities) {
     const k = 0.5 + Math.sin(dressClock * rate + g.phase) * 0.5
     const m = Material.getMutable(g.entity)
@@ -305,11 +305,12 @@ function podSystem(dt: number) {
     setHum(0.1 + breathe * 0.04)
   } else if (pod.state === 'charging') {
     const k = Math.min(1, pod.t / POD_CHARGE_SECONDS)
-    const flicker = 0.5 + Math.sin(pod.t * (8 + k * 30)) * 0.5
+    // a slow swell only (no strobing: keep well under 3 Hz for photosensitive players)
+    const swell = 0.5 + Math.sin(pod.t * 4) * 0.5
     inner.color = Color3.lerp(GREEN, WHITE, k * k)
-    inner.intensity = 400 + k * 3600 + flicker * 300 * k
+    inner.intensity = 400 + k * 2600 + swell * 150 * k
     ring.intensity = 300 + k * 1200
-    setBeam(0.6 + flicker * 0.4)
+    setBeam(0.6 + k * 0.4)
     setHum(0.2 + k * 0.8)
     // the countdown line picks up when the seal line ends
     if (pod.t >= 1.8 && pod.t - dt < 1.8) playGlobal(SFX.podCount, 1)
