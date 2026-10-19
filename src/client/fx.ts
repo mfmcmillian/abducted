@@ -1,7 +1,6 @@
 import { Billboard, BillboardMode, engine, Entity, LightSource, Material, MaterialTransparencyMode, MeshRenderer, Transform } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { CENTER } from '../layout'
-import { ROOT } from './root'
 
 /**
  * A small particle engine. The SDK has no particle component, so every particle is a
@@ -68,7 +67,7 @@ function spriteMaterial(e: Entity, sprite: Sprite, color: Color3, alpha: number,
 
 function makeParticle(): Particle {
   const entity = engine.addEntity()
-  Transform.create(entity, { parent: ROOT, position: Vector3.clone(HIDDEN), scale: Vector3.Zero() })
+  Transform.create(entity, { position: Vector3.clone(HIDDEN), scale: Vector3.Zero() })
   MeshRenderer.setPlane(entity)
   Billboard.create(entity, { billboardMode: BillboardMode.BM_ALL })
   spriteMaterial(entity, 'puff', Color3.White(), 0, 1)
@@ -166,7 +165,7 @@ function flash(pos: Vector3, color: Color3, intensity: number, range: number, li
   if (!f) {
     if (flashes.length >= 6) return
     const entity = engine.addEntity()
-    Transform.create(entity, { parent: ROOT, position: Vector3.clone(pos) })
+    Transform.create(entity, { position: Vector3.clone(pos) })
     LightSource.create(entity, { active: false, color, intensity, range, shadow: false, type: LightSource.Type.Point({}) })
     f = { entity, age: 0, life, intensity, free: true }
     flashes.push(f)
@@ -199,11 +198,11 @@ const bolts: Bolt[] = []
 
 function makeBolt(): Bolt {
   const core = engine.addEntity()
-  Transform.create(core, { parent: ROOT, position: Vector3.clone(HIDDEN), scale: Vector3.Zero() })
+  Transform.create(core, { position: Vector3.clone(HIDDEN), scale: Vector3.Zero() })
   MeshRenderer.setBox(core)
   Material.setPbrMaterial(core, { albedoColor: Color4.create(1, 1, 1, 0.9), emissiveColor: Color3.White(), emissiveIntensity: 4, transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND, castShadows: false })
   const head = engine.addEntity()
-  Transform.create(head, { parent: ROOT, position: Vector3.clone(HIDDEN), scale: Vector3.Zero() })
+  Transform.create(head, { position: Vector3.clone(HIDDEN), scale: Vector3.Zero() })
   MeshRenderer.setPlane(head)
   Billboard.create(head, { billboardMode: BillboardMode.BM_ALL })
   spriteMaterial(head, 'flare', Color3.White(), 1, 3)

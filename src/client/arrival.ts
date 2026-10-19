@@ -4,7 +4,6 @@ import { CENTER, DOME_CAP, DOME_WALL, SPAWN } from '../layout'
 import { burstImpact, puffTrail } from './fx'
 import { attachLoop, playAt, SFX } from './sfx'
 import { zoomUi } from './ui'
-import { ROOT } from './root'
 
 /**
  * You were just beamed up. The mothership parked under the apex drops its tractor beam onto the
@@ -55,16 +54,16 @@ function setBeam(bottom: number, radius: number) {
 export function createArrivalBeam() {
   // the pad: a glowing ring on the floor where you land
   padRing = engine.addEntity()
-  Transform.create(padRing, { parent: ROOT, position: Vector3.create(CENTER.x, 0.05, CENTER.z), scale: Vector3.create(PAD_R * 2, 0.04, PAD_R * 2) })
+  Transform.create(padRing, { position: Vector3.create(CENTER.x, 0.05, CENTER.z), scale: Vector3.create(PAD_R * 2, 0.04, PAD_R * 2) })
   MeshRenderer.setCylinder(padRing)
   Material.setPbrMaterial(padRing, { albedoColor: Color4.create(0.02, 0.06, 0.05, 1), emissiveColor: BEAM, emissiveIntensity: 0.6, roughness: 0.6 })
 
   padLight = engine.addEntity()
-  Transform.create(padLight, { parent: ROOT, position: Vector3.create(CENTER.x, 4, CENTER.z) })
+  Transform.create(padLight, { position: Vector3.create(CENTER.x, 4, CENTER.z) })
   LightSource.create(padLight, { active: true, color: BEAM, intensity: 300, range: 14, shadow: false, type: LightSource.Type.Point({}) })
 
   beam = engine.addEntity()
-  Transform.create(beam, { parent: ROOT, position: Vector3.create(CENTER.x, HULL_Y, CENTER.z), scale: Vector3.create(0.01, 0.01, 0.01) })
+  Transform.create(beam, { position: Vector3.create(CENTER.x, HULL_Y, CENTER.z), scale: Vector3.create(0.01, 0.01, 0.01) })
   MeshRenderer.setCylinder(beam, 1, 0.8)
   beamMaterial(0, 0)
   setHum = attachLoop(beam, SFX.beamHum, 0)

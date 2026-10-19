@@ -26,7 +26,6 @@ import { room } from '../shared/messages'
 import { attachLoop, moo, playAt, playGlobal, SFX } from './sfx'
 import { kudosHud, toast } from './ui'
 import { burstExplosion, PALETTES, puffTrail } from './fx'
-import { ROOT, toScene } from './root'
 
 /**
  * The kudos loop, dome side.
@@ -118,7 +117,7 @@ function createCargoBay() {
   const toCentre = Vector3.normalize(Vector3.create(CENTER.x - CARGO_BAY.x, 0, CENTER.z - CARGO_BAY.z))
   const yaw = (Math.atan2(toCentre.x, toCentre.z) * 180) / Math.PI - (GATE_FROM + GATE_TO) / 2 // gate centre faces the dome centre
   const penRoot = engine.addEntity()
-  Transform.create(penRoot, { parent: ROOT, position: Vector3.create(CARGO_BAY.x, 0, CARGO_BAY.z), rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
+  Transform.create(penRoot, { position: Vector3.create(CARGO_BAY.x, 0, CARGO_BAY.z), rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
   const pen3d = engine.addEntity()
   Transform.create(pen3d, { parent: penRoot, position: Vector3.create(0, 0.05 - (0.2 - 0.06) * PEN_SCALE, 0), scale: Vector3.create(PEN_SCALE, PEN_SCALE, PEN_SCALE) })
   GltfContainer.create(pen3d, { src: 'models/cow-pen.glb', visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
@@ -148,16 +147,16 @@ function createCargoBay() {
   setPlasma(1)
 
   const title = engine.addEntity()
-  Transform.create(title, { parent: ROOT, position: Vector3.create(CARGO_BAY.x, 4.6, CARGO_BAY.z) })
+  Transform.create(title, { position: Vector3.create(CARGO_BAY.x, 4.6, CARGO_BAY.z) })
   Billboard.create(title, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(title, { text: 'CARGO BAY', fontSize: 6, font: Font.F_SANS_SERIF, textColor: Color4.create(0.6, 1, 0.75, 1), outlineColor: Color4.Black(), outlineWidth: 0.12, textAlign: TextAlignMode.TAM_MIDDLE_CENTER })
   penLabel = engine.addEntity()
-  Transform.create(penLabel, { parent: ROOT, position: Vector3.create(CARGO_BAY.x, 3.6, CARGO_BAY.z) })
+  Transform.create(penLabel, { position: Vector3.create(CARGO_BAY.x, 3.6, CARGO_BAY.z) })
   Billboard.create(penLabel, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(penLabel, { text: '', fontSize: 2.4, font: Font.F_SANS_SERIF, textColor: Color4.White(), outlineColor: Color4.Black(), outlineWidth: 0.1, textAlign: TextAlignMode.TAM_MIDDLE_CENTER })
 
   const light = engine.addEntity()
-  Transform.create(light, { parent: ROOT, position: Vector3.create(CARGO_BAY.x, 5, CARGO_BAY.z) })
+  Transform.create(light, { position: Vector3.create(CARGO_BAY.x, 5, CARGO_BAY.z) })
   LightSource.create(light, { active: true, color: Color3.create(0.4, 1, 0.55), intensity: 600, range: 16, shadow: false, type: LightSource.Type.Point({}) })
 
   for (let i = 0; i < KUDOS.penCapacity; i++) {
@@ -165,7 +164,7 @@ function createCargoBay() {
     const a = rand(0, TAU)
     const r = Math.sqrt(Math.random()) * (CARGO_BAY_RADIUS - 1.2)
     const home = Vector3.create(CARGO_BAY.x + r * Math.sin(a), 0, CARGO_BAY.z + r * Math.cos(a))
-    Transform.create(entity, { parent: ROOT, position: home, rotation: Quaternion.fromEulerDegrees(0, rand(0, 360), 0), scale: Vector3.create(PEN_COW_SCALE, PEN_COW_SCALE, PEN_COW_SCALE) })
+    Transform.create(entity, { position: home, rotation: Quaternion.fromEulerDegrees(0, rand(0, 360), 0), scale: Vector3.create(PEN_COW_SCALE, PEN_COW_SCALE, PEN_COW_SCALE) })
     cowModel(entity, true)
     const cow: PenCow = { entity, home, heading: rand(0, 360), timer: rand(2, 6), shown: true }
     pen.push(cow)
@@ -321,7 +320,7 @@ function createLauncher() {
   // the pad, ramp towards the middle of the dome (where you walk in from with a cow)
   const padRot = Quaternion.lookRotation(Vector3.scale(out, -1), Vector3.Up())
   const pad = engine.addEntity()
-  Transform.create(pad, { parent: ROOT,
+  Transform.create(pad, {
     position: Vector3.subtract(Vector3.create(LAUNCHER.x, 0, LAUNCHER.z), Vector3.scale(Vector3.rotate(PAD_MODEL_CENTRE, padRot), PAD_SCALE)),
     rotation: padRot,
     scale: Vector3.create(PAD_SCALE, PAD_SCALE, PAD_SCALE)
@@ -329,39 +328,39 @@ function createLauncher() {
   GltfContainer.create(pad, { src: 'models/launch-pad.glb', visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
 
   const mountRoot = engine.addEntity()
-  Transform.create(mountRoot, { parent: ROOT, position: deck, rotation: facing })
+  Transform.create(mountRoot, { position: deck, rotation: facing })
   const mount = fitted(mountRoot, 'models/cannon-mount.glb', MOUNT_FIT, true)
 
   barrelRoot = engine.addEntity()
-  Transform.create(barrelRoot, { parent: ROOT, position: pivot })
+  Transform.create(barrelRoot, { position: pivot })
   const barrel = fitted(barrelRoot, 'models/cannon-barrel.glb', BARREL_FIT, true)
   aimBarrel(dirAtTilt(REST_TILT))
 
   const hopperRoot = engine.addEntity()
-  Transform.create(hopperRoot, { parent: ROOT, position: Vector3.subtract(deck, Vector3.scale(out, HOPPER_BACK)), rotation: facing })
+  Transform.create(hopperRoot, { position: Vector3.subtract(deck, Vector3.scale(out, HOPPER_BACK)), rotation: facing })
   const hopper = fitted(hopperRoot, 'models/cow-hopper.glb', HOPPER_FIT, true)
   hopperTop = Vector3.add(Transform.get(hopperRoot).position, Vector3.create(0, HOPPER_TOP, 0))
 
   cannonLight = engine.addEntity()
-  Transform.create(cannonLight, { parent: ROOT, position: Vector3.create(LAUNCHER.x, PAD_DECK + 6, LAUNCHER.z) })
+  Transform.create(cannonLight, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 6, LAUNCHER.z) })
   LightSource.create(cannonLight, { active: true, color: PINK, intensity: 900, range: 22, shadow: false, type: LightSource.Type.Point({}) })
   hopperLight = engine.addEntity()
-  Transform.create(hopperLight, { parent: ROOT, position: Vector3.add(hopperTop, Vector3.create(0, 1.5, 0)) })
+  Transform.create(hopperLight, { position: Vector3.add(hopperTop, Vector3.create(0, 1.5, 0)) })
   LightSource.create(hopperLight, { active: true, color: Color3.create(0.4, 1, 0.55), intensity: 300, range: 10, shadow: false, type: LightSource.Type.Point({}) })
   // a low warm light so the deck, stripes and cannon read against the dark floor
   const deckLight = engine.addEntity()
-  Transform.create(deckLight, { parent: ROOT, position: Vector3.subtract(Vector3.create(LAUNCHER.x, PAD_DECK + 3, LAUNCHER.z), Vector3.scale(out, 5)) })
+  Transform.create(deckLight, { position: Vector3.subtract(Vector3.create(LAUNCHER.x, PAD_DECK + 3, LAUNCHER.z), Vector3.scale(out, 5)) })
   LightSource.create(deckLight, { active: true, color: Color3.create(1, 0.85, 0.7), intensity: 700, range: 16, shadow: false, type: LightSource.Type.Point({}) })
 
   // Giant pink 3D "DROP COWS / HERE" over the cannon (models/text-drop.glb from tools/build-text.mjs,
   // origin on the bottom line's baseline, reads from -Z, so it billboards like the other signs).
   const SIGN_SCALE = 2.4
   const title = engine.addEntity()
-  Transform.create(title, { parent: ROOT, position: Vector3.create(LAUNCHER.x, PAD_DECK + 9.2, LAUNCHER.z), scale: Vector3.create(SIGN_SCALE, SIGN_SCALE, SIGN_SCALE) })
+  Transform.create(title, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 9.2, LAUNCHER.z), scale: Vector3.create(SIGN_SCALE, SIGN_SCALE, SIGN_SCALE) })
   GltfContainer.create(title, { src: 'models/text-drop.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
   Billboard.create(title, { billboardMode: BillboardMode.BM_Y })
   const titleLight = engine.addEntity()
-  Transform.create(titleLight, { parent: ROOT, position: Vector3.create(LAUNCHER.x, PAD_DECK + 12, LAUNCHER.z) })
+  Transform.create(titleLight, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 12, LAUNCHER.z) })
   LightSource.create(titleLight, { active: true, color: PINK, intensity: 250, range: 16, shadow: false, type: LightSource.Type.Point({}) })
   let titleClock = 0
   engine.addSystem((dt) => {
@@ -373,12 +372,12 @@ function createLauncher() {
   })
 
   launcherLabel = engine.addEntity()
-  Transform.create(launcherLabel, { parent: ROOT, position: Vector3.create(LAUNCHER.x, PAD_DECK + 7.1, LAUNCHER.z) })
+  Transform.create(launcherLabel, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 7.1, LAUNCHER.z) })
   Billboard.create(launcherLabel, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(launcherLabel, { text: '', fontSize: 2.4, font: Font.F_SANS_SERIF, textColor: Color4.White(), outlineColor: Color4.Black(), outlineWidth: 0.1, textAlign: TextAlignMode.TAM_MIDDLE_CENTER })
 
   const sign = engine.addEntity()
-  Transform.create(sign, { parent: ROOT, position: Vector3.create(LAUNCHER.x, PAD_DECK + 6.2, LAUNCHER.z) })
+  Transform.create(sign, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 6.2, LAUNCHER.z) })
   Billboard.create(sign, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(sign, {
     text: `${KUDOS.perCow} KUDOS per cow the black hole swallows\nKUDOS buy Alien Costumes from Nov 7`,
@@ -416,12 +415,11 @@ function onLaunchClick() {
     return
   }
   if (seq) return // one at a time
-  const p = Transform.getOrNull(engine.PlayerEntity)?.position
-  const player = p ? toScene(p) : hopperTop
+  const player = Transform.getOrNull(engine.PlayerEntity)?.position ?? hopperTop
   dropCarried()
   const from = Vector3.add(player, Vector3.create(0, 1.0, 0))
   const cow = engine.addEntity()
-  Transform.create(cow, { parent: ROOT, position: from, scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
+  Transform.create(cow, { position: from, scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
   cowModel(cow, false)
   moo(hopperTop, 0.8)
   seq = { t: 0, cow, from, fired: false }
@@ -523,7 +521,7 @@ const sucking: { cow: FloatingCow; t: number; start: Vector3; angle: number }[] 
 
 function makeFloating(data: { id: number; owner: string; rho: number; phi: number; y: number }): FloatingCow {
   const entity = engine.addEntity()
-  Transform.create(entity, { parent: ROOT, position: polar(data.rho, data.phi, data.y), scale: Vector3.create(FLOAT_SCALE, FLOAT_SCALE, FLOAT_SCALE) })
+  Transform.create(entity, { position: polar(data.rho, data.phi, data.y), scale: Vector3.create(FLOAT_SCALE, FLOAT_SCALE, FLOAT_SCALE) })
   cowModel(entity, false)
   const cow: FloatingCow = { ...data, entity, spin: Vector3.create(rand(-25, 25), rand(-25, 25), rand(-25, 25)), bob: rand(0, TAU) }
   floating.set(data.id, cow)
@@ -553,11 +551,11 @@ interface Hole {
 let hole: Hole | null = null
 let holeSpare: Hole | null = null
 const HOLE_RHO = R + 23
-const HOLE_Y = 14
+const HOLE_Y = 24
 
 function createHoleEntities(): Hole {
   const root = engine.addEntity()
-  Transform.create(root, { parent: ROOT, position: polar(HOLE_RHO, 0, HOLE_Y), scale: Vector3.Zero() })
+  Transform.create(root, { position: polar(HOLE_RHO, 0, HOLE_Y), scale: Vector3.Zero() })
   const sphere = engine.addEntity()
   Transform.create(sphere, { parent: root, scale: Vector3.create(7, 7, 7) })
   MeshRenderer.setSphere(sphere)

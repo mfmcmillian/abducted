@@ -22,12 +22,11 @@ import { openExternalUrl } from '~system/RestrictedActions'
 import { CENTER, DOME_CAP, DOME_WALL, EMOTE_URL, SPAWN, VIDEO_URL } from '../layout'
 import { moo } from './sfx'
 import { music } from './music'
-import { ROOT } from './root'
 
 /** Single looping VideoPlayer; every screen in the scene samples this entity. */
 export function createVideoPlayer(): Entity {
   const video = engine.addEntity()
-  Transform.create(video, { parent: ROOT, position: Vector3.create(CENTER.x, 10, CENTER.z) })
+  Transform.create(video, { position: Vector3.create(CENTER.x, 10, CENTER.z) })
   VideoPlayer.create(video, {
     src: VIDEO_URL,
     playing: true,
@@ -60,7 +59,7 @@ export function createVideoPlayer(): Entity {
  */
 export function createDome(video: Entity): Entity {
   const dome = engine.addEntity()
-  Transform.create(dome, { parent: ROOT, position: CENTER })
+  Transform.create(dome, { position: CENTER })
   GltfContainer.create(dome, {
     src: 'models/dome.glb',
     visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS,
@@ -173,7 +172,7 @@ export function createDome(video: Entity): Entity {
  */
 export function createDiorama(): Entity {
   const props = engine.addEntity()
-  Transform.create(props, { parent: ROOT,
+  Transform.create(props, {
     position: CENTER,
     rotation: Quaternion.fromEulerDegrees(0, 180, 0),
     scale: Vector3.create(3.5, 3.5, 3.5)
@@ -199,7 +198,7 @@ export function createApexUfo(): Entity {
   const SCALE = 5 // ufo.glb is 2.2 m across, 1.23 m tall, origin at the bottom
   const BASE_Y = DOME_WALL + DOME_CAP - 7 // bottom of the hull, tucked under the apex
   const ufo = engine.addEntity()
-  Transform.create(ufo, { parent: ROOT, position: Vector3.create(CENTER.x, BASE_Y, CENTER.z), scale: Vector3.create(SCALE, SCALE, SCALE) })
+  Transform.create(ufo, { position: Vector3.create(CENTER.x, BASE_Y, CENTER.z), scale: Vector3.create(SCALE, SCALE, SCALE) })
   GltfContainer.create(ufo, {
     src: 'models/ufo.glb',
     visibleMeshesCollisionMask: ColliderLayer.CL_NONE,
@@ -207,7 +206,7 @@ export function createApexUfo(): Entity {
   })
 
   const glow = engine.addEntity()
-  Transform.create(glow, { parent: ROOT, position: Vector3.create(CENTER.x, BASE_Y - 1, CENTER.z) })
+  Transform.create(glow, { position: Vector3.create(CENTER.x, BASE_Y - 1, CENTER.z) })
   LightSource.create(glow, {
     active: true,
     color: Color3.create(0.45, 1, 0.55),
@@ -231,7 +230,7 @@ export function createApexUfo(): Entity {
 /** Fan-favourite cow, standing by the door and greeting whoever walks in. */
 export function createHeroCow(): Entity {
   const cow = engine.addEntity()
-  Transform.create(cow, { parent: ROOT,
+  Transform.create(cow, {
     position: Vector3.create(SPAWN.x + 5, 0, SPAWN.z + 3),
     rotation: Quaternion.fromEulerDegrees(0, -120, 0),
     scale: Vector3.create(2, 2, 2)
@@ -271,7 +270,7 @@ export function createInterior() {
   for (let i = 0; i < TILE_COUNT; i++) {
     const a = (i / TILE_COUNT) * Math.PI * 2
     const tile = engine.addEntity()
-    Transform.create(tile, { parent: ROOT,
+    Transform.create(tile, {
       position: Vector3.create(CENTER.x + ringRadius * Math.sin(a), 0.06, CENTER.z + ringRadius * Math.cos(a)),
       rotation: Quaternion.fromEulerDegrees(0, (a * 180) / Math.PI, 0),
       scale: Vector3.create(3.4, 0.08, 1.6)
@@ -290,7 +289,7 @@ export function createInterior() {
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4
     const light = engine.addEntity()
-    Transform.create(light, { parent: ROOT, position: Vector3.create(CENTER.x + 12 * Math.sin(a), 10, CENTER.z + 12 * Math.cos(a)) })
+    Transform.create(light, { position: Vector3.create(CENTER.x + 12 * Math.sin(a), 10, CENTER.z + 12 * Math.cos(a)) })
     LightSource.create(light, {
       active: true,
       color: PALETTE[i],
@@ -304,7 +303,7 @@ export function createInterior() {
 
   // Blue fill over the spawn circle.
   const door = engine.addEntity()
-  Transform.create(door, { parent: ROOT, position: Vector3.create(SPAWN.x, 5, SPAWN.z) })
+  Transform.create(door, { position: Vector3.create(SPAWN.x, 5, SPAWN.z) })
   LightSource.create(door, {
     active: true,
     color: Color3.create(0.45, 0.6, 1),

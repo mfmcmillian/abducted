@@ -126,7 +126,7 @@ async function launch(address: string) {
     owner: address,
     rho: RING_INNER + 6 + Math.random() * 10,
     phi: LAUNCHER_AZ + (Math.random() - 0.5) * 1.6,
-    y: 4 + Math.random() * 11
+    y: 14 + Math.random() * 11
   }
   floating.push(cow)
   // Too many out there: the oldest get swallowed by "a passing anomaly" right away.

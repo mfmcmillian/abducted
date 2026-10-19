@@ -32,7 +32,6 @@ import { playAt, playGlobal, SFX } from './sfx'
 import { earthEntity, earthPosition, EARTH_SCALE, setEarthFrozen } from './space'
 import { toast, zoomUi } from './ui'
 import { authorPath, Frame, Path, toWorld, townFrames } from './zoomPath'
-import { ROOT, toScene } from './root'
 
 /**
  * Click the Earth: one continuous camera move from where you stand, out through the glass,
@@ -147,7 +146,7 @@ function light(parent: Entity, pos: Vector3, color: Color3, intensity: number, r
 
 function buildSets() {
   setRoot = engine.addEntity()
-  Transform.create(setRoot, { parent: ROOT, position: earthPosition(), scale: Vector3.create(SET_SCALE, SET_SCALE, SET_SCALE) })
+  Transform.create(setRoot, { position: earthPosition(), scale: Vector3.create(SET_SCALE, SET_SCALE, SET_SCALE) })
 
   // the sky: stays put while the layers underneath it are swapped
   const sky = engine.addEntity()
@@ -241,7 +240,7 @@ function buildSets() {
 
   // click target: an invisible sphere the size of the planet
   clickTarget = engine.addEntity()
-  Transform.create(clickTarget, { parent: ROOT, position: earthPosition(), scale: Vector3.create(EARTH_SCALE * 1.85, EARTH_SCALE * 1.85, EARTH_SCALE * 1.85) })
+  Transform.create(clickTarget, { position: earthPosition(), scale: Vector3.create(EARTH_SCALE * 1.85, EARTH_SCALE * 1.85, EARTH_SCALE * 1.85) })
   MeshCollider.setSphere(clickTarget, ColliderLayer.CL_POINTER)
   pointerEventsSystem.onPointerDown({ entity: clickTarget, opts: { button: InputAction.IA_POINTER, hoverText: 'Zoom to Earth', maxDistance: 220, showFeedback: true } }, () => startZoom())
 
@@ -249,7 +248,7 @@ function buildSets() {
 
   // the camera
   camera = engine.addEntity()
-  Transform.create(camera, { parent: ROOT, position: Vector3.create(0, -100, 0) })
+  Transform.create(camera, { position: Vector3.create(0, -100, 0) })
   VirtualCamera.create(camera, { defaultTransition: { transitionMode: VirtualCamera.Transition.Time(0) } })
 }
 
@@ -288,7 +287,7 @@ function startZoom() {
   setEarthFrozen(true)
   const E = earthPosition()
   const cam = Transform.get(engine.CameraEntity)
-  const path = authorPath({ E, start: toScene(cam.position), forward: Vector3.rotate(Vector3.Forward(), cam.rotation) })
+  const path = authorPath({ E, start: Vector3.clone(cam.position), forward: Vector3.rotate(Vector3.Forward(), cam.rotation) })
   const frames = townFrames(E)
   zoom = { path, frames, swapT: path.key('swap').t, t: 0, end: path.end, phase: 'fly', cloudsDone: false, windowDone: false, swapped: false, tvStarted: false, tvShowing: false, holdOffset: -1, holdLeft: 45 }
   townEmbedded(true)
