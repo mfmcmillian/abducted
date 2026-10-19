@@ -91,6 +91,7 @@ function townEmbedded(embedded: boolean) {
 let clickTarget: Entity
 /** the saucer we are riding, seen ahead of the camera from the glass until the clouds swallow it */
 let ufo: Entity
+const SHOW_UFO = false // parked for now: needs a proper reveal and framing
 let camera: Entity
 /** the dome's shared player (music); only its volume is touched here */
 let videoEntity: Entity
@@ -477,7 +478,7 @@ function system(dt: number) {
 
     // our saucer flies ahead of us from the glass over the top of the planet and into the clouds
     const u = Transform.getMutable(ufo)
-    if (t >= z.path.key('glass').t && c < 0.98) {
+    if (SHOW_UFO && t >= z.path.key('glass').t && c < 0.98) {
       const lead = Vector3.add(Vector3.add(pos, Vector3.scale(pose.dir, 7.5)), Vector3.create(0, -1.4, 0))
       u.position = lead
       u.scale = Vector3.create(1.7, 1.7, 1.7)
