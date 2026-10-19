@@ -1,4 +1,4 @@
-import { AvatarModifierArea, AvatarModifierType, AvatarShape, engine, Entity, Transform } from '@dcl/sdk/ecs'
+import { AvatarModifierArea, AvatarModifierType, AvatarShape, EasingFunction, engine, Entity, Transform, Tween } from '@dcl/sdk/ecs'
 import { Quaternion, Vector3 } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { ROOT } from './root'
@@ -32,19 +32,34 @@ export function spawnDouble(parent: Entity, position: Vector3, yaw: number, scal
   return e
 }
 
-/** Step the double toward `target` at `speed` (units/s), turning to face the way it walks. True when it has arrived. */
-export function walkDouble(e: Entity, target: Vector3, speed: number, dt: number): boolean {
+/**
+ * One straight walk, moved by a Tween so the renderer interpolates it smoothly (updating the
+ * Transform every frame makes avatars stutter). Positions are local to the double's parent.
+ */
+export interface Leg { e: Entity; from: Vector3; to: Vector3; duration: number; t: number }
+
+export function beginLeg(e: Entity, to: Vector3, speed: number): Leg {
   const tr = Transform.getMutable(e)
-  const to = Vector3.subtract(target, tr.position)
-  to.y = 0
-  const d = Vector3.length(to)
-  if (d < 0.05) return true
-  const step = Math.min(d, speed * dt)
-  const dir = Vector3.scale(to, 1 / d)
-  tr.position = Vector3.add(tr.position, Vector3.scale(dir, step))
-  tr.rotation = Quaternion.slerp(tr.rotation, Quaternion.lookRotation(dir, Vector3.Up()), Math.min(1, dt * 8))
-  return step >= d - 1e-4
+  const from = Vector3.clone(tr.position)
+  const flat = Vector3.create(to.x - from.x, 0, to.z - from.z)
+  const d = Vector3.length(flat)
+  if (d > 0.01) tr.rotation = Quaternion.lookRotation(Vector3.scale(flat, 1 / d), Vector3.Up())
+  const duration = Math.max(0.05, d / speed)
+  Tween.createOrReplace(e, { mode: Tween.Mode.Move({ start: from, end: Vector3.clone(to) }), duration: duration * 1000, easingFunction: EasingFunction.EF_LINEAR })
+  return { e, from, to: Vector3.clone(to), duration, t: 0 }
 }
+
+/** Advance a leg; returns true once it is over (and the Transform then holds the end point). */
+export function stepLeg(leg: Leg, dt: number): boolean {
+  leg.t += dt
+  if (leg.t < leg.duration) return false
+  if (Tween.has(leg.e)) Tween.deleteFrom(leg.e)
+  Transform.getMutable(leg.e).position = Vector3.clone(leg.to)
+  return true
+}
+
+/** Where the double is right now along its leg. */
+export const legPos = (leg: Leg) => Vector3.lerp(leg.from, leg.to, Math.min(1, leg.t / leg.duration))
 
 /** Hide the real avatar where it stands (scene coords) for the duration. */
 export function hidePlayerAt(position: Vector3) {

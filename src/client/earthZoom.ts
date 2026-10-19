@@ -29,7 +29,7 @@ import { AERIAL_LIFT, CITY_POS, CITY_SCALE, COUNTRY_SCALE, EMBED, GROUND_Y, HOUS
 import { EARTH_MODELS, EarthModel } from './earthManifest'
 import { burstExplosion, PALETTES, puffTrail, startFx } from './fx'
 import { launchPod, POD_CHARGE_SECONDS, releasePod, sealPod } from './pod'
-import { hidePlayerAt, spawnDouble, unhidePlayer, walkDouble } from './zoomActor'
+import { beginLeg, hidePlayerAt, Leg, legPos, spawnDouble, stepLeg, unhidePlayer } from './zoomActor'
 import { playAt, playGlobal, SFX } from './sfx'
 import { earthEntity, earthPosition, EARTH_SCALE, setEarthFrozen } from './space'
 import { toast, zoomUi } from './ui'
@@ -89,6 +89,8 @@ function townEmbedded(embedded: boolean) {
   }
 }
 let clickTarget: Entity
+/** the saucer we are riding, seen ahead of the camera from the glass until the clouds swallow it */
+let ufo: Entity
 let camera: Entity
 /** the dome's shared player (music); only its volume is touched here */
 let videoEntity: Entity
@@ -249,6 +251,10 @@ function buildSets() {
 
   townEmbedded(true)
 
+  ufo = engine.addEntity()
+  Transform.create(ufo, { parent: ROOT, position: Vector3.create(0, -100, 0), scale: Vector3.Zero() })
+  GltfContainer.create(ufo, { src: 'models/ufo.glb', ...NO_COLLIDE })
+
   // the camera
   camera = engine.addEntity()
   Transform.create(camera, { parent: ROOT, position: Vector3.create(0, -100, 0) })
@@ -268,6 +274,7 @@ interface Zoom {
   /** walk: the player's double on its way to the pod; 0 to the doorway, 1 inside, 2 sealed and charging */
   double: Entity | null
   stage: number
+  leg: Leg | null
   /** white-out left over from the pod launch, fading through the first seconds of flight */
   flash: number
   /** porch: the double beamed down in front of the house, walking to the window */
@@ -307,7 +314,7 @@ function startZoom() {
   const P = toScene(pt.position)
   hidePlayerAt(P)
   const double = spawnDouble(ROOT, P, Quaternion.toEulerAngles(pt.rotation).y)
-  zoom = { path, frames, swapT: path.key('swap').t, t: 0, end: path.end, phase: 'walk', double, stage: 0, flash: 0, townDouble: null, porchDone: false, porchT: 0, flyT: 0, cloudsDone: false, windowDone: false, swapped: false, tvStarted: false, tvShowing: false, holdOffset: -1, holdLeft: 45 }
+  zoom = { path, frames, swapT: path.key('swap').t, t: 0, end: path.end, phase: 'walk', double, stage: 0, leg: null, flash: 0, townDouble: null, porchDone: false, porchT: 0, flyT: 0, cloudsDone: false, windowDone: false, swapped: false, tvStarted: false, tvShowing: false, holdOffset: -1, holdLeft: 45 }
   townEmbedded(true)
   const tr = Transform.getMutable(camera)
   const shot = walkShot(P)
@@ -324,6 +331,7 @@ function startZoom() {
 function finishZoom() {
   if (!zoom) return
   if (zoom.double) engine.removeEntity(zoom.double)
+  Transform.getMutable(ufo).scale = Vector3.Zero()
   if (zoom.townDouble) engine.removeEntity(zoom.townDouble)
   unhidePlayer()
   releasePod(false)
@@ -376,16 +384,19 @@ function system(dt: number) {
     const inward = Vector3.normalize(Vector3.create(CENTER.x - LAUNCH_PAD.x, 0, CENTER.z - LAUNCH_PAD.z))
     const door = Vector3.add(LAUNCH_PAD, Vector3.scale(inward, 3.8))
     const dbl = z.double!
-    const dp = Transform.get(dbl).position
     let shot: { cam: Vector3; look: Vector3 }
     if (z.stage === 0) {
       // to the doorway at a brisk pace, however far away they started (3.5 .. 6 m/s)
-      const speed = Math.max(3.5, Math.min(6, Vector3.distance(dp, door) / 4))
-      if (walkDouble(dbl, door, speed, dt)) z.stage = 1
-      shot = walkShot(dp, door)
+      if (!z.leg) z.leg = beginLeg(dbl, door, Math.max(3.5, Math.min(6, Vector3.distance(Transform.get(dbl).position, door) / 4)))
+      shot = walkShot(legPos(z.leg), door)
+      if (stepLeg(z.leg, dt)) {
+        z.stage = 1
+        z.leg = beginLeg(dbl, LAUNCH_PAD, 2.5)
+      }
     } else if (z.stage === 1) {
-      if (walkDouble(dbl, LAUNCH_PAD, 2.5, dt)) {
+      if (stepLeg(z.leg!, dt)) {
         z.stage = 2
+        z.leg = null
         z.t = 0
         sealPod()
       }
@@ -422,9 +433,15 @@ function system(dt: number) {
       const u = z.porchT / DROP_T
       tr.position = Vector3.create(tr.position.x, GROUND_Y + 6 * (1 - u) * (1 - u), tr.position.z)
       if (Math.random() < 0.5) puffTrail(toWorld(z.frames.full, Vector3.add(tr.position, Vector3.create(0, 0.3, 0))), Color3.create(0.5, 1, 0.6), 0.4)
-    } else if (walkDouble(dbl, Vector3.create(WINDOW_C.x, GROUND_Y, WINDOW_C.z - 1.5), 2.2, dt) && z.porchT > DROP_T + 2.6) {
-      z.phase = 'fly'
-      z.t = z.flyT
+    } else {
+      if (!z.leg) {
+        tr.position = Vector3.create(tr.position.x, GROUND_Y, tr.position.z)
+        z.leg = beginLeg(dbl, Vector3.create(WINDOW_C.x, GROUND_Y, WINDOW_C.z - 1.5), 2.2)
+      }
+      if (stepLeg(z.leg, dt) && z.porchT > DROP_T + 2.6) {
+        z.phase = 'fly'
+        z.t = z.flyT
+      }
     }
     const pose = z.path.pose(z.flyT, dt)
     const cam = Transform.getMutable(camera)
@@ -441,6 +458,7 @@ function system(dt: number) {
       z.porchT = 0
       z.flyT = t
       z.townDouble = spawnDouble(townRoot, Vector3.create(WINDOW_C.x, GROUND_Y + 6, WINDOW_C.z - 5.5), 0)
+      z.leg = null
       playAt(SFX.lift, toWorld(z.frames.full, Vector3.create(WINDOW_C.x, GROUND_Y + 2, WINDOW_C.z - 5.5)), 0.6)
       return
     }
@@ -456,6 +474,17 @@ function system(dt: number) {
     const tr = Transform.getMutable(camera)
     tr.position = pos
     tr.rotation = pose.rotation
+
+    // our saucer flies ahead of us from the glass over the top of the planet and into the clouds
+    const u = Transform.getMutable(ufo)
+    if (t >= z.path.key('glass').t && c < 0.98) {
+      const lead = Vector3.add(Vector3.add(pos, Vector3.scale(pose.dir, 7.5)), Vector3.create(0, -1.4, 0))
+      u.position = lead
+      u.scale = Vector3.create(1.7, 1.7, 1.7)
+      const flat = Vector3.normalize(Vector3.create(pose.dir.x, 0, pose.dir.z))
+      const yaw = (Math.atan2(flat.x, flat.z) * 180) / Math.PI
+      u.rotation = Quaternion.multiply(Quaternion.fromEulerDegrees(0, yaw, 0), Quaternion.fromEulerDegrees(pose.dir.y * -40 + 8, z.t * 240, Math.sin(z.t * 3) * 6))
+    } else u.scale = Vector3.Zero()
 
     // dome glass: a faint glint as the camera passes the pane (it is see-through, so keep it subtle)
     const g = 1 - Math.min(1, Math.abs(Math.hypot(pos.x - CENTER.x, pos.z - CENTER.z) - DOME_RADIUS) / 0.8)
