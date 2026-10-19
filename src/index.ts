@@ -5,6 +5,7 @@ import { initRingServer } from './server/ringServer'
 import { initKudosServer } from './server/kudosServer'
 import { createAliens } from './client/aliens'
 import { createApexUfo, createDome, createHeroCow, createInterior, createVideoPlayer } from './client/dome'
+import { initTour } from './client/tour'
 import { createArrivalBeam } from './client/arrival'
 import { createSpaceWindows } from './client/space'
 import { createCowGame } from './client/game'
@@ -48,6 +49,7 @@ function initClient() {
   createApexUfo()
   createInterior()
   createHeroCow()
+  initTour()
   createAliens()
 
   createPortals()
