@@ -11,7 +11,7 @@ import { createCargoLoop } from './client/cargo'
 import { createSpaceBattles } from './client/battles'
 import { createEarthZoom } from './client/earthZoom'
 import { initMusic } from './client/music'
-import { createBarrier, createGround, createKiosk, createNightSky, createPortals } from './client/plaza'
+import { createGround, createKiosk, createNightSky, createPortals } from './client/plaza'
 import { createRingAltar } from './client/ring'
 import { initUi } from './client/ui'
 
@@ -52,7 +52,6 @@ function initClient() {
   createPortals()
   createKiosk()
   createRingAltar(video)
-  createBarrier()
   createCowGame()
   createCargoLoop()
   createSpaceBattles()

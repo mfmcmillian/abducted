@@ -31,9 +31,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'models', 'dome.glb')
 
 // ---- parameters -----------------------------------------------------------
-export const RADIUS = 62 // inner radius (m); centred on the 192 m plot, the star ring reaches 92 m
+export const RADIUS = 43 // inner radius (m); centred on the 192 m plot, the star ring reaches 73 m
 const SHELL_GAP = 0.08 // outer shell = RADIUS + SHELL_GAP
-export const WALL_HEIGHT = 20 // vertical wall before the hemispherical cap (apex at 82 m, cap is 120 m for 64 parcels)
+export const WALL_HEIGHT = 20 // vertical wall before the hemispherical cap (apex at 63 m)
 const SEGMENTS = 128 // around (must be even: two video wraps)
 const WALL_RINGS = 10 // 2 m each
 const CAP_RINGS = 24

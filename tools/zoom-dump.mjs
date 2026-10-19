@@ -17,12 +17,14 @@ const { Vector3 } = await import(pathToFileURL(join(root, 'node_modules/@dcl/sdk
 rmSync(dir, { recursive: true, force: true })
 
 const V = Vector3 ?? { create: (x, y, z) => ({ x, y, z }) }
-// a plausible moment: Earth on its orbit (rho 76.5, y 16) at the given angle, player on the deck
-// 48 m from the centre on the Earth's side, looking at it
+// a plausible moment: Earth on its orbit (space.ts: BACK - EARTH_SCALE - 1.5, y 16) at the given
+// angle, player on the deck 14 m in from the glass on the Earth's side, looking at it
 const CENTER = { x: 96, y: 0, z: 96 }
+const DOME_RADIUS = 43 // layout.ts
+const EARTH_RHO = DOME_RADIUS + 30 - 14 - 1.5
 const ang = ((Number(process.argv[2]) || 35) * Math.PI) / 180
-const E = V.create(CENTER.x + Math.sin(ang) * 76.5, 16, CENTER.z + Math.cos(ang) * 76.5)
-const start = V.create(CENTER.x + Math.sin(ang + 0.15) * 48, 2.6, CENTER.z + Math.cos(ang + 0.15) * 48)
+const E = V.create(CENTER.x + Math.sin(ang) * EARTH_RHO, 16, CENTER.z + Math.cos(ang) * EARTH_RHO)
+const start = V.create(CENTER.x + Math.sin(ang + 0.15) * (DOME_RADIUS - 14), 2.6, CENTER.z + Math.cos(ang + 0.15) * (DOME_RADIUS - 14))
 const fwdRaw = { x: E.x - start.x, y: E.y - start.y, z: E.z - start.z }
 const fl = Math.hypot(fwdRaw.x, fwdRaw.y, fwdRaw.z)
 const forward = V.create(fwdRaw.x / fl, fwdRaw.y / fl, fwdRaw.z / fl)

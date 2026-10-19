@@ -7,7 +7,7 @@ import { Vector3 } from '@dcl/sdk/math'
  */
 export const PLOT = 192
 export const CENTER = Vector3.create(96, 0, 96)
-export const DOME_RADIUS = 62
+export const DOME_RADIUS = 43 // the glass; keep in sync with tools/build-dome.mjs RADIUS
 export const DOME_WALL = 20
 /** Where players arrive: in the middle of the dome, directly under the diorama's ship. */
 export const SPAWN = Vector3.create(96, 0, 96)
@@ -34,12 +34,12 @@ export const LANDING = Vector3.create(CENTER.x - 5, 0, CENTER.z - 30)
 export const CARGO_BAY = Vector3.create(CENTER.x + 6, 0, CENTER.z - 36)
 export const CARGO_BAY_RADIUS = 5
 /** The cow launcher, aimed out through the observation deck. */
-export const LAUNCHER = Vector3.create(CENTER.x + 18, 0, CENTER.z - 34)
+export const LAUNCHER = Vector3.create(CENTER.x + 17, 0, CENTER.z - 30)
 /** Leaderboard panel next to the pad. */
 export const LEADERBOARD = Vector3.create(CENTER.x - 21, 0, CENTER.z - 32)
 
 /** The sky pasture where the cow game is played: a 100 m square floating above the dome. */
-export const ARENA_Y = 88 // above the dome apex (82)
+export const ARENA_Y = 88 // well above the dome apex (63)
 export const ARENA_SIZE = 100
 export const ARENA_FLY_HEIGHT = 11 // player (as the saucer) hovers this far above the pasture
 export const ROUND_SECONDS = 180

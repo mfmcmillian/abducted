@@ -230,7 +230,7 @@ function KudosPanel() {
   const { canvas, S } = hudLayout()
   const { dx, dy } = dragOffsetPx('kudos')
   return (
-    <UiEntity uiTransform={{ positionType: 'absolute', position: { top: canvas.top + S(190) + dy, left: canvas.left + S(18) + dx }, flexDirection: 'column', alignItems: 'center' }}>
+    <UiEntity uiTransform={{ positionType: 'absolute', position: { top: canvas.top + S(120) + dy, left: canvas.left + S(18) + dx }, flexDirection: 'column', alignItems: 'center' }}>
       <UiEntity uiTransform={{ width: S(260), height: S(44), alignItems: 'center', justifyContent: 'center', margin: { bottom: -S(6) } }} uiBackground={PILL_TEX} onMouseDown={() => startDrag('kudos')}>
         <Label value="ABDUCTED!  KUDOS" fontSize={S(20)} color={GREEN} textAlign="middle-center" uiTransform={{ width: '100%', height: S(32) }} />
       </UiEntity>

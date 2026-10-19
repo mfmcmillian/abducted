@@ -19,7 +19,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { openExternalUrl } from '~system/RestrictedActions'
-import { CENTER, EMOTE_URL, SPAWN, VIDEO_URL } from '../layout'
+import { CENTER, DOME_RADIUS, DOME_WALL, EMOTE_URL, SPAWN, VIDEO_URL } from '../layout'
 import { moo } from './sfx'
 import { music } from './music'
 
@@ -196,7 +196,7 @@ export function createDiorama(): Entity {
  */
 export function createApexUfo(): Entity {
   const SCALE = 12 // ufo.glb is 2.2 m across, 1.23 m tall, origin at the bottom
-  const BASE_Y = 74 // bottom of the hull; the dome apex is at 82
+  const BASE_Y = DOME_WALL + DOME_RADIUS - 8 // bottom of the hull, tucked under the apex
   const ufo = engine.addEntity()
   Transform.create(ufo, { position: Vector3.create(CENTER.x, BASE_Y, CENTER.z), scale: Vector3.create(SCALE, SCALE, SCALE) })
   GltfContainer.create(ufo, {
