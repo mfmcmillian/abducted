@@ -89,29 +89,21 @@ interface PenCow {
   shown: boolean
 }
 const pen: PenCow[] = []
-/** A couple of cows that hang around the empty pen so it never looks abandoned; not yours to launch. */
-const strays: PenCow[] = []
-const STRAYS = 2
 let penLabel: Entity
 
 function createCargoBay() {
-  const ring = engine.addEntity()
-  Transform.create(ring, { position: Vector3.create(CARGO_BAY.x, 0.08, CARGO_BAY.z), scale: Vector3.create(CARGO_BAY_RADIUS * 2, 0.06, CARGO_BAY_RADIUS * 2) })
-  MeshRenderer.setCylinder(ring)
-  Material.setPbrMaterial(ring, { albedoColor: Color4.create(0.03, 0.08, 0.05, 1), emissiveColor: Color3.create(0.35, 1, 0.45), emissiveIntensity: 0.6, roughness: 0.6 })
-
-  // Fence posts with a soft glow so the pen reads from across the room.
-  const POSTS = 10
-  for (let i = 0; i < POSTS; i++) {
-    const a = (i / POSTS) * TAU
-    const post = engine.addEntity()
-    Transform.create(post, {
-      position: Vector3.create(CARGO_BAY.x + CARGO_BAY_RADIUS * Math.sin(a), 0.6, CARGO_BAY.z + CARGO_BAY_RADIUS * Math.cos(a)),
-      scale: Vector3.create(0.18, 1.2, 0.18)
-    })
-    MeshRenderer.setBox(post)
-    Material.setPbrMaterial(post, { albedoColor: Color4.create(0.08, 0.09, 0.1, 1), emissiveColor: Color3.create(0.35, 1, 0.45), emissiveIntensity: 1.2, metallic: 0.6, roughness: 0.4 })
-  }
+  // The Meshy pen (models/cow-pen.glb): round fence of gunmetal posts and green rails on a base
+  // plate, gate gap on its +Z side. Model 1.73 wide, 0.42 tall, origin mid-height: the plate top is
+  // at y -0.06, so the model is sunk until the plate sits just proud of the floor.
+  const PEN_SCALE = 5.8
+  const toCentre = Vector3.normalize(Vector3.create(CENTER.x - CARGO_BAY.x, 0, CENTER.z - CARGO_BAY.z))
+  const pen3d = engine.addEntity()
+  Transform.create(pen3d, {
+    position: Vector3.create(CARGO_BAY.x, 0.05 - (0.2 - 0.06) * PEN_SCALE, CARGO_BAY.z),
+    rotation: Quaternion.lookRotation(toCentre, Vector3.Up()),
+    scale: Vector3.create(PEN_SCALE, PEN_SCALE, PEN_SCALE)
+  })
+  GltfContainer.create(pen3d, { src: 'models/cow-pen.glb', visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
 
   const title = engine.addEntity()
   Transform.create(title, { position: Vector3.create(CARGO_BAY.x, 4.6, CARGO_BAY.z) })
@@ -139,19 +131,6 @@ function createCargoBay() {
     hideEntity(entity)
     cow.shown = false
   }
-  for (let i = 0; i < STRAYS; i++) {
-    const entity = engine.addEntity()
-    const a = (i / STRAYS) * TAU + 0.7
-    const home = Vector3.create(CARGO_BAY.x + (CARGO_BAY_RADIUS - 2.4) * Math.sin(a), 0, CARGO_BAY.z + (CARGO_BAY_RADIUS - 2.4) * Math.cos(a))
-    Transform.create(entity, { position: home, rotation: Quaternion.fromEulerDegrees(0, rand(0, 360), 0), scale: Vector3.create(PEN_COW_SCALE, PEN_COW_SCALE, PEN_COW_SCALE) })
-    cowModel(entity, true)
-    const cow: PenCow = { entity, home, heading: rand(0, 360), timer: rand(2, 6), shown: true }
-    strays.push(cow)
-    pointerEventsSystem.onPointerDown({ entity, opts: { button: InputAction.IA_PRIMARY, hoverText: 'Not yours', maxDistance: 9 } }, () => {
-      toast('These two live here. Catch your own cows in the pasture: the saucer waits on the launch pad.', 5)
-      playGlobal(SFX.uiClick, 0.6)
-    })
-  }
   refreshPen()
 }
 
@@ -168,22 +147,11 @@ function refreshPen() {
       t.scale = Vector3.create(PEN_COW_SCALE, PEN_COW_SCALE, PEN_COW_SCALE)
     } else hideEntity(cow.entity)
   }
-  // the strays only show up once we know the pen is really empty
-  const showStrays = state.synced && visible === 0
-  for (const cow of strays) {
-    if (showStrays === cow.shown) continue
-    cow.shown = showStrays
-    const t = Transform.getMutable(cow.entity)
-    if (showStrays) {
-      t.position = Vector3.clone(cow.home)
-      t.scale = Vector3.create(PEN_COW_SCALE, PEN_COW_SCALE, PEN_COW_SCALE)
-    } else hideEntity(cow.entity)
-  }
   const extra = visible - pen.length
   const text = !state.synced
     ? ''
     : visible === 0
-      ? 'empty: catch cows in the pasture\n(the saucer waits on the launch pad)'
+      ? 'empty: play the cow game to catch more cows\n(the saucer waits on the launch pad)'
       : `${visible} cow${visible === 1 ? '' : 's'} waiting${extra > 0 ? ` (${extra} more in the hold)` : ''}\nclick one to carry it to the launcher`
   TextShape.getMutable(penLabel).text = text
 }
@@ -401,7 +369,7 @@ let seq: { t: number; cow: Entity | null; from: Vector3; fired: boolean } | null
 
 function onLaunchClick() {
   if (!state.carrying) {
-    toast(state.cargo > 0 ? 'Bring a cow from the CARGO BAY first.' : 'No cows to launch. Catch some in the pasture: the saucer waits on the launch pad.', 5)
+    toast(state.cargo > 0 ? 'Bring a cow from the CARGO BAY first.' : 'No cows to launch. Play the cow game to catch more: the saucer waits on the launch pad.', 5)
     playGlobal(SFX.uiClick, 0.6)
     return
   }
@@ -609,16 +577,15 @@ function system(dt: number) {
     TextShape.getMutable(launcherLabel).text = state.synced ? `black hole in ${formatTime(state.nextHoleIn)}  ·  ${state.launched} of yours floating` : ''
   }
 
-  for (const herd of [pen, strays])
-    for (const cow of herd) {
-      if (!cow.shown) continue
-      cow.timer -= dt
-      if (cow.timer > 0) continue
-      cow.timer = rand(3, 8)
-      cow.heading = rand(0, 360)
-      Transform.getMutable(cow.entity).rotation = Quaternion.fromEulerDegrees(0, cow.heading, 0)
-      if (Math.random() < 0.15) moo(Vector3.create(cow.home.x, 1, cow.home.z), 0.4)
-    }
+  for (const cow of pen) {
+    if (!cow.shown) continue
+    cow.timer -= dt
+    if (cow.timer > 0) continue
+    cow.timer = rand(3, 8)
+    cow.heading = rand(0, 360)
+    Transform.getMutable(cow.entity).rotation = Quaternion.fromEulerDegrees(0, cow.heading, 0)
+    if (Math.random() < 0.15) moo(Vector3.create(cow.home.x, 1, cow.home.z), 0.4)
+  }
 
   for (let i = flights.length - 1; i >= 0; i--) {
     const f = flights[i]

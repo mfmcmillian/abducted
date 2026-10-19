@@ -24,6 +24,8 @@ interface Wallet {
   cargo: number
   launched: number
   lifetime: number
+  /** when the free cows were last beamed in (ms epoch) */
+  freeAt?: number
 }
 
 interface Floating {
@@ -85,6 +87,20 @@ async function saveWallet(address: string, w: Wallet) {
   }
 }
 
+/**
+ * A newcomer, or anyone who has run dry, finds a couple of free cows waiting in the pen so the
+ * launcher can be tried right away. Rate-limited per player so it is not a kudos faucet.
+ */
+async function topUpFreeCows(address: string, w: Wallet): Promise<boolean> {
+  if (w.cargo > 0) return false
+  const now = Date.now()
+  if (w.freeAt && now - w.freeAt < KUDOS.freeCowsEverySeconds * 1000) return false
+  w.cargo += KUDOS.freeCows
+  w.freeAt = now
+  await saveWallet(address, w)
+  return true
+}
+
 function sendState(address: string, w: Wallet, text = '') {
   room.send('cargoState', { cargo: w.cargo, kudos: w.kudos, launched: w.launched, nextHoleIn: Math.ceil(holeIn), text }, { to: [address] })
 }
@@ -101,7 +117,7 @@ export async function addCargo(address: string, cows: number) {
 
 async function launch(address: string) {
   const w = await wallet(address)
-  if (w.cargo <= 0) return sendState(address, w, 'The cargo bay is empty. Catch more cows in the pasture.')
+  if (w.cargo <= 0) return sendState(address, w, 'The cargo bay is empty. Play the cow game to catch more cows.')
   w.cargo -= 1
   w.launched += 1
   const cow: Floating = {
@@ -122,7 +138,8 @@ async function launch(address: string) {
   await saveWallet(address, w)
   void saveFloating()
   room.send('cowLaunched', cow)
-  sendState(address, w, '')
+  const gifted = await topUpFreeCows(address, w)
+  sendState(address, w, gifted ? `Last one! ${KUDOS.freeCows} more free cows beamed into the CARGO BAY.` : '')
 }
 
 async function credit(cows: Floating[], reason: string) {
@@ -169,7 +186,10 @@ export function initKudosServer() {
     if (!context || !loaded) return
     const address = context.from.toLowerCase()
     room.send('cowsFloating', { cows: floating }, { to: [context.from] })
-    void wallet(address).then((w) => sendState(address, w))
+    void wallet(address).then(async (w) => {
+      const gifted = await topUpFreeCows(address, w)
+      sendState(address, w, gifted ? `${KUDOS.freeCows} free cows are waiting in the CARGO BAY. Carry one to the launcher.` : '')
+    })
   })
 
   room.onMessage('cowLaunch', (_data, context) => {

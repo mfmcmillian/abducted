@@ -58,5 +58,8 @@ export const KUDOS = {
   /** cows shown in the cargo bay pen at once (the rest are 'more in the hold') */
   penCapacity: 20,
   /** a raider saucer shoots one floating cow about this often (seconds, jittered); owner still gets perCow */
-  raidPeriodSeconds: 70
+  raidPeriodSeconds: 70,
+  /** an empty cargo bay gets this many free cows, at most once per freeCowsEverySeconds per player */
+  freeCows: 2,
+  freeCowsEverySeconds: 600
 }
