@@ -477,6 +477,29 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   )
 }
 
+/**
+ * Invisible ring of box colliders a few metres inside the glass so nobody walks up to the
+ * windows (the parallax trick outside only holds from a distance). No renderer: a hollow
+ * cylinder collider is not reliable from the inside.
+ */
+export function createBarrier() {
+  const RADIUS = DOME_RADIUS - 4
+  const SEGMENTS = 56
+  const HEIGHT = 8
+  const step = (Math.PI * 2) / SEGMENTS
+  const width = 2 * RADIUS * Math.tan(step / 2) + 0.3 // slight overlap so there are no gaps
+  for (let i = 0; i < SEGMENTS; i++) {
+    const a = (i + 0.5) * step
+    const wall = engine.addEntity()
+    Transform.create(wall, {
+      position: Vector3.create(CENTER.x + Math.sin(a) * RADIUS, HEIGHT / 2, CENTER.z + Math.cos(a) * RADIUS),
+      rotation: Quaternion.fromEulerDegrees(0, (a * 180) / Math.PI, 0),
+      scale: Vector3.create(width, HEIGHT, 0.4)
+    })
+    MeshCollider.setBox(wall, ColliderLayer.CL_PHYSICS)
+  }
+}
+
 /** Separate interactive collection areas: emotes northeast, costumes southeast. */
 export function createKiosk() {
   createAvatarShowcase('emote', FORMATION.NE, 'images/abducted-emote-showcase.jpg', Color3.create(0.15, 0.85, 1))

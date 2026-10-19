@@ -4,14 +4,15 @@ import { initLeaderboardServer } from './server/leaderboardServer'
 import { initRingServer } from './server/ringServer'
 import { initKudosServer } from './server/kudosServer'
 import { createAliens } from './client/aliens'
-import { createApexUfo, createDiorama, createDome, createHeroCow, createInterior, createVideoPlayer } from './client/dome'
+import { createApexUfo, createDome, createHeroCow, createInterior, createVideoPlayer } from './client/dome'
+import { createArrivalBeam } from './client/arrival'
 import { createSpaceWindows } from './client/space'
 import { createCowGame } from './client/game'
 import { createCargoLoop } from './client/cargo'
 import { createSpaceBattles } from './client/battles'
 import { createEarthZoom } from './client/earthZoom'
 import { initMusic } from './client/music'
-import { createGround, createKiosk, createNightSky, createPortals } from './client/plaza'
+import { createBarrier, createGround, createKiosk, createNightSky, createPortals } from './client/plaza'
 import { createRingAltar } from './client/ring'
 import { initUi } from './client/ui'
 
@@ -43,7 +44,7 @@ function initClient() {
   initMusic(video)
   createDome(video)
   createSpaceWindows()
-  createDiorama()
+  createArrivalBeam()
   createApexUfo()
   createInterior()
   createHeroCow()
@@ -52,6 +53,7 @@ function initClient() {
   createPortals()
   createKiosk()
   createRingAltar(video)
+  createBarrier()
   createCowGame()
   createCargoLoop()
   createSpaceBattles()
