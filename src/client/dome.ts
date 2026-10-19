@@ -8,7 +8,6 @@ import {
   InputAction,
   LightSource,
   Material,
-  MaterialTransparencyMode,
   MeshRenderer,
   pointerEventsSystem,
   TextureFilterMode,
@@ -84,19 +83,14 @@ export function createDome(video: Entity): Entity {
     }
   }
 
-  // Floor: a quiet alien-terrain tile. The Floor node has planar UVs (one tile per 6 m);
-  // MIRROR wrap guarantees no visible seams even if the tile is not perfectly seamless.
+  // Temporary bright green test material so the dome floor is unmistakable.
   const floorMaterial = {
     material: {
       $case: 'pbr' as const,
       pbr: {
-        texture: Material.Texture.Common({
-          src: 'images/dome-floor-tile.jpg',
-          wrapMode: TextureWrapMode.TWM_MIRROR,
-          filterMode: TextureFilterMode.TFM_TRILINEAR
-        }),
-        albedoColor: Color4.create(0.85, 1, 0.9, 0.08),
-        transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
+        albedoColor: Color4.create(0, 1, 0, 1),
+        emissiveColor: Color3.create(0, 0.4, 0),
+        emissiveIntensity: 1,
         metallic: 0,
         roughness: 1,
         specularIntensity: 0,
