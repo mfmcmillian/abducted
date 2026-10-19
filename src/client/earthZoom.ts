@@ -24,10 +24,12 @@ import {
   VirtualCamera
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { CENTER, DOME_RADIUS, VIDEO_URL } from '../layout'
+import { CENTER, DOME_RADIUS, LAUNCH_PAD, VIDEO_URL } from '../layout'
 import { AERIAL_LIFT, CITY_POS, CITY_SCALE, COUNTRY_SCALE, EMBED, GROUND_Y, HOUSE_SCALE, ROAD_Z, ROOM_H, ROOM_POS, SET_SCALE, TERRAIN_LOCAL_Y, TOWN_EMBED_POS, TOWN_FULL_POS, TV_POS, TV_SCALE, TV_SCREEN, WINDOW_C } from './earthLayout'
 import { EARTH_MODELS, EarthModel } from './earthManifest'
-import { burstExplosion, PALETTES, startFx } from './fx'
+import { burstExplosion, PALETTES, puffTrail, startFx } from './fx'
+import { launchPod, POD_CHARGE_SECONDS, releasePod, sealPod } from './pod'
+import { hidePlayerAt, spawnDouble, unhidePlayer, walkDouble } from './zoomActor'
 import { playAt, playGlobal, SFX } from './sfx'
 import { earthEntity, earthPosition, EARTH_SCALE, setEarthFrozen } from './space'
 import { toast, zoomUi } from './ui'
@@ -262,7 +264,17 @@ interface Zoom {
   swapT: number
   t: number
   end: number
-  phase: 'fly' | 'hold' | 'out'
+  phase: 'walk' | 'fly' | 'porch' | 'hold' | 'out'
+  /** walk: the player's double on its way to the pod; 0 to the doorway, 1 inside, 2 sealed and charging */
+  double: Entity | null
+  stage: number
+  /** white-out left over from the pod launch, fading through the first seconds of flight */
+  flash: number
+  /** porch: the double beamed down in front of the house, walking to the window */
+  townDouble: Entity | null
+  porchDone: boolean
+  porchT: number
+  flyT: number
   cloudsDone: boolean
   windowDone: boolean
   swapped: boolean
@@ -287,15 +299,20 @@ function startZoom() {
   if (!earthEntity()) return
   setEarthFrozen(true)
   const E = earthPosition()
-  const cam = Transform.get(engine.CameraEntity)
-  const path = authorPath({ E, start: toScene(cam.position), forward: Vector3.rotate(Vector3.Forward(), cam.rotation) })
+  const podTop = Vector3.create(LAUNCH_PAD.x, 13, LAUNCH_PAD.z)
+  const path = authorPath({ E, start: podTop, forward: Vector3.normalize(Vector3.subtract(E, podTop)) })
   const frames = townFrames(E)
-  zoom = { path, frames, swapT: path.key('swap').t, t: 0, end: path.end, phase: 'fly', cloudsDone: false, windowDone: false, swapped: false, tvStarted: false, tvShowing: false, holdOffset: -1, holdLeft: 45 }
+  // the player's double walks to the pod while the real avatar stays put, hidden
+  const pt = Transform.get(engine.PlayerEntity)
+  const P = toScene(pt.position)
+  hidePlayerAt(P)
+  const double = spawnDouble(ROOT, P, Quaternion.toEulerAngles(pt.rotation).y)
+  zoom = { path, frames, swapT: path.key('swap').t, t: 0, end: path.end, phase: 'walk', double, stage: 0, flash: 0, townDouble: null, porchDone: false, porchT: 0, flyT: 0, cloudsDone: false, windowDone: false, swapped: false, tvStarted: false, tvShowing: false, holdOffset: -1, holdLeft: 45 }
   townEmbedded(true)
-  const first = path.pose(0, 0)
   const tr = Transform.getMutable(camera)
-  tr.position = toWorld(frames.embedded, first.q)
-  tr.rotation = first.rotation
+  const shot = walkShot(P)
+  tr.position = shot.cam
+  tr.rotation = Quaternion.fromLookAt(shot.cam, shot.look)
   MainCamera.createOrReplace(engine.CameraEntity, { virtualCameraEntity: camera })
   setPlayerLocked(true)
   zoomUi.active = true
@@ -306,6 +323,10 @@ function startZoom() {
 
 function finishZoom() {
   if (!zoom) return
+  if (zoom.double) engine.removeEntity(zoom.double)
+  if (zoom.townDouble) engine.removeEntity(zoom.townDouble)
+  unhidePlayer()
+  releasePod(false)
   zoom = null
   MainCamera.createOrReplace(engine.CameraEntity, { virtualCameraEntity: undefined })
   setPlayerLocked(false)
@@ -319,6 +340,19 @@ function finishZoom() {
   VideoPlayer.getMutable(tvPlayer).playing = false
   VideoPlayer.getMutable(videoEntity).volume = MUSIC_VOLUME
   tune(staticPlayer)
+}
+
+/** Tracking shot on the walking double: ahead and to the side, looking back at it. */
+function walkShot(at: Vector3, toward?: Vector3): { cam: Vector3; look: Vector3 } {
+  const dir = toward ? Vector3.normalize(Vector3.create(toward.x - at.x, 0, toward.z - at.z)) : Vector3.create(0, 0, 1)
+  const side = Vector3.create(dir.z, 0, -dir.x)
+  return { cam: Vector3.add(at, Vector3.create(side.x * 3.2 + dir.x * 2.6, 1.9, side.z * 3.2 + dir.z * 2.6)), look: Vector3.add(at, Vector3.create(0, 1.3, 0)) }
+}
+
+/** Wide shot of the pod from the doorway side while it seals and charges. */
+function podShot(inward: Vector3): { cam: Vector3; look: Vector3 } {
+  const side = Vector3.create(inward.z, 0, -inward.x)
+  return { cam: Vector3.add(LAUNCH_PAD, Vector3.create(inward.x * 17 + side.x * 5, 6.5, inward.z * 17 + side.z * 5)), look: Vector3.add(LAUNCH_PAD, Vector3.create(0, 4.5, 0)) }
 }
 
 function system(dt: number) {
@@ -337,9 +371,79 @@ function system(dt: number) {
     z.t = 0
   }
 
-  if (z.phase === 'fly') {
+  if (z.phase === 'walk') {
     z.t += dt
+    const inward = Vector3.normalize(Vector3.create(CENTER.x - LAUNCH_PAD.x, 0, CENTER.z - LAUNCH_PAD.z))
+    const door = Vector3.add(LAUNCH_PAD, Vector3.scale(inward, 3.8))
+    const dbl = z.double!
+    const dp = Transform.get(dbl).position
+    let shot: { cam: Vector3; look: Vector3 }
+    if (z.stage === 0) {
+      // to the doorway at a brisk pace, however far away they started (3.5 .. 6 m/s)
+      const speed = Math.max(3.5, Math.min(6, Vector3.distance(dp, door) / 4))
+      if (walkDouble(dbl, door, speed, dt)) z.stage = 1
+      shot = walkShot(dp, door)
+    } else if (z.stage === 1) {
+      if (walkDouble(dbl, LAUNCH_PAD, 2.5, dt)) {
+        z.stage = 2
+        z.t = 0
+        sealPod()
+      }
+      shot = podShot(inward)
+    } else {
+      shot = podShot(inward)
+      if (z.t >= POD_CHARGE_SECONDS) {
+        // transfer: white-out, the double is gone, and the flight picks up above the pod
+        launchPod()
+        engine.removeEntity(dbl)
+        z.double = null
+        z.flash = 1
+        z.phase = 'fly'
+        z.t = 0
+        const first = z.path.pose(0, 0)
+        const tr = Transform.getMutable(camera)
+        tr.position = toWorld(z.frames.embedded, first.q)
+        tr.rotation = first.rotation
+        return
+      }
+    }
+    const tr = Transform.getMutable(camera)
+    const k = Math.min(1, dt * 3)
+    tr.position = Vector3.lerp(tr.position, shot.cam, k)
+    tr.rotation = Quaternion.slerp(tr.rotation, Quaternion.fromLookAt(tr.position, shot.look), Math.min(1, dt * 4))
+    zoomUi.white = 0
+  } else if (z.phase === 'porch') {
+    // dropped off on the lawn: beam down, walk up to the window, then the flight carries on inside
+    z.porchT += dt
+    const dbl = z.townDouble!
+    const tr = Transform.getMutable(dbl)
+    const DROP_T = 1.3
+    if (z.porchT < DROP_T) {
+      const u = z.porchT / DROP_T
+      tr.position = Vector3.create(tr.position.x, GROUND_Y + 6 * (1 - u) * (1 - u), tr.position.z)
+      if (Math.random() < 0.5) puffTrail(toWorld(z.frames.full, Vector3.add(tr.position, Vector3.create(0, 0.3, 0))), Color3.create(0.5, 1, 0.6), 0.4)
+    } else if (walkDouble(dbl, Vector3.create(WINDOW_C.x, GROUND_Y, WINDOW_C.z - 1.5), 2.2, dt) && z.porchT > DROP_T + 2.6) {
+      z.phase = 'fly'
+      z.t = z.flyT
+    }
+    const pose = z.path.pose(z.flyT, dt)
+    const cam = Transform.getMutable(camera)
+    cam.position = toWorld(z.frames.full, pose.q)
+    cam.rotation = pose.rotation
+  } else if (z.phase === 'fly') {
+    z.t += dt
+    z.flash = Math.max(0, z.flash - dt * 1.1)
     const t = Math.min(z.t, z.end)
+    if (!z.porchDone && t >= z.path.key('street').t) {
+      // in front of the house: the double is dropped off and walks to the window
+      z.porchDone = true
+      z.phase = 'porch'
+      z.porchT = 0
+      z.flyT = t
+      z.townDouble = spawnDouble(townRoot, Vector3.create(WINDOW_C.x, GROUND_Y + 6, WINDOW_C.z - 5.5), 0)
+      playAt(SFX.lift, toWorld(z.frames.full, Vector3.create(WINDOW_C.x, GROUND_Y + 2, WINDOW_C.z - 5.5)), 0.6)
+      return
+    }
     const pose = z.path.pose(t, dt)
     const c = pose.white // clouds: the one white-out, on while the camera is inside the Earth's shell
     // the patch fills the frame: grow the street set around the camera, park the countryside.
@@ -355,7 +459,7 @@ function system(dt: number) {
 
     // dome glass: a faint glint as the camera passes the pane (it is see-through, so keep it subtle)
     const g = 1 - Math.min(1, Math.abs(Math.hypot(pos.x - CENTER.x, pos.z - CENTER.z) - DOME_RADIUS) / 0.8)
-    zoomUi.white = Math.max(c, g * 0.35)
+    zoomUi.white = Math.max(c, g * 0.35, z.flash)
     if (!z.cloudsDone && c > 0) {
       z.cloudsDone = true
       burstExplosion(Vector3.add(E, Vector3.create(0, 12.8 * SET_SCALE, -2 * SET_SCALE)), 2.5, { ...PALETTES.cow, fire0: Color3.White(), fire1: Color3.create(0.9, 0.93, 1), smoke: Color3.White(), spark: Color3.White(), flash: Color3.White() })
