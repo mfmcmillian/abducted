@@ -32,7 +32,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
-import { attachLoop, moo, playAt, playGlobal, SFX } from './sfx'
+import { moo, playAt, playGlobal, SFX } from './sfx'
 import { movePlayerTo } from '~system/RestrictedActions'
 import { ARENA_FLY_HEIGHT, ARENA_SIZE, ARENA_Y, CENTER, LANDING, LAUNCH_PAD, LEADERBOARD } from '../layout'
 import { GAME, RULESET } from '../shared/gameConfig'
@@ -40,13 +40,13 @@ import { room } from '../shared/messages'
 import { hud, toast, type BeamState } from './ui'
 import { FLOOR_Y, ROOT, sceneToWorld } from './root'
 import { PANE_H, PANE_W, PANE_Y, paneMount } from './pane'
+import { createPod, launchPod, POD_CHARGE_SECONDS, releasePod, sealPod } from './pod'
 
 /**
  * The cow game (TheCowCatchingGame PRD v1.0, P0).
  *
- * The dome is the lobby: approach the launch pad to call a saucer, then walk into its
- * narrow guide beam. The beam widens, lifts you into the ship and drops you on the sky
- * pasture above the dome. Up there you ARE
+ * The dome is the lobby: step into the abduction pod (pod.ts). It seals behind you, the
+ * ship counts you down and transfers you to the sky pasture above the dome. Up there you ARE
  * the saucer (first person, saucer under your feet). First visit gets a practice cow with
  * no clock; then 3-2-1-GO and a 180 second round. The beam is a committed drop:
  * Ready -> Charging -> Active -> Cooldown. A cow has to sit in the footprint for a
@@ -54,10 +54,8 @@ import { PANE_H, PANE_W, PANE_Y, paneMount } from './pane'
  * resets. Results, play again or back down to the dome.
  */
 
-type Phase = 'idle' | 'summon' | 'boarding' | 'pickup' | 'arriving' | 'practice' | 'countdown' | 'playing' | 'finalizing' | 'results'
+type Phase = 'idle' | 'pickup' | 'arriving' | 'practice' | 'countdown' | 'playing' | 'finalizing' | 'results'
 
-const SUMMON_SECONDS = 2.4
-const BOARDING_TIMEOUT = 18
 const HALF = GAME.fieldSize / 2
 const ARENA_CENTER = Vector3.create(CENTER.x, ARENA_Y, CENTER.z)
 const FLY_Y = ARENA_Y + ARENA_FLY_HEIGHT
@@ -67,8 +65,6 @@ const COW_SCALE = 1.6
 
 let phase: Phase = 'idle'
 let phaseTime = 0
-let insideBeam = false
-let pickupMoved = false
 let practiced = false
 let sessionBest = 0
 let inputLocked = false
@@ -104,13 +100,6 @@ interface GameCow {
 }
 const cows: GameCow[] = []
 
-let liftUfo: Entity
-let setPadHum: (v: number) => void = () => {}
-let liftBeam: Entity
-let liftLight: Entity
-const liftIdle = Vector3.create(LAUNCH_PAD.x, 17, LAUNCH_PAD.z)
-const liftDown = Vector3.create(LAUNCH_PAD.x, 12, LAUNCH_PAD.z)
-
 let playerUfo: Entity
 let playerBeam: Entity
 let playerLight: Entity
@@ -128,86 +117,23 @@ function dist2(ax: number, az: number, bx: number, bz: number) {
   return dx * dx + dz * dz
 }
 
-/** Keep the portal beam joined to the saucer instead of leaving a gap as it moves. */
-function setLiftBeam(width: number, height: number) {
-  // Hum follows the beam: a whisper when idle, full when it opens to lift you.
-  setPadHum(0.12 + Math.min(1, width) * 0.5)
-  const h = Math.max(0.1, height)
-  const t = Transform.getMutable(liftBeam)
-  t.position.y = h / 2
-  t.scale = Vector3.create(width, h, width)
-}
-
 // ---------------------------------------------------------------------------
 // Launch pad in the dome (the lobby's Play interaction)
 
 function createLaunchPad() {
-  // Broad call zone: approaching the pad brings the UFO down before the player
-  // reaches the narrow beam in the middle.
-  const callZone = engine.addEntity()
-  Transform.create(callZone, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, 1.5, LAUNCH_PAD.z), scale: Vector3.create(10, 3, 10) })
-  TriggerArea.setBox(callZone)
-  triggerAreaEventsSystem.onTriggerEnter(callZone, () => {
-    if (phase === 'idle') {
-      phase = 'summon'
-      phaseTime = 0
-      playAt(SFX.ufoArrive, Vector3.create(LAUNCH_PAD.x, 10, LAUNCH_PAD.z), 0.9)
-      toast('A saucer heard the call.', 3)
-    }
+  createPod(() => {
+    if (phase !== 'idle') return
+    phase = 'pickup'
+    phaseTime = 0
+    setInputLocked(true)
+    sealPod()
   })
 
-  // Small boarding zone at the centre. Walking into the thin guide beam expands it
-  // and starts the lift; being merely near the pad is not enough.
-  const beamZone = engine.addEntity()
-  Transform.create(beamZone, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, 1.5, LAUNCH_PAD.z), scale: Vector3.create(2.4, 3, 2.4) })
-  TriggerArea.setBox(beamZone)
-  triggerAreaEventsSystem.onTriggerEnter(beamZone, () => {
-    insideBeam = true
-    if (phase === 'boarding') {
-      phase = 'pickup'
-      phaseTime = 0
-      pickupMoved = false
-      playGlobal(SFX.lift, 1)
-    }
-  })
-  triggerAreaEventsSystem.onTriggerExit(beamZone, () => {
-    insideBeam = false
-  })
-
-  const glow = engine.addEntity()
-  Transform.create(glow, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, 3, LAUNCH_PAD.z) })
-  LightSource.create(glow, { active: true, color: Color3.create(0.4, 0.9, 1), intensity: 500, range: 12, shadow: false, type: LightSource.Type.Point({}) })
-
-  liftUfo = engine.addEntity()
-  Transform.create(liftUfo, { parent: ROOT, position: Vector3.clone(liftIdle), scale: Vector3.create(3.5, 3.5, 3.5) })
-  GltfContainer.create(liftUfo, { src: 'models/ufo.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
-  setPadHum = attachLoop(liftUfo, SFX.beamHum, 0.15)
-  liftBeam = engine.addEntity()
-  Transform.create(liftBeam, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, liftDown.y / 2, LAUNCH_PAD.z), scale: Vector3.Zero() })
-  MeshRenderer.setCylinder(liftBeam, 3.2, 1.2)
-  Material.setPbrMaterial(liftBeam, {
-    albedoColor: Color4.create(0.4, 0.9, 1, 0.3),
-    emissiveColor: Color3.create(0.4, 0.9, 1),
-    emissiveIntensity: 1.5,
-    transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
-    castShadows: false
-  })
-  liftLight = engine.addEntity()
-  Transform.create(liftLight, { parent: ROOT, position: Vector3.create(LAUNCH_PAD.x, 12, LAUNCH_PAD.z), rotation: Quaternion.fromEulerDegrees(90, 0, 0) })
-  LightSource.create(liftLight, {
-    active: false,
-    color: Color3.create(0.4, 0.9, 1),
-    intensity: 2500,
-    range: 20,
-    shadow: false,
-    type: LightSource.Type.Spot({ innerAngle: 20, outerAngle: 40 })
-  })
-
-  // Giant pink 3D "PLAY ME! / STAND HERE" beside the beam (models/text-play.glb, tools/build-text.mjs).
+  // Giant pink 3D "PLAY ME! / STAND HERE" above the pod (models/text-play.glb, tools/build-text.mjs).
   const PLAY_SCALE = 2.6
   const sign = engine.addEntity()
   Transform.create(sign, { parent: ROOT,
-    position: Vector3.create(LAUNCH_PAD.x, 5.5, LAUNCH_PAD.z),
+    position: Vector3.create(LAUNCH_PAD.x, 7.6, LAUNCH_PAD.z),
     scale: Vector3.create(PLAY_SCALE, PLAY_SCALE, PLAY_SCALE)
   })
   GltfContainer.create(sign, { src: 'models/text-play.glb', visibleMeshesCollisionMask: ColliderLayer.CL_NONE, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
@@ -222,7 +148,7 @@ function createLaunchPad() {
     const s = PLAY_SCALE * (1 + glow * 0.04)
     const t = Transform.getMutable(sign)
     t.scale = Vector3.create(s, s, s)
-    t.position.y = 5.5 + Math.sin(signClock * 0.9) * 0.25
+    t.position.y = 7.6 + Math.sin(signClock * 0.9) * 0.25
     LightSource.getMutable(signLight).intensity = 130 + glow * 140
   })
 }
@@ -901,6 +827,7 @@ function returnToDome(message: string) {
   }
   resetBeam()
   setInputLocked(false)
+  releasePod()
   void movePlayerTo({ newRelativePosition: sceneToWorld(Vector3.create(LANDING.x, 0.2, LANDING.z)), cameraTarget: sceneToWorld(Vector3.create(CENTER.x, 3, CENTER.z)) })
   if (message) toast(message, 8)
   phase = 'idle'
@@ -912,75 +839,20 @@ function returnToDome(message: string) {
 function gameSystem(dt: number) {
   phaseTime += dt
 
-  // --- summon, enter the narrow beam, then get lifted -----------------------
-  const ufoT = Transform.getMutable(liftUfo)
-  const beamT = Transform.getMutable(liftBeam)
-  if (phase === 'summon') {
-    const k = Math.min(1, phaseTime / SUMMON_SECONDS)
-    ufoT.position = Vector3.lerp(liftIdle, liftDown, easeInOut(k))
-    // Keep the visible guide beam attached as the ship descends.
-    setLiftBeam(0.12 + k * 0.04, ufoT.position.y - 0.8)
-    LightSource.getMutable(liftLight).active = true
-    if (phaseTime >= SUMMON_SECONDS) {
-      phase = 'boarding'
-      phaseTime = 0
-    }
-  } else if (phase === 'boarding') {
-    ufoT.position = Vector3.create(liftDown.x, liftDown.y + Math.sin(phaseTime * 1.8) * 0.18, liftDown.z)
-    const pulse = 0.16 + (0.5 + Math.sin(phaseTime * 4) * 0.5) * 0.035
-    setLiftBeam(pulse, ufoT.position.y - 0.8)
-    LightSource.getMutable(liftLight).active = true
-    // If the player reached the centre while the ship was still descending, board now.
-    if (insideBeam) {
-      phase = 'pickup'
-      phaseTime = 0
-      pickupMoved = false
-    } else if (phaseTime > BOARDING_TIMEOUT) {
-      phase = 'idle'
-      phaseTime = 0
-      LightSource.getMutable(liftLight).active = false
-    }
-  } else if (phase === 'pickup') {
-    ufoT.position = Vector3.create(liftDown.x, liftDown.y + Math.sin(phaseTime * 1.8) * 0.12, liftDown.z)
-    // The guide beam blooms from 16% to full catch width as it takes hold.
-    const widen = Math.min(1, phaseTime / 0.8)
-    const width = 0.16 + easeInOut(widen) * 0.84
-    setLiftBeam(width, ufoT.position.y - 0.8)
-    LightSource.getMutable(liftLight).active = true
-    if (phaseTime > 0.7 && !pickupMoved) {
-      pickupMoved = true
-      void movePlayerTo({ newRelativePosition: sceneToWorld(Vector3.create(LAUNCH_PAD.x, liftDown.y - 2.5, LAUNCH_PAD.z)), duration: 1.45 })
-    }
-    if (phaseTime > 2.45) {
-      phase = 'arriving'
-      phaseTime = 0
-      beamT.scale = Vector3.Zero()
-      LightSource.getMutable(liftLight).active = false
-      void movePlayerTo({
-        newRelativePosition: sceneToWorld(Vector3.create(ARENA_CENTER.x, FLY_Y + 0.5, ARENA_CENTER.z)),
-        cameraTarget: sceneToWorld(Vector3.create(ARENA_CENTER.x + 10, ARENA_Y, ARENA_CENTER.z + 10))
-      })
-    }
-  } else {
-    ufoT.position = Vector3.lerp(ufoT.position, Vector3.create(liftIdle.x + Math.sin(phaseTime * 0.4) * 2, liftIdle.y + Math.sin(phaseTime * 0.9) * 0.6, liftIdle.z), Math.min(1, dt * 1.5))
-    // Always-on breathing beacon: visible from across the dome without a floor circle.
-    const pulse = 0.1 + (0.5 + Math.sin(phaseTime * 3.2) * 0.5) * 0.055
-    setLiftBeam(pulse, ufoT.position.y - 0.8)
-    LightSource.getMutable(liftLight).active = true
+  // --- sealed in the pod, charging, then transferred --------------------------
+  if (phase === 'pickup' && phaseTime >= POD_CHARGE_SECONDS) {
+    phase = 'arriving'
+    phaseTime = 0
+    launchPod()
+    setInputLocked(false)
+    void movePlayerTo({
+      newRelativePosition: sceneToWorld(Vector3.create(ARENA_CENTER.x, FLY_Y + 0.5, ARENA_CENTER.z)),
+      cameraTarget: sceneToWorld(Vector3.create(ARENA_CENTER.x + 10, ARENA_Y, ARENA_CENTER.z + 10))
+    })
   }
-  const beaconPulse = 0.5 + Math.sin(phaseTime * 3.2) * 0.5
-  const liftMaterial = Material.getMutable(liftBeam)
-  if (liftMaterial.material?.$case === 'pbr') {
-    liftMaterial.material.pbr.emissiveIntensity = phase === 'pickup' ? 4 : 1.8 + beaconPulse * 2.2
-    liftMaterial.material.pbr.albedoColor = Color4.create(0.4, 0.9, 1, phase === 'pickup' ? 0.48 : 0.2 + beaconPulse * 0.18)
-  }
-  const liftLamp = LightSource.getMutable(liftLight)
-  liftLamp.intensity = phase === 'pickup' ? 3200 : 700 + beaconPulse * 900
-  Transform.getMutable(liftLight).position.y = ufoT.position.y - 0.6
-  ufoT.rotation = Quaternion.fromEulerDegrees(Math.sin(phaseTime * 1.3) * 3, phaseTime * 35, Math.cos(phaseTime * 1.1) * 3)
 
   // --- up on the pasture ------------------------------------------------------
-  if (phase === 'idle' || phase === 'summon' || phase === 'boarding' || phase === 'pickup') return
+  if (phase === 'idle' || phase === 'pickup') return
   const player = Transform.getOrNull(engine.PlayerEntity)
   if (!player) return
   const px = player.position.x
@@ -992,7 +864,7 @@ function gameSystem(dt: number) {
       if (practiced) beginCountdown(px, pz)
       else beginPractice(px, pz)
     } else if (phaseTime > 8) {
-      returnToDome('The saucer lost its grip. Try the pad again.')
+      returnToDome('The transfer failed. Step into the pod again.')
     }
     return
   }

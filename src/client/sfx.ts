@@ -24,7 +24,14 @@ export const SFX = {
   laser: 'sounds/laser.mp3',
   explosion: 'sounds/explosion.mp3',
   ufoPass: 'sounds/ufo-pass.mp3',
-  zoom: 'sounds/zoom.mp3'
+  zoom: 'sounds/zoom.mp3',
+  // The abduction pod's voice (ElevenLabs TTS, tools/elevenlabs.mjs) and its seal effect.
+  podWelcome: 'sounds/pod-welcome.mp3', // "Step into the pod. The pasture is waiting."  2.3 s
+  podSecured: 'sounds/pod-secured.mp3', // "Specimen secured. Hold still."                1.7 s
+  podCount: 'sounds/pod-count.mp3', // "Transfer in three... two... one."                2.0 s
+  podLaunch: 'sounds/pod-launch.mp3', // "Enjoy the harvest."                            1.2 s
+  podReturn: 'sounds/pod-return.mp3', // "Specimen returned. They appear to be enjoying it."
+  podSeal: 'sounds/pod-seal.mp3' // hydraulic hiss + force field powering up             2.5 s
 } as const
 
 const POOL = 6
