@@ -18,6 +18,7 @@ const PLAYER_KEY = 'kudos'
 const FLOATING_KEY = 'floatingCows'
 const TAU = Math.PI * 2
 const RING_INNER = 62 // dome radius; keep in sync with layout.ts
+const LAUNCHER_AZ = Math.atan2(18, -34) // layout.ts LAUNCHER relative to CENTER; cows fly roughly that way
 
 interface Wallet {
   kudos: number
@@ -124,7 +125,7 @@ async function launch(address: string) {
     id: nextId++,
     owner: address,
     rho: RING_INNER + 6 + Math.random() * 10,
-    phi: Math.random() * TAU,
+    phi: LAUNCHER_AZ + (Math.random() - 0.5) * 1.6,
     y: 7 + Math.random() * 16
   }
   floating.push(cow)

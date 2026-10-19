@@ -41,10 +41,10 @@ import { burstExplosion, PALETTES, puffTrail } from './fx'
 const TAU = Math.PI * 2
 const R = DOME_RADIUS
 const PEN_COW_SCALE = 1.3
-const CARRY_SCALE = 0.7
+const CARRY_SCALE = 0.45
 const FLOAT_SCALE = 1.6
 const FLOAT_SPEED = 0.35 // m/s along the ring
-const FLIGHT_SECONDS = 2.6
+const FLIGHT_SECONDS = 3.2
 const PINK = Color3.create(1, 0.35, 0.8)
 const PURPLE = Color3.create(0.65, 0.25, 1)
 
@@ -90,20 +90,61 @@ interface PenCow {
 }
 const pen: PenCow[] = []
 let penLabel: Entity
+const plasmaBars: Entity[] = []
+const PLASMA = Color3.create(0.35, 1, 0.55)
+
+function setPlasma(glow: number) {
+  for (const bar of plasmaBars) {
+    Material.setPbrMaterial(bar, {
+      albedoColor: Color4.create(PLASMA.r, PLASMA.g, PLASMA.b, 0.22 + 0.1 * glow),
+      emissiveColor: PLASMA,
+      emissiveIntensity: 1.2 + 1.6 * glow,
+      transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
+      castShadows: false,
+      roughness: 1,
+      metallic: 0
+    })
+  }
+}
 
 function createCargoBay() {
   // The Meshy pen (models/cow-pen.glb): round fence of gunmetal posts and green rails on a base
   // plate, gate gap on its +Z side. Model 1.73 wide, 0.42 tall, origin mid-height: the plate top is
   // at y -0.06, so the model is sunk until the plate sits just proud of the floor.
   const PEN_SCALE = 5.8
+  const GATE_FROM = -15 // the fence gap in model degrees from +Z (towards +X)
+  const GATE_TO = 45
   const toCentre = Vector3.normalize(Vector3.create(CENTER.x - CARGO_BAY.x, 0, CENTER.z - CARGO_BAY.z))
+  const yaw = (Math.atan2(toCentre.x, toCentre.z) * 180) / Math.PI - (GATE_FROM + GATE_TO) / 2 // gate centre faces the dome centre
+  const penRoot = engine.addEntity()
+  Transform.create(penRoot, { position: Vector3.create(CARGO_BAY.x, 0, CARGO_BAY.z), rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
   const pen3d = engine.addEntity()
-  Transform.create(pen3d, {
-    position: Vector3.create(CARGO_BAY.x, 0.05 - (0.2 - 0.06) * PEN_SCALE, CARGO_BAY.z),
-    rotation: Quaternion.lookRotation(toCentre, Vector3.Up()),
-    scale: Vector3.create(PEN_SCALE, PEN_SCALE, PEN_SCALE)
-  })
+  Transform.create(pen3d, { parent: penRoot, position: Vector3.create(0, 0.05 - (0.2 - 0.06) * PEN_SCALE, 0), scale: Vector3.create(PEN_SCALE, PEN_SCALE, PEN_SCALE) })
   GltfContainer.create(pen3d, { src: 'models/cow-pen.glb', visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
+
+  // Plasma bars: a translucent green energy band between the two rails, in segments around the
+  // fence (none across the gate), pulsing together.
+  const BAR_R = 4.7
+  const BAR_Y = 1.1
+  const BAR_H = 0.62
+  const SEGS = 24
+  for (let i = 0; i < SEGS; i++) {
+    const a0 = (i / SEGS) * 360
+    const mid = a0 + 180 / SEGS
+    const m = ((mid + 180) % 360) - 180 // -180..180 from +Z
+    if (m > GATE_FROM - 4 && m < GATE_TO + 4) continue
+    const rad = (mid * Math.PI) / 180
+    const bar = engine.addEntity()
+    Transform.create(bar, {
+      parent: penRoot,
+      position: Vector3.create(BAR_R * Math.sin(rad), BAR_Y, BAR_R * Math.cos(rad)),
+      rotation: Quaternion.fromEulerDegrees(0, mid, 0),
+      scale: Vector3.create((2 * Math.PI * BAR_R) / SEGS + 0.02, BAR_H, 1)
+    })
+    MeshRenderer.setPlane(bar)
+    plasmaBars.push(bar)
+  }
+  setPlasma(1)
 
   const title = engine.addEntity()
   Transform.create(title, { position: Vector3.create(CARGO_BAY.x, 4.6, CARGO_BAY.z) })
@@ -169,9 +210,9 @@ function pickUp(cow: PenCow) {
   state.carrying = true
   moo(Vector3.create(cow.home.x, 1, cow.home.z), 0.8)
   carrier = engine.addEntity()
-  AvatarAttach.create(carrier, { anchorPointId: AvatarAnchorPointType.AAPT_NAME_TAG })
+  AvatarAttach.create(carrier, { anchorPointId: AvatarAnchorPointType.AAPT_RIGHT_HAND })
   held = engine.addEntity()
-  Transform.create(held, { parent: carrier, position: Vector3.create(0, 0.15, 0), rotation: Quaternion.fromEulerDegrees(0, 90, 0), scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
+  Transform.create(held, { parent: carrier, position: Vector3.create(0, 0.05, 0.1), rotation: Quaternion.fromEulerDegrees(0, 90, 90), scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
   cowModel(held, false)
   refreshPen()
   pushHud()
@@ -376,11 +417,12 @@ function onLaunchClick() {
   if (seq) return // one at a time
   const player = Transform.getOrNull(engine.PlayerEntity)?.position ?? hopperTop
   dropCarried()
+  const from = Vector3.add(player, Vector3.create(0, 1.0, 0))
   const cow = engine.addEntity()
-  Transform.create(cow, { position: Vector3.add(player, Vector3.create(0, 2.2, 0)), scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
+  Transform.create(cow, { position: from, scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
   cowModel(cow, false)
   moo(hopperTop, 0.8)
-  seq = { t: 0, cow, from: Vector3.add(player, Vector3.create(0, 2.2, 0)), fired: false }
+  seq = { t: 0, cow, from, fired: false }
   refreshPen()
   pushHud()
 }
@@ -471,7 +513,7 @@ interface Flight {
   cow: FloatingCow
   t: number
   from: Vector3
-  mid: Vector3
+  dir: Vector3 // barrel direction at the shot; the path leaves straight along it
 }
 const floating = new Map<number, FloatingCow>()
 const flights: Flight[] = []
@@ -489,11 +531,8 @@ function makeFloating(data: { id: number; owner: string; rho: number; phi: numbe
 function onCowLaunched(data: { id: number; owner: string; rho: number; phi: number; y: number }) {
   if (floating.has(data.id)) return
   const cow = makeFloating(data)
-  // Arc: muzzle -> a point on the wall at window height in the launcher's direction -> ring slot.
-  const outAz = Math.atan2(LAUNCHER.x - CENTER.x, LAUNCHER.z - CENTER.z)
-  const mid = polar(R + 1, outAz, 12)
   Transform.getMutable(cow.entity).position = Vector3.clone(muzzle)
-  flights.push({ cow, t: 0, from: Vector3.clone(muzzle), mid })
+  flights.push({ cow, t: 0, from: Vector3.clone(muzzle), dir: Vector3.clone(launchDir) })
 }
 
 // ---- black hole --------------------------------------------------------------------------
@@ -573,6 +612,7 @@ function system(dt: number) {
     state.nextHoleIn -= dt
     kudosHud.nextHoleIn = state.nextHoleIn
   }
+  if (plasmaBars.length && clock % 0.1 < dt) setPlasma(0.5 + 0.5 * Math.sin(clock * 2.6))
   if (launcherLabel && (clock % 0.5) < dt) {
     TextShape.getMutable(launcherLabel).text = state.synced ? `black hole in ${formatTime(state.nextHoleIn)}  ·  ${state.launched} of yours floating` : ''
   }
@@ -592,11 +632,15 @@ function system(dt: number) {
     f.t += dt / FLIGHT_SECONDS
     const target = polar(f.cow.rho, f.cow.phi, f.cow.y)
     const t = Math.min(1, f.t)
-    // quadratic bezier through the window
-    const a = lerp(f.from, f.mid, t)
-    const b = lerp(f.mid, target, t)
+    // cubic bezier: straight out of the muzzle for most of the way, then bending to its ring slot
+    const dist = Vector3.distance(f.from, target)
+    const p1 = Vector3.add(f.from, Vector3.scale(f.dir, dist * 0.55))
+    const p2 = lerp(target, p1, 0.3)
+    const ab = lerp(f.from, p1, t)
+    const bc = lerp(p1, p2, t)
+    const cd = lerp(p2, target, t)
     const tr = Transform.getMutable(f.cow.entity)
-    tr.position = lerp(a, b, t)
+    tr.position = lerp(lerp(ab, bc, t), lerp(bc, cd, t), t)
     tr.rotation = Quaternion.fromEulerDegrees(clock * 300, clock * 120, 0)
     if (t >= 1) flights.splice(i, 1)
   }
