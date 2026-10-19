@@ -148,7 +148,7 @@ function createPoster(domeVideo: Entity) {
   const c = FORMATION.SW
   const dx = c.x - CENTER.x
   const dz = c.z - CENTER.z
-  const panelStep = Math.PI / 8 // window mullions are 22.5 degrees apart
+  const panelStep = (Math.PI * 2) / 32 // 128 columns, a mullion every 4 => 32 panes of 11.25 degrees
   const formationAngle = Math.atan2(dx, dz)
   const panelAngle = (Math.round(formationAngle / panelStep - 0.5) + 0.5) * panelStep
   const position = Vector3.create(
