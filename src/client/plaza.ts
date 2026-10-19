@@ -41,7 +41,7 @@ import { music } from './music'
 import { toast } from './ui'
 import { moo, playGlobal, SFX } from './sfx'
 import { FLOOR_Y, ROOT } from './root'
-import { PANE_H, PANE_W, PANE_Y, paneMount } from './pane'
+import { PANE_H, PANE_W, PANE_Y, paneMount, paneWidth } from './pane'
 
 /** Permanent night: 01:00. */
 export function createNightSky() {
@@ -323,8 +323,22 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
     rotation: Quaternion.multiply(towardCentre, Quaternion.fromEulerDegrees(0, 180, 0))
   })
 
+  // The illustrated panel sits on the two window panes behind the formation, mullion to
+  // mullion. It was laid out at 11 x 8.25 m, so everything that sits on the art (thumbnails,
+  // prices, highlight) is remapped from that layout to the board's size.
+  const BOARD_W = 11
+  const BOARD_H = 8.25
+  const BOARD_Y = 4.5
+  const W = paneWidth(2)
+  const sx = W / BOARD_W
+  const sy = PANE_H / BOARD_H
+  const bx = (x: number) => x * sx
+  const by = (y: number) => PANE_Y + (y - BOARD_Y) * sy
+  const board = engine.addEntity()
+  Transform.create(board, { parent: ROOT, ...paneMount(position, 2) })
+
   const backdrop = engine.addEntity()
-  Transform.create(backdrop, { parent: root, position: Vector3.create(0, 4.5, 0), scale: Vector3.create(11, 8.25, 0.15) })
+  Transform.create(backdrop, { parent: board, position: Vector3.create(0, PANE_Y, 0), scale: Vector3.create(W, PANE_H, 0.15) })
   MeshRenderer.setPlane(backdrop)
   MeshCollider.setBox(backdrop, ColliderLayer.CL_PHYSICS)
   Material.setBasicMaterial(backdrop, {
@@ -447,7 +461,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
     const tileSize = kind === 'emote' ? TILE : 1.15
     const tileGap = kind === 'emote' ? TILE_GAP : 2.8
     const highlight = engine.addEntity()
-    Transform.create(highlight, { parent: root, position: Vector3.create(-1.5 * tileGap, tileY, -0.06), scale: Vector3.create(tileSize + 0.22, tileSize + 0.22, 1) })
+    Transform.create(highlight, { parent: board, position: Vector3.create(bx(-1.5 * tileGap), by(tileY), -0.06), scale: Vector3.create(tileSize + 0.22, tileSize + 0.22, 1) })
     MeshRenderer.setPlane(highlight)
     Material.setPbrMaterial(highlight, { albedoColor: Color4.create(0.1, 0.5, 0.6, 1), emissiveColor: glowColor, emissiveIntensity: 1.6, roughness: 1, metallic: 0 })
     display.highlight = highlight
@@ -456,7 +470,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
     for (let i = 0; i < 4; i++) {
       const x = (i - 1.5) * tileGap
       const tile = engine.addEntity()
-      Transform.create(tile, { parent: root, position: Vector3.create(x, tileY, -0.1), scale: Vector3.create(tileSize, tileSize, 1) })
+      Transform.create(tile, { parent: board, position: Vector3.create(bx(x), by(tileY), -0.1), scale: Vector3.create(tileSize, tileSize, 1) })
       MeshRenderer.setPlane(tile)
       MeshCollider.setPlane(tile, ColliderLayer.CL_POINTER)
       Material.setBasicMaterial(tile, {
@@ -465,7 +479,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
         castShadows: false
       })
       const price = engine.addEntity()
-      Transform.create(price, { parent: root, position: Vector3.create(x, tileY - tileSize / 2 - 0.42, -0.1) })
+      Transform.create(price, { parent: board, position: Vector3.create(bx(x), by(tileY) - tileSize / 2 - 0.42, -0.1) })
       TextShape.create(price, {
         text: kind === 'emote' ? priceLabel(i) : '',
         fontSize: 1.25,
@@ -504,7 +518,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
     }
     shape.expressionTriggerTimestamp = Date.now()
     TextShape.getMutable(status).text = `${kind === 'emote' ? EMOTE_NAMES[display.index] : COSTUME_NAMES[display.index]}  ·  ${display.index + 1} / 4`
-    if (display.highlight) Transform.getMutable(display.highlight).position.x = (display.index - 1.5) * (kind === 'emote' ? TILE_GAP : 2.8)
+    if (display.highlight) Transform.getMutable(display.highlight).position.x = bx((display.index - 1.5) * (kind === 'emote' ? TILE_GAP : 2.8))
   }
   const cycle = () => show((display.index + 1) % 4)
   const cycleOptions = { button: InputAction.IA_POINTER, hoverText: `Next ${kind}`, maxDistance: 14 }
