@@ -33,9 +33,9 @@ import { zoomUi } from './ui'
 // the pod's interior. The pod is sunk so its interior floor is the dome floor: no step to climb.
 const POD_SCALE = 7 // comically large: 11 m visible, 4.3 m across inside, 3.8 x 7.9 m doorway
 const POD_FLOOR = -0.623
-const DOOR_W = 0.54 * POD_SCALE
-const DOOR_H = (0.5 - POD_FLOOR) * POD_SCALE
-const DOOR_Z = 0.3 * POD_SCALE // force field plane, flush with the inner wall at the doorway (+Z local = toward the dome centre)
+const BEAM_R = 0.5 * POD_SCALE // cylinder scale (unit cylinder is 1 m across): 3.5 m beam inside the 4.3 m interior
+const BEAM_H = (0.474 - POD_FLOOR) * POD_SCALE - 0.2 // floor to ceiling
+const RINGS = 4
 const GREEN = Color3.create(0.35, 1, 0.5)
 const WHITE = Color3.create(1, 1, 1)
 
@@ -44,7 +44,8 @@ export const POD_CHARGE_SECONDS = 3.9 // seal voice (1.7) + countdown (2.0)
 type PodState = 'open' | 'charging' | 'flash' | 'closed'
 const pod = { state: 'open' as PodState, t: 0, welcomeCooldown: 0, nearby: false, inside: false }
 
-let field: Entity
+let beam: Entity
+const rings: Entity[] = []
 let innerLight: Entity
 let ringLight: Entity
 let setHum: (v: number) => void = () => {}
@@ -64,12 +65,20 @@ export function createPod(board: () => void) {
   Transform.create(shell, { parent: root, position: Vector3.create(0, 0.02 - POD_FLOOR * POD_SCALE, 0), scale: Vector3.create(POD_SCALE, POD_SCALE, POD_SCALE) })
   GltfContainer.create(shell, { src: 'models/abduction-pod.glb', visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
 
-  // Force field across the doorway: invisible while open, a green shimmer when sealed.
-  field = engine.addEntity()
-  Transform.create(field, { parent: root, position: Vector3.create(0, DOOR_H / 2 + 0.02, DOOR_Z), scale: Vector3.create(DOOR_W, DOOR_H, 1) })
-  MeshRenderer.setPlane(field)
-  VisibilityComponent.create(field, { visible: false })
-  setField(0)
+  // The transfer beam: a column of light filling the capsule with rings climbing it, only while sealed.
+  beam = engine.addEntity()
+  Transform.create(beam, { parent: root, position: Vector3.create(0, BEAM_H / 2 + 0.1, 0), scale: Vector3.Zero() })
+  MeshRenderer.setCylinder(beam)
+  VisibilityComponent.create(beam, { visible: false })
+  for (let i = 0; i < RINGS; i++) {
+    const ring = engine.addEntity()
+    Transform.create(ring, { parent: root, position: Vector3.create(0, 0.1, 0), scale: Vector3.Zero() })
+    MeshRenderer.setCylinder(ring)
+    VisibilityComponent.create(ring, { visible: false })
+    Material.setPbrMaterial(ring, { albedoColor: Color4.create(0.6, 1, 0.75, 0.85), emissiveColor: WHITE, emissiveIntensity: 5, transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND, castShadows: false })
+    rings.push(ring)
+  }
+  setBeam(0)
 
   innerLight = engine.addEntity()
   Transform.create(innerLight, { parent: root, position: Vector3.create(0, 0.6 * POD_SCALE, 0) })
@@ -224,15 +233,27 @@ function podPoint(y: number) {
   return Vector3.create(LAUNCH_PAD.x, y, LAUNCH_PAD.z)
 }
 
-function setField(k: number) {
-  VisibilityComponent.getMutable(field).visible = k > 0
-  Material.setPbrMaterial(field, {
-    albedoColor: Color4.create(0.4, 1, 0.55, 0.05 + 0.3 * k),
-    emissiveColor: GREEN,
-    emissiveIntensity: 0.4 + 3 * k,
+/** k = 0 off; otherwise the beam's strength: radius, glow and how fast the rings climb. */
+function setBeam(k: number) {
+  const on = k > 0
+  VisibilityComponent.getMutable(beam).visible = on
+  const r = BEAM_R * Math.min(1, k * 1.3)
+  Transform.getMutable(beam).scale = Vector3.create(r, BEAM_H, r)
+  Material.setPbrMaterial(beam, {
+    albedoColor: Color4.create(0.5, 1, 0.65, 0.12 + 0.2 * k),
+    emissiveColor: Color3.lerp(GREEN, WHITE, Math.max(0, k - 0.6) * 2.5),
+    emissiveIntensity: 0.6 + 4 * k,
     transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
     castShadows: false
   })
+  for (let i = 0; i < RINGS; i++) {
+    VisibilityComponent.getMutable(rings[i]).visible = on
+    const t = Transform.getMutable(rings[i])
+    const u = ((pod.t * (0.35 + k * 0.9) + i / RINGS) % 1 + 1) % 1 // climbs faster as the charge builds
+    t.position = Vector3.create(0, 0.1 + u * BEAM_H, 0)
+    const rr = r * (1.08 + 0.1 * Math.sin(u * Math.PI))
+    t.scale = Vector3.create(rr, 0.06 + 0.1 * k, rr)
+  }
 }
 
 /** The player stepped in: seal the doorway and start the countdown. */
@@ -280,7 +301,7 @@ function podSystem(dt: number) {
     inner.color = GREEN
     inner.intensity = 250 + breathe * 150
     ring.intensity = 200 + breathe * 200
-    setField(0)
+    setBeam(0)
     setHum(0.1 + breathe * 0.04)
   } else if (pod.state === 'charging') {
     const k = Math.min(1, pod.t / POD_CHARGE_SECONDS)
@@ -288,7 +309,7 @@ function podSystem(dt: number) {
     inner.color = Color3.lerp(GREEN, WHITE, k * k)
     inner.intensity = 400 + k * 3600 + flicker * 300 * k
     ring.intensity = 300 + k * 1200
-    setField(0.6 + flicker * 0.4)
+    setBeam(0.6 + flicker * 0.4)
     setHum(0.2 + k * 0.8)
     // the countdown line picks up when the seal line ends
     if (pod.t >= 1.8 && pod.t - dt < 1.8) playGlobal(SFX.podCount, 1)
@@ -299,7 +320,7 @@ function podSystem(dt: number) {
     inner.color = Color3.lerp(WHITE, GREEN, k)
     inner.intensity = 4000 * (1 - k) + 300
     ring.intensity = 1500 * (1 - k) + 250
-    setField(1 - 0.4 * k)
+    setBeam(1 - 0.4 * k)
     setHum(1 - 0.85 * k)
     if (pod.state === 'flash' && pod.t > 1.5) pod.state = 'closed'
   }

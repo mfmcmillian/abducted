@@ -370,13 +370,13 @@ function cut(z: Zoom) {
 function walkShot(at: Vector3, toward?: Vector3): { cam: Vector3; look: Vector3 } {
   const dir = toward ? Vector3.normalize(Vector3.create(toward.x - at.x, 0, toward.z - at.z)) : Vector3.create(0, 0, 1)
   const side = Vector3.create(dir.z, 0, -dir.x)
-  return { cam: Vector3.add(at, Vector3.create(side.x * 3.2 + dir.x * 2.6, 1.9, side.z * 3.2 + dir.z * 2.6)), look: Vector3.add(at, Vector3.create(0, 1.3, 0)) }
+  return { cam: Vector3.add(at, Vector3.create(side.x * 4.2 + dir.x * 3.2, 2.2, side.z * 4.2 + dir.z * 3.2)), look: Vector3.add(at, Vector3.create(0, 1.2, 0)) }
 }
 
 /** Wide shot of the pod from the doorway side while it seals and charges. */
 function podShot(inward: Vector3): { cam: Vector3; look: Vector3 } {
   const side = Vector3.create(inward.z, 0, -inward.x)
-  return { cam: Vector3.add(LAUNCH_PAD, Vector3.create(inward.x * 17 + side.x * 5, 6.5, inward.z * 17 + side.z * 5)), look: Vector3.add(LAUNCH_PAD, Vector3.create(0, 4.5, 0)) }
+  return { cam: Vector3.add(LAUNCH_PAD, Vector3.create(inward.x * 12 + side.x * 8, 4.2, inward.z * 12 + side.z * 8)), look: Vector3.add(LAUNCH_PAD, Vector3.create(0, 4, 0)) }
 }
 
 function system(dt: number) {
@@ -407,13 +407,13 @@ function system(dt: number) {
         z.leg = beginLeg(dbl, door, Math.max(3.5, Math.min(6, Vector3.distance(Transform.get(dbl).position, door) / 4)))
         // hard cut to the tracking shot; the camera then rides a Tween parallel to the double's leg,
         // so the renderer interpolates both and nothing is moved frame by frame
-        const a = walkShot(z.leg.from, door), b = walkShot(z.leg.to, door)
+        const a = walkShot(z.leg.from, z.leg.to), b = walkShot(z.leg.to, Vector3.add(z.leg.to, Vector3.subtract(z.leg.to, z.leg.from)))
         const tr = Transform.getMutable(camera)
         tr.position = a.cam
         tr.rotation = Quaternion.fromLookAt(a.cam, a.look)
         Tween.createOrReplace(camera, { mode: Tween.Mode.Move({ start: a.cam, end: b.cam }), duration: z.leg.duration * 1000, easingFunction: EasingFunction.EF_LINEAR })
       }
-      shot = walkShot(legPos(z.leg), door)
+      shot = walkShot(legPos(z.leg), z.leg.to)
       if (stepLeg(z.leg, dt)) {
         z.stage = 1
         z.leg = beginLeg(dbl, LAUNCH_PAD, 2.5)
