@@ -27,6 +27,7 @@ import { attachLoop, moo, playAt, playGlobal, SFX } from './sfx'
 import { kudosHud, toast } from './ui'
 import { burstExplosion, PALETTES, puffTrail } from './fx'
 import { ROOT, toScene } from './root'
+import { createLaunchPortal, openPortal, portalOpen } from './portal'
 
 /**
  * The kudos loop, dome side.
@@ -303,6 +304,12 @@ function dirAtTilt(tiltDeg: number) {
   return Vector3.create(out.x * Math.cos(t), Math.sin(t), out.z * Math.cos(t))
 }
 
+const PORTAL_DIST = 6 // metres past the muzzle
+/** Where the launch portal opens for a shot along `dir`. */
+function portalPoint(dir: Vector3) {
+  return Vector3.add(pivot, Vector3.scale(dir, MUZZLE_AT + PORTAL_DIST))
+}
+
 /** Points the barrel rig along `dir` (its +Z) and moves the muzzle with it. */
 function aimBarrel(dir: Vector3, recoil = 0) {
   launchDir = dir
@@ -393,6 +400,7 @@ function createLauncher() {
   for (const target of [barrel, hopper, mount]) {
     pointerEventsSystem.onPointerDown({ entity: target, opts: { button: InputAction.IA_PRIMARY, hoverText: 'Load cow', maxDistance: 12 } }, onLaunchClick)
   }
+  createLaunchPortal()
   engine.addSystem(launchSequenceSystem)
 }
 
@@ -456,6 +464,9 @@ function launchSequenceSystem(dt: number) {
     seq.cow = null
     puffTrail(hopperTop, Color3.create(0.5, 1, 0.6), 1.2)
     playAt(SFX.beamCharge, pivot, 0.9)
+    // the portal tears open in front of the barrel while it charges; the shot flies through it
+    const fire = dirAtTilt(FIRE_TILT)
+    openPortal(portalPoint(fire), fire, CHARGE_T + 1.3)
   }
   const c = t - LOAD_T
   if (c < CHARGE_T) {
@@ -532,6 +543,7 @@ function makeFloating(data: { id: number; owner: string; rho: number; phi: numbe
 
 function onCowLaunched(data: { id: number; owner: string; rho: number; phi: number; y: number }) {
   if (floating.has(data.id)) return
+  if (!portalOpen()) openPortal(portalPoint(launchDir), launchDir, 1.4) // someone else fired: show their portal too
   const cow = makeFloating(data)
   Transform.getMutable(cow.entity).position = Vector3.clone(muzzle)
   flights.push({ cow, t: 0, from: Vector3.clone(muzzle), dir: Vector3.clone(launchDir) })

@@ -31,6 +31,7 @@ export const SFX = {
   podCount: 'sounds/pod-count.mp3', // "Transfer in three... two... one."                2.0 s
   podLaunch: 'sounds/pod-launch.mp3', // "Enjoy the harvest."                            1.2 s
   podReturn: 'sounds/pod-return.mp3', // "Specimen returned. They appear to be enjoying it."
+  portalOpen: 'sounds/portal-open.mp3', // launch portal tearing open                              3 s
   podSeal: 'sounds/pod-seal.mp3' // hydraulic hiss + force field powering up             2.5 s
 } as const
 
