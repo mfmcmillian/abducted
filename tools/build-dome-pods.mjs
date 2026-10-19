@@ -135,6 +135,7 @@ export function makeWindowBuilders(geo, mats) {
     const r0 = RADIUS + SHELL_GAP + 0.02
     const r1 = RADIUS + POD_DEPTH
     const yB = POD_BOTTOM
+    const yF = POD_BOTTOM - 10 // ROOT lifts the scene 10 m; keep the outer space floor at its original world height
     const yT = POD_TOP
     const suv = (p) => [p[0] / STAR_TILE, p[2] / STAR_TILE]
     const flip = (n) => n.map((c) => -c)
@@ -165,7 +166,7 @@ export function makeWindowBuilders(geo, mats) {
         face(hull, B[0], B[1], B[2], B[3], flip(nm))
         const T = [at(t0, r0, yT), at(t1, r0, yT), at(t1, r1, yT), at(t0, r1, yT)]
         both(T, [0, -1, 0], T.map(suv))
-        const F = [at(t0, r0, yB), at(t1, r0, yB), at(t1, r1, yB), at(t0, r1, yB)]
+        const F = [at(t0, r0, yF), at(t1, r0, yF), at(t1, r1, yF), at(t0, r1, yF)]
         both(F, [0, 1, 0], F.map(suv))
       }
     }
