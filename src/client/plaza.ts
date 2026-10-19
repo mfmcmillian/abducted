@@ -55,6 +55,17 @@ export function createGround(): Entity {
     visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS,
     invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
   })
+
+  // Solid invisible bottom under the lifted dome. The rendered plaza stays unchanged,
+  // but this guarantees there are no gaps the player can fall through.
+  const bottom = engine.addEntity()
+  Transform.create(bottom, {
+    parent: ROOT,
+    position: Vector3.create(CENTER.x, -0.25, CENTER.z),
+    scale: Vector3.create(DOME_RADIUS * 2, 0.5, DOME_RADIUS * 2)
+  })
+  MeshCollider.setBox(bottom, ColliderLayer.CL_PHYSICS)
+
   return plaza
 }
 
