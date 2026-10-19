@@ -20,7 +20,7 @@ import {
   Transform
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { CARGO_BAY, CARGO_BAY_RADIUS, CENTER, DOME_RADIUS, LAUNCHER } from '../layout'
+import { CARGO_BAY, CARGO_BAY_RADIUS, CENTER, LAUNCHER, SPACE_RADIUS } from '../layout'
 import { KUDOS } from '../shared/gameConfig'
 import { room } from '../shared/messages'
 import { attachLoop, moo, playAt, playGlobal, SFX } from './sfx'
@@ -39,7 +39,7 @@ import { burstExplosion, PALETTES, puffTrail } from './fx'
  */
 
 const TAU = Math.PI * 2
-const R = DOME_RADIUS
+const R = SPACE_RADIUS
 const PEN_COW_SCALE = 1.3
 const CARRY_SCALE = PEN_COW_SCALE
 const FLOAT_SCALE = 1.6

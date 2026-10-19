@@ -17,8 +17,8 @@ import { room } from '../shared/messages'
 const PLAYER_KEY = 'kudos'
 const FLOATING_KEY = 'floatingCows'
 const TAU = Math.PI * 2
-const RING_INNER = 43 // dome radius; keep in sync with layout.ts
-const LAUNCHER_AZ = Math.atan2(17, -30) // layout.ts LAUNCHER relative to CENTER; cows fly roughly that way
+const RING_INNER = 43 // layout.ts SPACE_RADIUS; keep in sync
+const LAUNCHER_AZ = Math.atan2(14, -22) // layout.ts LAUNCHER relative to CENTER; cows fly roughly that way
 
 interface Wallet {
   kudos: number

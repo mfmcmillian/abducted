@@ -1,6 +1,6 @@
 import { ColliderLayer, engine, Entity, GltfContainer, LightSource, Material, MaterialTransparencyMode, MeshRenderer, Transform } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { CENTER, DOME_RADIUS } from '../layout'
+import { CENTER, SPACE_RADIUS } from '../layout'
 import { playAt, SFX } from './sfx'
 import { startFx, warpIn, warpOut } from './fx'
 
@@ -20,7 +20,7 @@ import { startFx, warpIn, warpOut } from './fx'
 // Keep in sync with tools/build-dome-pods.mjs.
 const POD_DEPTH = 30
 const POD_TOP = 40
-const R = DOME_RADIUS
+const R = SPACE_RADIUS // the universe is measured from here, not from the glass
 const BACK = R + POD_DEPTH
 const TAU = Math.PI * 2
 const DIR = 1 // everything streams the same way: the ship is under way

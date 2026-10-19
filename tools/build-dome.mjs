@@ -31,10 +31,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'models', 'dome.glb')
 
 // ---- parameters -----------------------------------------------------------
-export const RADIUS = 43 // inner radius (m); centred on the 192 m plot, the star ring reaches 73 m
+export const RADIUS = 34 // inner radius (m); the star ring reaches 73 m (build-dome-pods POD_DEPTH)
 const SHELL_GAP = 0.08 // outer shell = RADIUS + SHELL_GAP
 export const WALL_HEIGHT = 11 // vertical wall before the cap
-export const CAP_RATIO = 0.45 // cap height as a fraction of the radius (a flattened dome; apex at 11 + 0.45 * 43 = 30 m)
+export const CAP_RATIO = 0.45 // cap height as a fraction of the radius (a flattened dome; apex at 11 + 0.45 * 34 = 26 m)
 const SEGMENTS = 128 // around (must be even: two video wraps)
 const WALL_RINGS = 10 // 2 m each
 const CAP_RINGS = 24

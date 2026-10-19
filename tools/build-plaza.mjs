@@ -20,17 +20,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'models', 'plaza.glb')
 
 const HALF = 96
-const DOME_RADIUS = 43 // keep in sync with build-dome.mjs RADIUS
+const DOME_RADIUS = 34 // keep in sync with build-dome.mjs RADIUS
 const SEG = 64
 const Y_FLAT = 0.045 // above the dome floor disc (0.03)
 const Y_GLOW = 0.055
 
 // Local (dome-centred) formation centres. Keep in sync with src/layout.ts.
 const FORMATIONS = [
-  { name: 'NW', x: -26, z: 24, a0: 135 },
-  { name: 'NE', x: 26, z: 24, a0: 45 },
-  { name: 'SW', x: -30, z: -14, a0: 225 },
-  { name: 'SE', x: 30, z: -14, a0: 315 }
+  { name: 'NW', x: -19.5, z: 18, a0: 135 },
+  { name: 'NE', x: 19.5, z: 18, a0: 45 },
+  { name: 'SW', x: -22.5, z: -10.5, a0: 225 },
+  { name: 'SE', x: 22.5, z: -10.5, a0: 315 }
 ]
 const ground = new MeshBuf('Ground', 0)
 ground.quad([-HALF, 0, -HALF], [-HALF, 0, HALF], [HALF, 0, HALF], [HALF, 0, -HALF], [0, 1, 0])

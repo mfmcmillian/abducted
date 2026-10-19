@@ -11,7 +11,7 @@
 
 import { MeshBuf } from './glb.mjs'
 
-export const POD_DEPTH = 30
+export const POD_DEPTH = 39 // back wall at RADIUS + 39 = 73 m = layout SPACE_RADIUS + 30, where space.ts puts the planets
 export const POD_TOP = 40
 export const WINDOW_RING_LO = 2 // sill at y = 4 (2 m rings)
 export const WINDOW_RING_HI = 9 // head at y = 18

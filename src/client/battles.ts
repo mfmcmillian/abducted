@@ -1,6 +1,6 @@
 import { ColliderLayer, engine, Entity, GltfContainer, Transform } from '@dcl/sdk/ecs'
 import { Color3, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { CENTER, DOME_RADIUS } from '../layout'
+import { CENTER, SPACE_RADIUS } from '../layout'
 import { room } from '../shared/messages'
 import { claimFloatingCow, CowTarget } from './cargo'
 import { burstExplosion, burstImpact, fireBolt, Palette, PALETTES, puffTrail, startFx, warpIn, warpOut } from './fx'
@@ -22,7 +22,7 @@ import { toast } from './ui'
  */
 
 const TAU = Math.PI * 2
-const R = DOME_RADIUS
+const R = SPACE_RADIUS
 const DIR = 1 // keep in sync with space.ts
 const HIDDEN = Vector3.create(CENTER.x, -50, CENTER.z)
 const SAUCER_SCALE = 3

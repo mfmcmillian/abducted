@@ -7,7 +7,9 @@ import { Vector3 } from '@dcl/sdk/math'
  */
 export const PLOT = 192
 export const CENTER = Vector3.create(96, 0, 96)
-export const DOME_RADIUS = 43 // the glass; keep in sync with tools/build-dome.mjs RADIUS
+export const DOME_RADIUS = 34 // the glass; keep in sync with tools/build-dome.mjs RADIUS
+/** The universe outside is measured from here (planets, ring, battles): it stays put when the room shrinks. */
+export const SPACE_RADIUS = 43
 export const DOME_WALL = 11 // keep in sync with tools/build-dome.mjs WALL_HEIGHT
 export const DOME_CAP = DOME_RADIUS * 0.45 // cap height; keep in sync with CAP_RATIO
 /** Where players arrive: in the middle of the dome, directly under the diorama's ship. */
@@ -21,23 +23,23 @@ export function ceilingAt(r: number) {
 
 /** Crop-circle formation centres in scene space (plaza.glb is centred on CENTER). All inside the dome. */
 export const FORMATION = {
-  NW: Vector3.create(CENTER.x - 26, 0, CENTER.z + 24),
-  NE: Vector3.create(CENTER.x + 26, 0, CENTER.z + 24),
-  SW: Vector3.create(CENTER.x - 30, 0, CENTER.z - 14),
-  SE: Vector3.create(CENTER.x + 30, 0, CENTER.z - 14)
+  NW: Vector3.create(CENTER.x - 19.5, 0, CENTER.z + 18),
+  NE: Vector3.create(CENTER.x + 19.5, 0, CENTER.z + 18),
+  SW: Vector3.create(CENTER.x - 22.5, 0, CENTER.z - 10.5),
+  SE: Vector3.create(CENTER.x + 22.5, 0, CENTER.z - 10.5)
 }
 
 /** The launch pad: stand here 3 s and the saucer takes you to the cow game. */
-export const LAUNCH_PAD = Vector3.create(CENTER.x - 12, 0, CENTER.z - 28)
+export const LAUNCH_PAD = Vector3.create(CENTER.x - 9, 0, CENTER.z - 21)
 /** Where the saucer drops you back after a round. */
-export const LANDING = Vector3.create(CENTER.x - 5, 0, CENTER.z - 30)
+export const LANDING = Vector3.create(CENTER.x - 4, 0, CENTER.z - 22.5)
 /** Cargo bay: cows beamed up in the pasture wait here to be carried to the launcher. */
-export const CARGO_BAY = Vector3.create(CENTER.x + 6, 0, CENTER.z - 36)
+export const CARGO_BAY = Vector3.create(CENTER.x + 4.5, 0, CENTER.z - 27)
 export const CARGO_BAY_RADIUS = 5
 /** The cow launcher, aimed out through the observation deck. */
-export const LAUNCHER = Vector3.create(CENTER.x + 17, 0, CENTER.z - 30)
+export const LAUNCHER = Vector3.create(CENTER.x + 14, 0, CENTER.z - 22)
 /** Leaderboard panel next to the pad. */
-export const LEADERBOARD = Vector3.create(CENTER.x - 21, 0, CENTER.z - 32)
+export const LEADERBOARD = Vector3.create(CENTER.x - 16, 0, CENTER.z - 24)
 
 /** The sky pasture where the cow game is played: a 100 m square floating above the dome. */
 export const ARENA_Y = 88 // well above the dome apex (63)

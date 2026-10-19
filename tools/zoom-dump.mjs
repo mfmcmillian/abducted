@@ -20,8 +20,9 @@ const V = Vector3 ?? { create: (x, y, z) => ({ x, y, z }) }
 // a plausible moment: Earth on its orbit (space.ts: BACK - EARTH_SCALE - 1.5, y 16) at the given
 // angle, player on the deck 14 m in from the glass on the Earth's side, looking at it
 const CENTER = { x: 96, y: 0, z: 96 }
-const DOME_RADIUS = 43 // layout.ts
-const EARTH_RHO = DOME_RADIUS + 30 - 14 - 1.5
+const DOME_RADIUS = 34 // layout.ts (the glass)
+const SPACE_RADIUS = 43 // layout.ts (the universe is measured from here)
+const EARTH_RHO = SPACE_RADIUS + 30 - 14 - 1.5
 const ang = ((Number(process.argv[2]) || 35) * Math.PI) / 180
 const E = V.create(CENTER.x + Math.sin(ang) * EARTH_RHO, 9, CENTER.z + Math.cos(ang) * EARTH_RHO)
 const start = V.create(CENTER.x + Math.sin(ang + 0.15) * (DOME_RADIUS - 14), 2.6, CENTER.z + Math.cos(ang + 0.15) * (DOME_RADIUS - 14))
