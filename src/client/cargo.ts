@@ -115,6 +115,7 @@ function createCargoBay() {
   // plate, gate gap on its +Z side. Model 1.73 wide, 0.42 tall, origin mid-height, bottom at
   // y -0.204 (plate top -0.10, rails at 0.00 / 0.10 / 0.17): lifted so the plate stands on the floor.
   const PEN_SCALE = 5.8
+  const PEN_FLOOR = 0.02 + (0.204 - 0.1) * PEN_SCALE + 0.03 // the base plate's top: the cows stand on it
   const GATE_FROM = -15 // the fence gap in model degrees from +Z (towards +X)
   const GATE_TO = 45
   const toCentre = Vector3.normalize(Vector3.create(CENTER.x - CARGO_BAY.x, 0, CENTER.z - CARGO_BAY.z))
@@ -166,7 +167,7 @@ function createCargoBay() {
     const entity = engine.addEntity()
     const a = rand(0, TAU)
     const r = Math.sqrt(Math.random()) * (CARGO_BAY_RADIUS - 1.2)
-    const home = Vector3.create(CARGO_BAY.x + r * Math.sin(a), 0, CARGO_BAY.z + r * Math.cos(a))
+    const home = Vector3.create(CARGO_BAY.x + r * Math.sin(a), PEN_FLOOR, CARGO_BAY.z + r * Math.cos(a))
     Transform.create(entity, { parent: ROOT, position: home, rotation: Quaternion.fromEulerDegrees(0, rand(0, 360), 0), scale: Vector3.create(PEN_COW_SCALE, PEN_COW_SCALE, PEN_COW_SCALE) })
     cowModel(entity, true)
     const cow: PenCow = { entity, home, heading: rand(0, 360), timer: rand(2, 6), shown: true }
@@ -399,8 +400,10 @@ function createLauncher() {
   Billboard.create(launcherLabel, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(launcherLabel, { text: '', fontSize: 2.4, font: Font.F_SANS_SERIF, textColor: Color4.White(), outlineColor: Color4.Black(), outlineWidth: 0.1, textAlign: TextAlignMode.TAM_MIDDLE_CENTER })
 
+  // Small kudos note under the status line: off for now.
+  const SHOW_SIGN = false
   const sign = engine.addEntity()
-  Transform.create(sign, { parent: ROOT, position: Vector3.create(LAUNCHER.x, PAD_DECK + 6.2, LAUNCHER.z) })
+  Transform.create(sign, { parent: ROOT, position: Vector3.create(LAUNCHER.x, PAD_DECK + 6.2, LAUNCHER.z), scale: SHOW_SIGN ? Vector3.One() : Vector3.Zero() })
   Billboard.create(sign, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(sign, {
     text: t('{0} KUDOS per cow the black hole swallows\nKUDOS buy Alien Costumes from Nov 7', KUDOS.perCow),
