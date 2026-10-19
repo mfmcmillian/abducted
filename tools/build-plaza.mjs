@@ -3,7 +3,6 @@
 //
 // Centred on the local origin; the scene places it at CENTER (96, 0, 96).
 // Nodes:
-//   Ground    - dark grass quad covering the whole plot (outside the dome, nobody goes there)
 //   CropFlat  - flattened crop formations under the portal / altar / showcases
 //   CropGlow  - thin emissive rings tracing the formations and inner wall
 //
@@ -19,7 +18,6 @@ import { MeshBuf, buildGlb, emissiveMaterial } from './glb.mjs'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'models', 'plaza.glb')
 
-const HALF = 96
 const DOME_RADIUS = 34 // keep in sync with build-dome.mjs RADIUS
 const SEG = 64
 const Y_FLAT = 0.045 // above the dome floor disc (0.03)
@@ -32,11 +30,8 @@ const FORMATIONS = [
   { name: 'SW', x: -22.5, z: -10.5, a0: 225 },
   { name: 'SE', x: 22.5, z: -10.5, a0: 315 }
 ]
-const ground = new MeshBuf('Ground', 0)
-ground.quad([-HALF, 0, -HALF], [-HALF, 0, HALF], [HALF, 0, HALF], [HALF, 0, -HALF], [0, 1, 0])
-
-const flat = new MeshBuf('CropFlat', 1)
-const glow = new MeshBuf('CropGlow', 2)
+const flat = new MeshBuf('CropFlat', 0)
+const glow = new MeshBuf('CropGlow', 1)
 
 // Ring around the central diorama.
 glow.annulus(0, 0, 15.8, 16.2, Y_GLOW, 128)
@@ -71,11 +66,6 @@ for (const f of FORMATIONS) {
 
 const materials = [
   {
-    name: 'GroundDark',
-    pbrMetallicRoughness: { baseColorFactor: [0, 1, 0, 1], metallicFactor: 0, roughnessFactor: 1 },
-    emissiveFactor: [0, 0.5, 0]
-  },
-  {
     name: 'CropFlat',
     pbrMetallicRoughness: { baseColorFactor: [0.16, 0.2, 0.09, 1], metallicFactor: 0, roughnessFactor: 1 },
     emissiveFactor: [0.03, 0.04, 0.015]
@@ -83,7 +73,7 @@ const materials = [
   emissiveMaterial('CropGlow', [0.3, 1.0, 0.6], 2)
 ]
 
-const glb = buildGlb([ground, flat, glow], materials, 'Plaza', 'abducted-dome build-plaza.mjs')
+const glb = buildGlb([flat, glow], materials, 'Plaza', 'abducted-dome build-plaza.mjs')
 mkdirSync(dirname(OUT), { recursive: true })
 writeFileSync(OUT, glb)
-console.log(`wrote ${OUT} (${(glb.length / 1024).toFixed(1)} KB) tris: ground ${ground.triCount}, flat ${flat.triCount}, glow ${glow.triCount}`)
+console.log(`wrote ${OUT} (${(glb.length / 1024).toFixed(1)} KB) tris: flat ${flat.triCount}, glow ${glow.triCount}`)
