@@ -165,7 +165,8 @@ function buildSets() {
   GltfContainer.create(sky, { src: 'models/earth-sky.glb', ...NO_COLLIDE })
   // plain albedo texture: the same modifier path the lawn/road/wallpaper use (known to render). The
   // emissive-only variant came out flat white (emissiveTexture is dropped by the explorer).
-  GltfNodeModifiers.create(sky, { modifiers: [{ path: 'Sky', material: pbr('images/earth-sky.png'), castShadows: false }] })
+  // TEST: solid red, no texture. Red street background => the sphere renders and only the texture is the problem.
+  GltfNodeModifiers.create(sky, { modifiers: [{ path: 'Sky', material: { material: { $case: 'pbr' as const, pbr: { albedoColor: Color4.create(1, 0, 0, 1), metallic: 0, roughness: 1, castShadows: false } } }, castShadows: false }] })
   // daylight: a warm "sun" high on the +Z side and a cool fill (shared by every layer)
   light(setRoot, Vector3.create(5, 9, -8), Color3.create(1, 0.96, 0.85), 2600, 40)
   light(setRoot, Vector3.create(-6, 5, 6), Color3.create(0.7, 0.8, 1), 600, 26)
@@ -192,11 +193,6 @@ function buildSets() {
       { path: 'Path', material: pbr('images/earth-path.png'), castShadows: false }
     ]
   })
-  // backdrop: a big painted sky-and-skyline flat standing behind the houses, facing the street
-  const backdrop = engine.addEntity()
-  Transform.create(backdrop, { parent: town, position: Vector3.create(-1, GROUND_Y + 13.5, 14), scale: Vector3.create(64, 36, 1) })
-  MeshRenderer.setPlane(backdrop)
-  Material.setPbrMaterial(backdrop, { texture: Material.Texture.Common({ src: 'images/earth-backdrop.jpg' }), albedoColor: Color4.White(), emissiveTexture: Material.Texture.Common({ src: 'images/earth-backdrop.jpg' }), emissiveColor: Color3.White(), emissiveIntensity: 0.9, metallic: 0, roughness: 1, specularIntensity: 0, castShadows: false })
   // porch light: makes the picture window read as glass before we go through it
   light(town, Vector3.create(WINDOW_C.x, WINDOW_C.y + 0.6, WINDOW_C.z - 1.6), Color3.create(1, 0.85, 0.6), 220, 6, true)
   prop(town, 'house', 0, GROUND_Y, 0, HOUSE_SCALE, 180)
