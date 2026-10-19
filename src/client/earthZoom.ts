@@ -37,6 +37,7 @@ import { earthEntity, earthPosition, EARTH_SCALE, setEarthFrozen } from './space
 import { toast, zoomUi } from './ui'
 import { authorPath, Frame, Path, toWorld, townFrames } from './zoomPath'
 import { ROOT, toScene } from './root'
+import { t as i18n } from './i18n'
 
 /**
  * Click the Earth: one continuous camera move from where you stand, out through the glass,
@@ -255,7 +256,7 @@ function buildSets() {
   clickTarget = engine.addEntity()
   Transform.create(clickTarget, { parent: ROOT, position: earthPosition(), scale: Vector3.create(EARTH_SCALE * 1.85, EARTH_SCALE * 1.85, EARTH_SCALE * 1.85) })
   MeshCollider.setSphere(clickTarget, ColliderLayer.CL_POINTER)
-  pointerEventsSystem.onPointerDown({ entity: clickTarget, opts: { button: InputAction.IA_POINTER, hoverText: 'Zoom to Earth', maxDistance: 220, showFeedback: true } }, () => startZoom())
+  pointerEventsSystem.onPointerDown({ entity: clickTarget, opts: { button: InputAction.IA_POINTER, hoverText: i18n('Zoom to Earth'), maxDistance: 220, showFeedback: true } }, () => startZoom())
 
   townEmbedded(true)
 
@@ -339,7 +340,7 @@ function startZoom() {
   setPlayerLocked(true)
   zoomUi.active = true
   zoomUi.white = 0
-  zoomUi.hint = 'E to skip'
+  zoomUi.hint = i18n('E to skip')
   playGlobal(SFX.zoom, 0.9)
 }
 
@@ -360,7 +361,7 @@ function finishZoom() {
   zoomUi.active = false
   zoomUi.hint = ''
   zoomUi.white = 1 // fades out below
-  toast('Back on the deck. Click the Earth any time to watch again.', 6)
+  toast(i18n('Back on the deck. Click the Earth any time to watch again.'), 6)
   townEmbedded(true)
   // the TV goes back to snow and the dome music comes back up
   VideoPlayer.getMutable(tvPlayer).playing = false
@@ -554,7 +555,7 @@ function system(dt: number) {
     if (z.t >= z.end) {
       z.phase = 'hold'
       z.t = 0
-      zoomUi.hint = 'E to leave'
+      zoomUi.hint = i18n('E to leave')
     }
   } else if (z.phase === 'hold') {
     // the snow fills the view; then the TV changes channel and we sit through the film, or E

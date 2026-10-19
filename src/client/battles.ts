@@ -8,6 +8,7 @@ import { playAt, SFX } from './sfx'
 import { asteroidPosition, AsteroidRef, killAsteroid, pickAsteroidTarget } from './space'
 import { toast } from './ui'
 import { ROOT } from './root'
+import { t } from './i18n'
 
 /**
  * Space battles outside the observation deck.
@@ -397,7 +398,7 @@ export function createSpaceBattles() {
     // server-picked cows first: a pink raider goes for them straight away
     if (pendingCows.length && raids.length < 2) {
       const cow = pendingCows.shift()!
-      if (startRaid(cowTarget(cow), PINK)) toast('Raider saucer inbound. It has a cow in its sights.', 5)
+      if (startRaid(cowTarget(cow), PINK)) toast(t('Raider saucer inbound. It has a cow in its sights.'), 5)
       else pendingCows.unshift(cow)
     }
 

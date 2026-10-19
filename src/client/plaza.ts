@@ -41,6 +41,7 @@ import { music } from './music'
 import { toast } from './ui'
 import { moo, playGlobal, SFX } from './sfx'
 import { FLOOR_Y, ROOT } from './root'
+import { t } from './i18n'
 import { PANE_H, PANE_W, PANE_Y, paneMount, paneWidth } from './pane'
 
 /** Permanent night: 01:00. */
@@ -220,10 +221,10 @@ function createPortal(position: Vector3, world: string, title: string, texture: 
   })
 
   const go = () => {
-    void changeRealm({ realm: world, message: `Travel to ${title}?` })
+    void changeRealm({ realm: world, message: t('Travel to {0}?', title) })
   }
   pointerEventsSystem.onPointerDown(
-    { entity: artwork, opts: { button: InputAction.IA_POINTER, hoverText: `Enter ${title} — get the alien suit`, maxDistance: 14 } },
+    { entity: artwork, opts: { button: InputAction.IA_POINTER, hoverText: t('Enter {0} — get the alien suit', title), maxDistance: 14 } },
     go
   )
 
@@ -263,9 +264,9 @@ const EMOTE_PRICES: { mana: number; onSale: boolean; available: number }[] = [
 ]
 const priceLabel = (i: number) => {
   const p = EMOTE_PRICES[i]
-  if (!p.onSale) return 'NOT FOR SALE'
-  if (p.available <= 0) return 'SOLD OUT'
-  return `${p.mana} MANA\n${p.available} LEFT`
+  if (!p.onSale) return t('NOT FOR SALE')
+  if (p.available <= 0) return t('SOLD OUT')
+  return t('{0} MANA\n{1} LEFT', p.mana, p.available)
 }
 
 interface Showcase {
@@ -425,7 +426,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
   const cowAction = engine.addEntity()
   Transform.create(cowAction, { parent: root, position: Vector3.create(3.8, 0.55, -3.45) })
   TextShape.create(cowAction, {
-    text: kind === 'emote' ? 'CLICK COW TO OPEN\nMARKETPLACE ITEM' : 'NOT FOR SALE\nEARNED IN DUNGEONS OF ANTROM',
+    text: kind === 'emote' ? t('CLICK COW TO OPEN\nMARKETPLACE ITEM') : t('NOT FOR SALE\nEARNED IN DUNGEONS OF ANTROM'),
     fontSize: kind === 'emote' ? 1.15 : 1.05,
     font: Font.F_SANS_SERIF,
     textColor: kind === 'emote' ? Color4.create(0.45, 0.95, 1, 1) : Color4.create(0.75, 1, 0.35, 1),
@@ -491,7 +492,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
         lineSpacing: 9
       })
       pointerEventsSystem.onPointerDown(
-        { entity: tile, opts: { button: InputAction.IA_POINTER, hoverText: kind === 'emote' ? `Show ${EMOTE_NAMES[i].toLowerCase()} emote` : `Show suit: ${COSTUME_NAMES[i].toLowerCase()}`, maxDistance: 16 } },
+        { entity: tile, opts: { button: InputAction.IA_POINTER, hoverText: kind === 'emote' ? t('Show {0} emote', EMOTE_NAMES[i].toLowerCase()) : t('Show suit: {0}', COSTUME_NAMES[i].toLowerCase()), maxDistance: 16 } },
         () => show(i)
       )
       display.tiles.push(tile)
@@ -521,7 +522,7 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
     if (display.highlight) Transform.getMutable(display.highlight).position.x = bx((display.index - 1.5) * (kind === 'emote' ? TILE_GAP : 2.8))
   }
   const cycle = () => show((display.index + 1) % 4)
-  const cycleOptions = { button: InputAction.IA_POINTER, hoverText: `Next ${kind}`, maxDistance: 14 }
+  const cycleOptions = { button: InputAction.IA_POINTER, hoverText: kind === 'emote' ? t('Next emote') : t('Next costume'), maxDistance: 14 }
   pointerEventsSystem.onPointerDown({ entity: hit, opts: cycleOptions }, cycle)
   pointerEventsSystem.onPointerDown({ entity: plinth, opts: cycleOptions }, cycle)
   pointerEventsSystem.onPointerDown(
@@ -529,14 +530,14 @@ function createAvatarShowcase(kind: 'emote' | 'costume', position: Vector3, text
       entity: marketCow,
       opts: {
         button: InputAction.IA_POINTER,
-        hoverText: kind === 'emote' ? 'Open selected emote on Marketplace' : 'Not for sale — earned in Dungeons of Antrom',
+        hoverText: kind === 'emote' ? t('Open selected emote on Marketplace') : t('Not for sale — earned in Dungeons of Antrom'),
         maxDistance: 40
       }
     },
     () => {
       moo(Vector3.add(position, Vector3.create(0, 1.7, 0)), 0.9)
       if (kind === 'costume') {
-        toast('Alien costumes are not for sale. Earn them in Dungeons of Antrom through the purple portal.', 7)
+        toast(t('Alien costumes are not for sale. Earn them in Dungeons of Antrom through the purple portal.'), 7)
         return
       }
       const collection = kind === 'emote' ? EMOTE_COLLECTION : COSTUME_COLLECTION

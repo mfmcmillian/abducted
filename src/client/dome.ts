@@ -22,6 +22,7 @@ import { CENTER, DOME_CAP, DOME_WALL, SPAWN, VIDEO_URL } from '../layout'
 import { moo } from './sfx'
 import { music } from './music'
 import { ROOT } from './root'
+import { t } from './i18n'
 import { startTour } from './tour'
 
 /** Single looping VideoPlayer; every screen in the scene samples this entity. */
@@ -254,7 +255,7 @@ export function createHeroCow(): Entity {
   })
 
   pointerEventsSystem.onPointerDown(
-    { entity: cow, opts: { button: InputAction.IA_POINTER, hoverText: 'Take the tour', maxDistance: 40 } },
+    { entity: cow, opts: { button: InputAction.IA_POINTER, hoverText: t('Take the tour'), maxDistance: 40 } },
     () => {
       moo(Vector3.create(SPAWN.x + 5, 1.5, SPAWN.z + 3))
       startTour()

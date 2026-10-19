@@ -16,6 +16,7 @@ import { initMusic } from './client/music'
 import { createBarrier, createGround, createKiosk, createNightSky, createPortals } from './client/plaza'
 import { createRingAltar } from './client/ring'
 import { initUi } from './client/ui'
+import { initLanguage } from './client/i18n'
 
 /**
  * Abducted! - They appear to be enjoying it. An 8x8 World: a closed video dome with the
@@ -37,6 +38,7 @@ export async function main() {
 }
 
 function initClient() {
+  initLanguage()
   initUi()
   createNightSky()
   createGround()

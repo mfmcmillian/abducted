@@ -2,6 +2,7 @@ import { AudioSource, engine, Entity, InputAction, InputModifier, inputSystem, M
 import { Quaternion, Vector3 } from '@dcl/sdk/math'
 import { CARGO_BAY, CENTER, FORMATION, LAUNCH_PAD, LAUNCHER, LEADERBOARD, SPAWN } from '../layout'
 import { ROOT } from './root'
+import { t } from './i18n'
 import { earthPosition } from './space'
 import { toast, zoomUi } from './ui'
 
@@ -99,7 +100,7 @@ export function startTour() {
   setPlayerLocked(true)
   zoomUi.active = true
   zoomUi.white = 0
-  zoomUi.hint = 'E to skip the tour'
+  zoomUi.hint = t('E to skip the tour')
 }
 
 function endTour() {
@@ -110,7 +111,7 @@ function endTour() {
   setPlayerLocked(false)
   zoomUi.active = false
   zoomUi.hint = ''
-  toast('Click the cow any time for the tour again.', 5)
+  toast(t('Click the cow any time for the tour again.'), 5)
 }
 
 const ease = (k: number) => k * k * (3 - 2 * k)
@@ -134,7 +135,7 @@ function tourSystem(dt: number) {
     if (!z.said) {
       z.said = true
       AudioSource.createOrReplace(voice, { audioClipUrl: s.voice, playing: true, loop: false, volume: 1, global: true })
-      toast(s.text, s.seconds + PAUSE + 0.5)
+      toast(t(s.text), s.seconds + PAUSE + 0.5)
     }
     if (k >= 1) {
       z.from = { cam, look }

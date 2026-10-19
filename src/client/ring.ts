@@ -23,6 +23,7 @@ import { room } from '../shared/messages'
 import { toast } from './ui'
 import { playAt, playGlobal, SFX } from './sfx'
 import { ROOT } from './root'
+import { t } from './i18n'
 
 /**
  * The ring altar on the south-west crop circle. One Antrom Guildstone Ring per wallet;
@@ -118,16 +119,16 @@ function createAltar(): Entity {
   })
 
   const claim = () => {
-    if (claimed === true) return toast('You already claimed your Antrom Guildstone Ring.')
+    if (claimed === true) return toast(t('You already claimed your Antrom Guildstone Ring.'))
     if (pending > 0) return
     pending = 20
     playGlobal(SFX.uiClick, 0.8)
-    toast('The aliens are checking your wallet...')
+    toast(t('The aliens are checking your wallet...'))
     room.send('ringClaim', { v: 1 })
   }
   for (const e of [plinth, ring]) {
     pointerEventsSystem.onPointerDown(
-      { entity: e, opts: { button: InputAction.IA_POINTER, hoverText: 'Claim your Antrom Guildstone Ring', maxDistance: 10 } },
+      { entity: e, opts: { button: InputAction.IA_POINTER, hoverText: t('Claim your Antrom Guildstone Ring'), maxDistance: 10 } },
       claim
     )
   }
@@ -232,7 +233,7 @@ function createPoster(domeVideo: Entity) {
     showVideo()
   }
   pointerEventsSystem.onPointerDown(
-    { entity: screen, opts: { button: InputAction.IA_POINTER, hoverText: 'Watch: how the Guildstone Ring works', maxDistance: 14 } },
+    { entity: screen, opts: { button: InputAction.IA_POINTER, hoverText: t('Watch: how the Guildstone Ring works'), maxDistance: 14 } },
     () => {
       playGlobal(SFX.uiClick, 0.8)
       remaining > 0 ? stop() : play()
@@ -253,7 +254,7 @@ export function createRingAltar(domeVideo: Entity) {
     claimed = data.claimed
     pending = 0
     if (data.ok) playAt(SFX.ringChime, Vector3.create(FORMATION.SW.x, 2.5, FORMATION.SW.z), 1)
-    if (data.text) toast(data.text, data.ok ? 10 : 7)
+    if (data.text) toast(t(data.text), data.ok ? 10 : 7)
   })
 
   // The room queues sends until the server connection is up, so no need to gate on isStateSyncronized().
@@ -264,7 +265,7 @@ export function createRingAltar(domeVideo: Entity) {
       pending -= dt
       if (pending <= 0) {
         pending = 0
-        toast('No answer from the mothership. The ring server may be offline, try again later.')
+        toast(t('No answer from the mothership. The ring server may be offline, try again later.'))
       }
     }
   })

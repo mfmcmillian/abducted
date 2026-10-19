@@ -39,6 +39,7 @@ import { GAME, RULESET } from '../shared/gameConfig'
 import { room } from '../shared/messages'
 import { hud, toast, type BeamState } from './ui'
 import { FLOOR_Y, ROOT, sceneToWorld } from './root'
+import { t } from './i18n'
 import { PANE_H, PANE_W, PANE_Y, paneMount } from './pane'
 import { createPod, launchPod, POD_CHARGE_SECONDS, releasePod, sealPod } from './pod'
 
@@ -804,8 +805,10 @@ function showResults() {
     isBest,
     saved:
       run.cows > 0
-        ? `${run.cows} cow${run.cows === 1 ? '' : 's'} beamed into the CARGO BAY. Carry them to the COW LAUNCHER for kudos.`
-        : 'no cows caught: nothing for the cargo bay this time'
+        ? run.cows === 1
+          ? t('1 cow beamed into the CARGO BAY. Carry it to the COW LAUNCHER for kudos.')
+          : t('{0} cows beamed into the CARGO BAY. Carry them to the COW LAUNCHER for kudos.', run.cows)
+        : t('no cows caught: nothing for the cargo bay this time')
   }
   hud.mode = 'results'
   hud.countdown = ''
@@ -814,6 +817,10 @@ function showResults() {
   if (run.cows > 0) {
     room.send('scoreSubmit', { score: run.score, cows: run.cows, attempts: run.attempts, ruleset: RULESET, name: getPlayer()?.name || 'Visitor' })
   }
+}
+
+function scoreMessage() {
+  return run.cows === 1 ? t('You scored {0} with 1 cow. It appears to be enjoying it.', run.score) : t('You scored {0} with {1} cows. They appear to be enjoying it.', run.score, run.cows)
 }
 
 function returnToDome(message: string) {
@@ -864,14 +871,14 @@ function gameSystem(dt: number) {
       if (practiced) beginCountdown(px, pz)
       else beginPractice(px, pz)
     } else if (phaseTime > 8) {
-      returnToDome('The transfer failed. Step into the pod again.')
+      returnToDome(t('The transfer failed. Step into the pod again.'))
     }
     return
   }
 
   // Left the pasture (fell, teleported, walked out): the run is abandoned, nothing is submitted.
   if (player.position.y - FLOOR_Y < ARENA_Y - 2) {
-    returnToDome('You slipped out of the saucer. The round does not count.')
+    returnToDome(t('You slipped out of the saucer. The round does not count.'))
     return
   }
 
@@ -922,7 +929,7 @@ function gameSystem(dt: number) {
     // keyboard versions of the two buttons, for when the cursor is locked in first person
     if (phaseTime > 0.5 && inputSystem.isTriggered(InputAction.IA_PRIMARY, PointerEventType.PET_DOWN)) hud.onReplay()
     else if (phaseTime > 0.5 && inputSystem.isTriggered(InputAction.IA_SECONDARY, PointerEventType.PET_DOWN)) hud.onExit()
-    else if (phaseTime > 60) returnToDome(`You scored ${run.score} with ${run.cows} cow${run.cows === 1 ? '' : 's'}. They appear to be enjoying it.`)
+    else if (phaseTime > 60) returnToDome(scoreMessage())
   }
 
   drawBeam(aim)
@@ -978,10 +985,10 @@ function createLeaderboard() {
   }
 
   const headerColor = Color4.create(0.4, 0.95, 1, 1)
-  makeText(-4.35, 9.15, 'RANK', TextAlignMode.TAM_MIDDLE_LEFT, 1.05, headerColor)
-  makeText(-3.15, 9.15, 'PILOT', TextAlignMode.TAM_MIDDLE_LEFT, 1.05, headerColor)
-  makeText(2.65, 9.15, 'SCORE', TextAlignMode.TAM_MIDDLE_RIGHT, 1.05, headerColor)
-  makeText(4.35, 9.15, 'COWS', TextAlignMode.TAM_MIDDLE_RIGHT, 1.05, headerColor)
+  makeText(-4.35, 9.15, t('RANK'), TextAlignMode.TAM_MIDDLE_LEFT, 1.05, headerColor)
+  makeText(-3.15, 9.15, t('PILOT'), TextAlignMode.TAM_MIDDLE_LEFT, 1.05, headerColor)
+  makeText(2.65, 9.15, t('SCORE'), TextAlignMode.TAM_MIDDLE_RIGHT, 1.05, headerColor)
+  makeText(4.35, 9.15, t('COWS'), TextAlignMode.TAM_MIDDLE_RIGHT, 1.05, headerColor)
 
   const rankColors = [
     Color4.create(1, 0.82, 0.25, 1),
@@ -1021,7 +1028,7 @@ function createLeaderboard() {
   const note = engine.addEntity()
   Transform.create(note, { parent: root, position: Vector3.create(0, 0.72, -0.1) })
   TextShape.create(note, {
-    text: 'BEST ROUND PER PILOT  ·  CURRENT RULESET  ·  COMMUNITY BOARD',
+    text: t('BEST ROUND PER PILOT  ·  CURRENT RULESET  ·  COMMUNITY BOARD'),
     fontSize: 0.85,
     font: Font.F_SANS_SERIF,
     textColor: Color4.create(0.65, 0.9, 1, 1),
@@ -1034,7 +1041,7 @@ function createLeaderboard() {
     for (let i = 0; i < rows.length; i++) {
       const entry = data.entries[i]
       TextShape.getMutable(rows[i].rank).text = entry ? (i < 3 ? ['1ST', '2ND', '3RD'][i] : `${i + 1}TH`) : ''
-      TextShape.getMutable(rows[i].name).text = entry ? entry.name.toUpperCase().slice(0, 18) : i === 0 ? 'NO SCORES YET — ENTER THE UFO BEAM' : ''
+      TextShape.getMutable(rows[i].name).text = entry ? entry.name.toUpperCase().slice(0, 18) : i === 0 ? t('NO SCORES YET — ENTER THE UFO BEAM') : ''
       TextShape.getMutable(rows[i].score).text = entry ? entry.score.toLocaleString() : ''
       TextShape.getMutable(rows[i].cows).text = entry ? `${entry.cows}` : ''
     }
@@ -1056,12 +1063,12 @@ export function createCowGame() {
   }
   hud.onExit = () => {
     if (phase !== 'results') return
-    returnToDome(`You scored ${run.score} with ${run.cows} cow${run.cows === 1 ? '' : 's'}. They appear to be enjoying it.`)
+    returnToDome(scoreMessage())
   }
   hud.onLeave = () => {
     if (phase !== 'practice' && phase !== 'countdown' && phase !== 'playing' && phase !== 'finalizing') return
     playGlobal(SFX.uiClick, 0.8)
-    returnToDome('Back on the ground. The cows will be waiting.')
+    returnToDome(t('Back on the ground. The cows will be waiting.'))
   }
   createLaunchPad()
   createArena()

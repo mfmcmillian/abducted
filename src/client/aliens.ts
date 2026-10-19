@@ -3,6 +3,7 @@ import { Quaternion, Vector3 } from '@dcl/sdk/math'
 import { openExternalUrl } from '~system/RestrictedActions'
 import { ABDUCTED_EMOTE_URN, CENTER, COSTUME_COLLECTION, COSTUME_URNS, FORMATION } from '../layout'
 import { ROOT } from './root'
+import { t } from './i18n'
 
 /**
  * Eight NPC avatars in the alien costumes dance in front of the Dungeons of Antrom
@@ -66,7 +67,7 @@ function createDancer(index: number): Dancer {
   Transform.create(hit, { parent: entity, position: Vector3.create(0, 1, 0), scale: Vector3.create(0.9, 2, 0.9) })
   MeshCollider.setBox(hit, ColliderLayer.CL_POINTER)
   pointerEventsSystem.onPointerDown(
-    { entity: hit, opts: { button: InputAction.IA_POINTER, hoverText: `${NAMES[index]}'s costume`, maxDistance: 10 } },
+    { entity: hit, opts: { button: InputAction.IA_POINTER, hoverText: t("{0}'s costume", NAMES[index]), maxDistance: 10 } },
     () => {
       void openExternalUrl({ url: `https://decentraland.org/marketplace/contracts/${COSTUME_COLLECTION}/items/${costume}` })
     }

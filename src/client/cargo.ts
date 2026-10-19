@@ -27,6 +27,7 @@ import { attachLoop, moo, playAt, playGlobal, SFX } from './sfx'
 import { kudosHud, toast } from './ui'
 import { burstExplosion, PALETTES, puffTrail } from './fx'
 import { ROOT, toScene } from './root'
+import { t } from './i18n'
 import { createLaunchPortal, openPortal, portalOpen } from './portal'
 
 /**
@@ -151,7 +152,7 @@ function createCargoBay() {
   const title = engine.addEntity()
   Transform.create(title, { parent: ROOT, position: Vector3.create(CARGO_BAY.x, 4.6, CARGO_BAY.z) })
   Billboard.create(title, { billboardMode: BillboardMode.BM_Y })
-  TextShape.create(title, { text: 'CARGO BAY', fontSize: 6, font: Font.F_SANS_SERIF, textColor: Color4.create(0.6, 1, 0.75, 1), outlineColor: Color4.Black(), outlineWidth: 0.12, textAlign: TextAlignMode.TAM_MIDDLE_CENTER })
+  TextShape.create(title, { text: t('CARGO BAY'), fontSize: 6, font: Font.F_SANS_SERIF, textColor: Color4.create(0.6, 1, 0.75, 1), outlineColor: Color4.Black(), outlineWidth: 0.12, textAlign: TextAlignMode.TAM_MIDDLE_CENTER })
   penLabel = engine.addEntity()
   Transform.create(penLabel, { parent: ROOT, position: Vector3.create(CARGO_BAY.x, 3.6, CARGO_BAY.z) })
   Billboard.create(penLabel, { billboardMode: BillboardMode.BM_Y })
@@ -170,7 +171,7 @@ function createCargoBay() {
     cowModel(entity, true)
     const cow: PenCow = { entity, home, heading: rand(0, 360), timer: rand(2, 6), shown: true }
     pen.push(cow)
-    pointerEventsSystem.onPointerDown({ entity, opts: { button: InputAction.IA_PRIMARY, hoverText: 'Pick up cow', maxDistance: 9 } }, () => pickUp(cow))
+    pointerEventsSystem.onPointerDown({ entity, opts: { button: InputAction.IA_PRIMARY, hoverText: t('Pick up cow'), maxDistance: 9 } }, () => pickUp(cow))
     hideEntity(entity)
     cow.shown = false
   }
@@ -194,8 +195,10 @@ function refreshPen() {
   const text = !state.synced
     ? ''
     : visible === 0
-      ? 'empty: play the cow game to catch more cows\n(the saucer waits on the launch pad)'
-      : `${visible} cow${visible === 1 ? '' : 's'} waiting${extra > 0 ? ` (${extra} more in the hold)` : ''}\nclick one to carry it to the launcher`
+      ? t('empty: play the cow game to catch more cows\n(the saucer waits on the launch pad)')
+      : visible === 1
+        ? t('1 cow waiting{1}\nclick it to carry it to the launcher', 1, extra > 0 ? t(' ({0} more in the hold)', extra) : '')
+        : t('{0} cows waiting{1}\nclick one to carry it to the launcher', visible, extra > 0 ? t(' ({0} more in the hold)', extra) : '')
   TextShape.getMutable(penLabel).text = text
 }
 
@@ -206,7 +209,7 @@ let held: Entity | null = null
 
 function pickUp(cow: PenCow) {
   if (state.carrying) {
-    toast('You are already carrying a cow. Drop it in the launcher.', 4)
+    toast(t('You are already carrying a cow. Drop it in the launcher.'), 4)
     return
   }
   state.carrying = true
@@ -218,7 +221,7 @@ function pickUp(cow: PenCow) {
   cowModel(held, false)
   refreshPen()
   pushHud()
-  toast('Got one. Walk it to the COW LAUNCHER by the windows and click the barrel.', 6)
+  toast(t('Got one. Walk it to the COW LAUNCHER by the windows and click the barrel.'), 6)
 }
 
 function dropCarried() {
@@ -388,7 +391,7 @@ function createLauncher() {
   Transform.create(sign, { parent: ROOT, position: Vector3.create(LAUNCHER.x, PAD_DECK + 6.2, LAUNCHER.z) })
   Billboard.create(sign, { billboardMode: BillboardMode.BM_Y })
   TextShape.create(sign, {
-    text: `${KUDOS.perCow} KUDOS per cow the black hole swallows\nKUDOS buy Alien Costumes from Nov 7`,
+    text: t('{0} KUDOS per cow the black hole swallows\nKUDOS buy Alien Costumes from Nov 7', KUDOS.perCow),
     fontSize: 1.8,
     font: Font.F_SANS_SERIF,
     textColor: Color4.create(0.75, 0.85, 1, 1),
@@ -398,7 +401,7 @@ function createLauncher() {
   })
 
   for (const target of [barrel, hopper, mount]) {
-    pointerEventsSystem.onPointerDown({ entity: target, opts: { button: InputAction.IA_PRIMARY, hoverText: 'Load cow', maxDistance: 12 } }, onLaunchClick)
+    pointerEventsSystem.onPointerDown({ entity: target, opts: { button: InputAction.IA_PRIMARY, hoverText: t('Load cow'), maxDistance: 12 } }, onLaunchClick)
   }
   createLaunchPortal()
   engine.addSystem(launchSequenceSystem)
@@ -419,7 +422,7 @@ let seq: { t: number; cow: Entity | null; from: Vector3; fired: boolean } | null
 
 function onLaunchClick() {
   if (!state.carrying) {
-    toast(state.cargo > 0 ? 'Bring a cow from the CARGO BAY first.' : 'No cows to launch. Play the cow game to catch more: the saucer waits on the launch pad.', 5)
+    toast(state.cargo > 0 ? t('Bring a cow from the CARGO BAY first.') : t('No cows to launch. Play the cow game to catch more: the saucer waits on the launch pad.'), 5)
     playGlobal(SFX.uiClick, 0.6)
     return
   }
@@ -607,7 +610,7 @@ function onBlackHole(data: { phi: number; seconds: number; ids: number[] }) {
   LightSource.getMutable(hole.light).active = true
   hole.setHum(0.9)
   state.nextHoleIn = KUDOS.holePeriodSeconds
-  if (ids.length) toast(`A black hole is passing the windows. It is taking ${ids.length} cow${ids.length === 1 ? '' : 's'}.`, 6)
+  if (ids.length) toast(ids.length === 1 ? t('A black hole is passing the windows. It is taking 1 cow.') : t('A black hole is passing the windows. It is taking {0} cows.', ids.length), 6)
 }
 
 function holePosition(h: Hole) {
@@ -628,7 +631,7 @@ function system(dt: number) {
   }
   if (plasmaBars.length && clock % 0.1 < dt) setPlasma(0.5 + 0.5 * Math.sin(clock * 2.6))
   if (launcherLabel && (clock % 0.5) < dt) {
-    TextShape.getMutable(launcherLabel).text = state.synced ? `black hole in ${formatTime(state.nextHoleIn)}  ·  ${state.launched} of yours floating` : ''
+    TextShape.getMutable(launcherLabel).text = state.synced ? t('black hole in {0}  ·  {1} of yours floating', formatTime(state.nextHoleIn), state.launched) : ''
   }
 
   for (const cow of pen) {
@@ -774,7 +777,7 @@ export function createCargoLoop() {
     state.synced = true
     refreshPen()
     pushHud()
-    if (data.text) toast(data.text, 7)
+    if (data.text) toast(t(data.text), 7)
   })
   room.onMessage('cowsFloating', (data) => {
     for (const c of data.cows) if (!floating.has(c.id)) makeFloating(c)

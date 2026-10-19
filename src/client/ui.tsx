@@ -1,5 +1,6 @@
 import { engine, UiCanvasInformation } from '@dcl/sdk/ecs'
 import { Color4 } from '@dcl/sdk/math'
+import { t } from './i18n'
 import ReactEcs, { Button, Label, ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { dragOffsetPx, startDrag } from './drag'
 
@@ -58,11 +59,11 @@ function Toast() {
         justifyContent: 'center',
         alignItems: 'flex-end',
         flexDirection: 'row',
-        padding: { bottom: 110 }
+        padding: { bottom: 120 }
       }}
     >
-      <UiEntity uiTransform={{ padding: { top: 10, bottom: 10, left: 22, right: 22 }, maxWidth: 720 }} uiBackground={{ color: Color4.create(0.02, 0.05, 0.03, 0.85) }}>
-        <Label value={toastText} fontSize={18} color={GREEN} textAlign="middle-center" />
+      <UiEntity uiTransform={{ padding: { top: 10, bottom: 10, left: 22, right: 22 }, maxWidth: 1200 }} uiBackground={{ color: Color4.create(0.02, 0.05, 0.03, 0.85) }}>
+        <Label value={toastText} fontSize={30} color={GREEN} textAlign="middle-center" />
       </UiEntity>
     </UiEntity>
   )
@@ -86,47 +87,48 @@ const BEAM_LABEL: Record<BeamState, [string, Color4]> = {
 function PlayingHud() {
   const inRound = hud.mode === 'playing' || hud.mode === 'finalizing'
   const lastTen = inRound && hud.secondsLeft <= 10
-  const [beamText, beamColor] = BEAM_LABEL[hud.beam]
+  const [beamKey, beamColor] = BEAM_LABEL[hud.beam]
+  const beamText = t(beamKey)
   return (
     <UiEntity
       uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { top: 0, left: 0 }, justifyContent: 'flex-start', alignItems: 'center', flexDirection: 'column', padding: { top: 24 } }}
     >
       <UiEntity uiTransform={{ padding: { top: 8, bottom: 8, left: 26, right: 26 }, flexDirection: 'row', alignItems: 'center' }} uiBackground={{ color: PANEL }}>
-        <Label value={inRound ? formatTime(hud.secondsLeft) : 'PRACTICE'} fontSize={lastTen ? 34 : 26} color={lastTen ? Color4.create(1, 0.45, 0.4, 1) : Color4.White()} />
+        <Label value={inRound ? formatTime(hud.secondsLeft) : t('PRACTICE')} fontSize={lastTen ? 34 : 26} color={lastTen ? Color4.create(1, 0.45, 0.4, 1) : Color4.White()} />
         <UiEntity uiTransform={{ width: 36 }} />
-        <Label value={`SCORE  ${hud.score}`} fontSize={26} color={GREEN} />
+        <Label value={t('SCORE  {0}', hud.score)} fontSize={26} color={GREEN} />
         <UiEntity uiTransform={{ width: 36 }} />
-        <Label value={`COWS  ${hud.cows}`} fontSize={26} color={Color4.White()} />
+        <Label value={t('COWS  {0}', hud.cows)} fontSize={26} color={Color4.White()} />
         <UiEntity uiTransform={{ width: 36 }} />
         <Label value={`x${hud.combo.toFixed(2)}`} fontSize={22} color={hud.combo > 1 ? Color4.create(1, 0.85, 0.4, 1) : DIM} />
       </UiEntity>
       <UiEntity uiTransform={{ height: 6 }} />
-      <Label value="WASD to fly  ·  look at a cow, click or E to drop the beam" fontSize={14} color={DIM} />
+      <Label value={t('WASD to fly  ·  look at a cow, click or E to drop the beam')} fontSize={18} color={DIM} />
 
       <UiEntity uiTransform={{ positionType: 'absolute', position: { top: 24, right: 24 } }}>
-        <Button value="LEAVE GAME" variant="secondary" fontSize={15} uiTransform={{ width: 150, height: 36 }} onMouseDown={() => hud.onLeave()} />
+        <Button value={t('LEAVE GAME')} variant="secondary" fontSize={16} uiTransform={{ width: 190, height: 38 }} onMouseDown={() => hud.onLeave()} />
       </UiEntity>
 
       <UiEntity uiTransform={{ positionType: 'absolute', position: { bottom: 150 }, flexDirection: 'column', alignItems: 'center' }}>
-        {hud.edge ? <Label value="EDGE OF THE PASTURE" fontSize={16} color={Color4.create(1, 0.5, 0.4, 1)} /> : null}
+        {hud.edge ? <Label value={t('EDGE OF THE PASTURE')} fontSize={22} color={Color4.create(1, 0.5, 0.4, 1)} /> : null}
         <UiEntity uiTransform={{ padding: { top: 6, bottom: 6, left: 18, right: 18 } }} uiBackground={{ color: PANEL }}>
-          <Label value={beamText} fontSize={18} color={beamColor} />
+          <Label value={beamText} fontSize={24} color={beamColor} />
         </UiEntity>
       </UiEntity>
 
       {hud.mode === 'practice' ? (
         <UiEntity uiTransform={{ positionType: 'absolute', position: { top: '20%' }, padding: { top: 14, bottom: 14, left: 30, right: 30 }, flexDirection: 'column', alignItems: 'center' }} uiBackground={{ color: PANEL }}>
-          <Label value={hud.practiceDone ? 'GOT ONE!' : 'PRACTICE'} fontSize={28} color={GREEN} textAlign="middle-center" />
+          <Label value={hud.practiceDone ? t('GOT ONE!') : t('PRACTICE')} fontSize={28} color={GREEN} textAlign="middle-center" />
           <UiEntity uiTransform={{ height: 6 }} />
           <Label
-            value={hud.practiceDone ? 'the real round starts in a moment' : 'no clock yet: fly over to the cow, look at it, click or E to drop the beam\nthe beam needs a moment to grab, so lead the cow a little'}
-            fontSize={16}
+            value={hud.practiceDone ? t('the real round starts in a moment') : t('no clock yet: fly over to the cow, look at it, click or E to drop the beam\nthe beam needs a moment to grab, so lead the cow a little')}
+            fontSize={20}
             color={Color4.White()}
             textAlign="middle-center"
           />
           {!hud.practiceDone ? (
             <UiEntity uiTransform={{ margin: { top: 12 } }}>
-              <Button value="SKIP PRACTICE  (F)" variant="secondary" fontSize={16} uiTransform={{ width: 200, height: 36 }} onMouseDown={() => hud.onSkip()} />
+              <Button value={t('SKIP PRACTICE  (F)')} variant="secondary" fontSize={16} uiTransform={{ width: 260, height: 38 }} onMouseDown={() => hud.onSkip()} />
             </UiEntity>
           ) : null}
         </UiEntity>
@@ -135,13 +137,13 @@ function PlayingHud() {
       {hud.countdown ? (
         <UiEntity uiTransform={{ positionType: 'absolute', position: { top: '34%' }, padding: { top: 18, bottom: 18, left: 60, right: 60 }, flexDirection: 'column', alignItems: 'center' }} uiBackground={{ color: PANEL }}>
           <Label value={hud.countdown} fontSize={72} color={GREEN} textAlign="middle-center" />
-          <Label value="3 minutes · catch as many cows as you can" fontSize={16} color={Color4.White()} textAlign="middle-center" />
+          <Label value={t('3 minutes · catch as many cows as you can')} fontSize={22} color={Color4.White()} textAlign="middle-center" />
         </UiEntity>
       ) : null}
 
       {hud.mode === 'finalizing' ? (
         <UiEntity uiTransform={{ positionType: 'absolute', position: { top: '38%' }, padding: { top: 18, bottom: 18, left: 40, right: 40 } }} uiBackground={{ color: PANEL }}>
-          <Label value="TIME!" fontSize={48} color={GREEN} textAlign="middle-center" />
+          <Label value={t('TIME!')} fontSize={48} color={GREEN} textAlign="middle-center" />
         </UiEntity>
       ) : null}
     </UiEntity>
@@ -154,22 +156,22 @@ function Results() {
   return (
     <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { top: 0, left: 0 }, justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
       <UiEntity uiTransform={{ padding: { top: 22, bottom: 22, left: 48, right: 48 }, flexDirection: 'column', alignItems: 'center', minWidth: 420 }} uiBackground={{ color: Color4.create(0.02, 0.04, 0.06, 0.92) }}>
-        <Label value="ROUND OVER" fontSize={22} color={DIM} textAlign="middle-center" />
+        <Label value={t('ROUND OVER')} fontSize={22} color={DIM} textAlign="middle-center" />
         <Label value={`${r.score}`} fontSize={64} color={GREEN} textAlign="middle-center" />
-        <Label value={r.isBest ? 'NEW BEST THIS SESSION' : `best this session  ${r.best}`} fontSize={16} color={r.isBest ? Color4.create(1, 0.85, 0.4, 1) : DIM} textAlign="middle-center" />
+        <Label value={r.isBest ? t('NEW BEST THIS SESSION') : t('best this session  {0}', r.best)} fontSize={18} color={r.isBest ? Color4.create(1, 0.85, 0.4, 1) : DIM} textAlign="middle-center" />
         <UiEntity uiTransform={{ height: 14 }} />
         <UiEntity uiTransform={{ flexDirection: 'row' }}>
-          <Stat label="COWS" value={`${r.cows}`} />
-          <Stat label="DROPS" value={`${r.attempts}`} />
-          <Stat label="CATCHES" value={`${r.successes}`} />
-          <Stat label="ACCURACY" value={`${accuracy}%`} />
+          <Stat label={t('COWS')} value={`${r.cows}`} />
+          <Stat label={t('DROPS')} value={`${r.attempts}`} />
+          <Stat label={t('CATCHES')} value={`${r.successes}`} />
+          <Stat label={t('ACCURACY')} value={`${accuracy}%`} />
         </UiEntity>
         <UiEntity uiTransform={{ height: 10 }} />
-        <Label value={r.saved} fontSize={13} color={DIM} textAlign="middle-center" />
+        <Label value={r.saved} fontSize={16} color={DIM} textAlign="middle-center" />
         <UiEntity uiTransform={{ height: 14 }} />
         <UiEntity uiTransform={{ flexDirection: 'row' }}>
-          <Button value="PLAY AGAIN  (E)" variant="primary" fontSize={18} uiTransform={{ width: 200, height: 44, margin: { right: 12 } }} onMouseDown={() => hud.onReplay()} />
-          <Button value="BACK TO THE DOME  (F)" variant="secondary" fontSize={18} uiTransform={{ width: 250, height: 44 }} onMouseDown={() => hud.onExit()} />
+          <Button value={t('PLAY AGAIN  (E)')} variant="primary" fontSize={18} uiTransform={{ width: 240, height: 44, margin: { right: 12 } }} onMouseDown={() => hud.onReplay()} />
+          <Button value={t('BACK TO THE DOME  (F)')} variant="secondary" fontSize={18} uiTransform={{ width: 300, height: 44 }} onMouseDown={() => hud.onExit()} />
         </UiEntity>
       </UiEntity>
     </UiEntity>
@@ -180,7 +182,7 @@ function Stat(props: { label: string; value: string }) {
   return (
     <UiEntity uiTransform={{ flexDirection: 'column', alignItems: 'center', margin: { left: 14, right: 14 } }}>
       <Label value={props.value} fontSize={26} color={Color4.White()} textAlign="middle-center" />
-      <Label value={props.label} fontSize={12} color={DIM} textAlign="middle-center" />
+      <Label value={props.label} fontSize={14} color={DIM} textAlign="middle-center" />
     </UiEntity>
   )
 }
@@ -235,7 +237,7 @@ function KudosPanel() {
     <UiEntity uiTransform={{ positionType: 'absolute', position: { top: canvas.top + S(120) + dy, right: canvas.right + S(18) - dx }, flexDirection: 'column', alignItems: 'flex-end' }}>
       <UiEntity uiTransform={{ width: S(420), height: S(44), flexDirection: 'row', alignItems: 'center', justifyContent: 'center', margin: { bottom: kudosMinimized ? 0 : -S(6) } }}>
         <UiEntity uiTransform={{ width: S(300), height: S(44), alignItems: 'center', justifyContent: 'center' }} uiBackground={PILL_TEX} onMouseDown={() => startDrag('kudos')}>
-          <Label value={kudosMinimized ? `ABDUCTED!  KUDOS   ${k.kudos}` : 'ABDUCTED!  KUDOS'} fontSize={S(20)} color={GREEN} textAlign="middle-center" uiTransform={{ width: '100%', height: S(32) }} />
+          <Label value={kudosMinimized ? `${t('ABDUCTED!  KUDOS')}   ${k.kudos}` : t('ABDUCTED!  KUDOS')} fontSize={S(20)} color={GREEN} textAlign="middle-center" uiTransform={{ width: '100%', height: S(32) }} />
         </UiEntity>
         <UiEntity uiTransform={{ width: S(36), height: S(36), margin: { left: S(6) }, alignItems: 'center', justifyContent: 'center' }} uiBackground={{ color: Color4.create(0.02, 0.05, 0.03, 0.9) }} onMouseDown={() => (kudosMinimized = !kudosMinimized)}>
           <Label value={kudosMinimized ? '+' : '–'} fontSize={S(24)} color={GREEN} textAlign="middle-center" uiTransform={{ width: '100%', height: S(32) }} />
@@ -246,18 +248,18 @@ function KudosPanel() {
         {/* header: icon, title, the number */}
         <UiEntity uiTransform={{ width: '100%', height: S(64), flexDirection: 'row', alignItems: 'center', margin: { bottom: S(6) } }}>
           <UiEntity uiTransform={{ width: S(60), height: S(60), flexShrink: 0 }} uiBackground={icon('images/ui-icon-kudos.png')} />
-          <Label value="KUDOS" fontSize={S(26)} color={GREEN} textAlign="middle-left" uiTransform={{ flexGrow: 1, flexShrink: 1, minWidth: 0, height: S(40), margin: { left: S(14) } }} />
+          <Label value={t('KUDOS')} fontSize={S(26)} color={GREEN} textAlign="middle-left" uiTransform={{ flexGrow: 1, flexShrink: 1, minWidth: 0, height: S(40), margin: { left: S(14) } }} />
           <Label value={`${k.kudos}`} fontSize={S(40)} color={Color4.White()} textAlign="middle-right" uiTransform={{ width: S(140), height: S(50) }} />
         </UiEntity>
-        <PanelRow icon="images/ui-icon-cow.png" value={`${k.cargo} in the cargo bay`} caption={`${k.launched} of yours floating outside`} S={S} />
-        <PanelRow icon="images/ui-icon-hole.png" value={`black hole in ${formatTime(k.nextHoleIn)}`} caption="10 kudos per floating cow it eats" S={S} color={PURPLE_UI} />
+        <PanelRow icon="images/ui-icon-cow.png" value={t('{0} in the cargo bay', k.cargo)} caption={t('{0} of yours floating outside', k.launched)} S={S} />
+        <PanelRow icon="images/ui-icon-hole.png" value={t('black hole in {0}', formatTime(k.nextHoleIn))} caption={t('10 kudos per floating cow it eats')} S={S} color={PURPLE_UI} />
         {k.carrying ? (
           <UiEntity uiTransform={{ width: '100%', height: S(44), margin: { top: S(12) }, justifyContent: 'center', alignItems: 'center' }} uiBackground={{ color: Color4.create(0.35, 0.05, 0.25, 0.9) }}>
-            <Label value="Carrying a cow: click the COW LAUNCHER" fontSize={S(18)} color={PINK} textAlign="middle-center" uiTransform={{ width: '100%', height: S(30) }} />
+            <Label value={t('Carrying a cow: click the COW LAUNCHER')} fontSize={S(18)} color={PINK} textAlign="middle-center" uiTransform={{ width: '100%', height: S(30) }} />
           </UiEntity>
         ) : null}
-        <Label value="KUDOS buy Alien Costumes from Nov 7" fontSize={S(18)} color={GREEN} textAlign="middle-left" uiTransform={{ width: '100%', height: S(28), margin: { top: S(12) } }} />
-        <Label value="hold the tab to move  ·  double-tap resets" fontSize={S(14)} color={DIM} textAlign="middle-left" uiTransform={{ width: '100%', height: S(20), margin: { top: S(4) } }} />
+        <Label value={t('KUDOS buy Alien Costumes from Nov 7')} fontSize={S(18)} color={GREEN} textAlign="middle-left" uiTransform={{ width: '100%', height: S(28), margin: { top: S(12) } }} />
+        <Label value={t('hold the tab to move  ·  double-tap resets')} fontSize={S(14)} color={DIM} textAlign="middle-left" uiTransform={{ width: '100%', height: S(20), margin: { top: S(4) } }} />
       </UiEntity>
       )}
     </UiEntity>
@@ -274,8 +276,8 @@ function ZoomOverlay() {
     <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: 0 }, width: '100%', height: '100%' }}>
       {zoomUi.white > 0.002 ? <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: 0 }, width: '100%', height: '100%' }} uiBackground={{ color: Color4.create(1, 1, 1, Math.min(1, zoomUi.white)) }} /> : null}
       {zoomUi.hint ? (
-        <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: canvas.h - 70 }, width: canvas.w, justifyContent: 'center' }}>
-          <Label value={zoomUi.hint} fontSize={16} color={Color4.create(1, 1, 1, 0.8)} textAlign="middle-center" />
+        <UiEntity uiTransform={{ positionType: 'absolute', position: { left: 0, top: canvas.h - 80 }, width: canvas.w, justifyContent: 'center' }}>
+          <Label value={zoomUi.hint} fontSize={26} color={Color4.create(1, 1, 1, 0.8)} textAlign="middle-center" />
         </UiEntity>
       ) : null}
     </UiEntity>
