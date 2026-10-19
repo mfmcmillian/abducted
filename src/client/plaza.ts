@@ -25,7 +25,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { executeTask } from '@dcl/sdk/ecs'
-import { changeRealm, openExternalUrl } from '~system/RestrictedActions'
+import { changeRealm, movePlayerTo, openExternalUrl } from '~system/RestrictedActions'
 import {
   CENTER,
   COSTUME_COLLECTION,
@@ -39,7 +39,7 @@ import {
 import { music } from './music'
 import { toast } from './ui'
 import { moo, playGlobal, SFX } from './sfx'
-import { ROOT } from './root'
+import { FLOOR_Y, ROOT } from './root'
 
 /** Permanent night: 01:00. */
 export function createNightSky() {
@@ -65,6 +65,20 @@ export function createGround(): Entity {
     scale: Vector3.create(DOME_RADIUS * 2, 0.5, DOME_RADIUS * 2)
   })
   MeshCollider.setBox(bottom, ColliderLayer.CL_PHYSICS)
+
+  // A player already below the lifted floor will not be pushed up by a collider
+  // appearing above them. Rescue them to the same X/Z on the dome floor.
+  let rescueCooldown = 0
+  engine.addSystem((dt) => {
+    rescueCooldown -= dt
+    if (rescueCooldown > 0) return
+    const player = Transform.getOrNull(engine.PlayerEntity)
+    if (!player || player.position.y >= FLOOR_Y - 1) return
+    rescueCooldown = 2
+    void movePlayerTo({
+      newRelativePosition: Vector3.create(player.position.x, FLOOR_Y + 0.2, player.position.z)
+    })
+  })
 
   return plaza
 }
