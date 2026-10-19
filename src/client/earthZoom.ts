@@ -95,6 +95,9 @@ let clickTarget: Entity
 let ufo: Entity
 const SHOW_UFO = false // parked for now: needs a proper reveal and framing
 let camera: Entity
+/** the camera's parent: sits at the origin except while a Move tween on it pans the camera (one Tween per entity) */
+let camRig: Entity
+const PAN_T = 1.6
 /** the dome's shared player (music); only its volume is touched here */
 let videoEntity: Entity
 /** the TV's own player: same film, started from the top once the screen fills the view */
@@ -259,8 +262,10 @@ function buildSets() {
   GltfContainer.create(ufo, { src: 'models/ufo.glb', ...NO_COLLIDE })
 
   // the camera
+  camRig = engine.addEntity()
+  Transform.create(camRig, { parent: ROOT })
   camera = engine.addEntity()
-  Transform.create(camera, { parent: ROOT, position: Vector3.create(0, -100, 0) })
+  Transform.create(camera, { parent: camRig, position: Vector3.create(0, -100, 0) })
   VirtualCamera.create(camera, { defaultTransition: { transitionMode: VirtualCamera.Transition.Time(0) } })
 }
 
@@ -340,6 +345,8 @@ function finishZoom() {
   if (!zoom) return
   if (zoom.double) engine.removeEntity(zoom.double)
   if (Tween.has(camera)) Tween.deleteFrom(camera)
+  if (Tween.has(camRig)) Tween.deleteFrom(camRig)
+  Transform.getMutable(camRig).position = Vector3.Zero()
   Transform.getMutable(ufo).scale = Vector3.Zero()
   if (zoom.townDouble) engine.removeEntity(zoom.townDouble)
   unhidePlayer()
@@ -373,10 +380,19 @@ function walkShot(at: Vector3, toward?: Vector3): { cam: Vector3; look: Vector3 
   return { cam: Vector3.add(at, Vector3.create(side.x * 4.2 + dir.x * 3.2, 2.2, side.z * 4.2 + dir.z * 3.2)), look: Vector3.add(at, Vector3.create(0, 1.2, 0)) }
 }
 
-/** Wide shot of the pod from the doorway side while it seals and charges. */
+/** Straight in front of the pod, looking in through the doorway at the beam and whoever is in it. */
 function podShot(inward: Vector3): { cam: Vector3; look: Vector3 } {
-  const side = Vector3.create(inward.z, 0, -inward.x)
-  return { cam: Vector3.add(LAUNCH_PAD, Vector3.create(inward.x * 12 + side.x * 8, 4.2, inward.z * 12 + side.z * 8)), look: Vector3.add(LAUNCH_PAD, Vector3.create(0, 4, 0)) }
+  return { cam: Vector3.add(LAUNCH_PAD, Vector3.create(inward.x * 11, 3.2, inward.z * 11)), look: Vector3.add(LAUNCH_PAD, Vector3.create(0, 3.4, 0)) }
+}
+
+/** End of a pan: drop the tweens, rig back at the origin, camera parked on the shot. */
+function settleCamera(shot: { cam: Vector3; look: Vector3 }) {
+  if (Tween.has(camRig)) Tween.deleteFrom(camRig)
+  if (Tween.has(camera)) Tween.deleteFrom(camera)
+  Transform.getMutable(camRig).position = Vector3.Zero()
+  const tr = Transform.getMutable(camera)
+  tr.position = shot.cam
+  tr.rotation = Quaternion.fromLookAt(shot.cam, shot.look)
 }
 
 function system(dt: number) {
@@ -405,29 +421,39 @@ function system(dt: number) {
       // to the doorway at a brisk pace, however far away they started (3.5 .. 6 m/s)
       if (!z.leg) {
         z.leg = beginLeg(dbl, door, Math.max(3.5, Math.min(6, Vector3.distance(Transform.get(dbl).position, door) / 4)))
+        const b = walkShot(z.leg.to, Vector3.add(z.leg.to, Vector3.subtract(z.leg.to, z.leg.from)))
         // hard cut to the tracking shot; the camera then rides a Tween parallel to the double's leg,
         // so the renderer interpolates both and nothing is moved frame by frame
-        const a = walkShot(z.leg.from, z.leg.to), b = walkShot(z.leg.to, Vector3.add(z.leg.to, Vector3.subtract(z.leg.to, z.leg.from)))
+        const a = walkShot(z.leg.from, z.leg.to)
         const tr = Transform.getMutable(camera)
         tr.position = a.cam
         tr.rotation = Quaternion.fromLookAt(a.cam, a.look)
         Tween.createOrReplace(camera, { mode: Tween.Mode.Move({ start: a.cam, end: b.cam }), duration: z.leg.duration * 1000, easingFunction: EasingFunction.EF_LINEAR })
       }
       shot = walkShot(legPos(z.leg), z.leg.to)
+      const b = walkShot(z.leg.to, Vector3.add(z.leg.to, Vector3.subtract(z.leg.to, z.leg.from)))
       if (stepLeg(z.leg, dt)) {
         z.stage = 1
         z.leg = beginLeg(dbl, LAUNCH_PAD, 2.5)
-        if (Tween.has(camera)) Tween.deleteFrom(camera)
+        // pan round to the front of the pod: the rig carries the position, the camera turns
+        const front = podShot(inward)
+        const tr = Transform.getMutable(camera)
+        tr.position = b.cam
+        tr.rotation = Quaternion.fromLookAt(b.cam, b.look)
+        Tween.createOrReplace(camRig, { mode: Tween.Mode.Move({ start: Vector3.Zero(), end: Vector3.subtract(front.cam, b.cam) }), duration: PAN_T * 1000, easingFunction: EasingFunction.EF_EASEQUAD })
+        Tween.createOrReplace(camera, { mode: Tween.Mode.Rotate({ start: tr.rotation, end: Quaternion.fromLookAt(front.cam, front.look) }), duration: PAN_T * 1000, easingFunction: EasingFunction.EF_EASEQUAD })
         cut(z)
       }
     } else if (z.stage === 1) {
+      shot = podShot(inward)
+      if (z.blendT >= PAN_T && Tween.has(camRig)) settleCamera(shot)
       if (stepLeg(z.leg!, dt)) {
         z.stage = 2
         z.leg = null
         z.t = 0
         sealPod()
+        settleCamera(shot)
       }
-      shot = podShot(inward)
     } else {
       shot = podShot(inward)
       if (z.t >= POD_CHARGE_SECONDS) {
@@ -446,12 +472,6 @@ function system(dt: number) {
       }
     }
     z.camCur = shot
-    if (z.stage > 0 && z.blendT === 0) {
-      // the wide shot of the pod: a hard cut, then the camera does not move at all
-      const tr = Transform.getMutable(camera)
-      tr.position = shot.cam
-      tr.rotation = Quaternion.fromLookAt(shot.cam, shot.look)
-    }
     z.blendT += dt
     zoomUi.white = 0
   } else if (z.phase === 'porch') {
