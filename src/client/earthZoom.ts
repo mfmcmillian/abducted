@@ -18,6 +18,8 @@ import {
   TextureFilterMode,
   TextureWrapMode,
   Transform,
+  Tween,
+  EasingFunction,
   VideoEvent,
   VideoPlayer,
   VideoState,
@@ -337,6 +339,7 @@ function startZoom() {
 function finishZoom() {
   if (!zoom) return
   if (zoom.double) engine.removeEntity(zoom.double)
+  if (Tween.has(camera)) Tween.deleteFrom(camera)
   Transform.getMutable(ufo).scale = Vector3.Zero()
   if (zoom.townDouble) engine.removeEntity(zoom.townDouble)
   unhidePlayer()
@@ -400,11 +403,21 @@ function system(dt: number) {
     let shot: { cam: Vector3; look: Vector3 }
     if (z.stage === 0) {
       // to the doorway at a brisk pace, however far away they started (3.5 .. 6 m/s)
-      if (!z.leg) z.leg = beginLeg(dbl, door, Math.max(3.5, Math.min(6, Vector3.distance(Transform.get(dbl).position, door) / 4)))
+      if (!z.leg) {
+        z.leg = beginLeg(dbl, door, Math.max(3.5, Math.min(6, Vector3.distance(Transform.get(dbl).position, door) / 4)))
+        // hard cut to the tracking shot; the camera then rides a Tween parallel to the double's leg,
+        // so the renderer interpolates both and nothing is moved frame by frame
+        const a = walkShot(z.leg.from, door), b = walkShot(z.leg.to, door)
+        const tr = Transform.getMutable(camera)
+        tr.position = a.cam
+        tr.rotation = Quaternion.fromLookAt(a.cam, a.look)
+        Tween.createOrReplace(camera, { mode: Tween.Mode.Move({ start: a.cam, end: b.cam }), duration: z.leg.duration * 1000, easingFunction: EasingFunction.EF_LINEAR })
+      }
       shot = walkShot(legPos(z.leg), door)
       if (stepLeg(z.leg, dt)) {
         z.stage = 1
         z.leg = beginLeg(dbl, LAUNCH_PAD, 2.5)
+        if (Tween.has(camera)) Tween.deleteFrom(camera)
         cut(z)
       }
     } else if (z.stage === 1) {
@@ -432,15 +445,14 @@ function system(dt: number) {
         return
       }
     }
-    // the shot itself moves linearly with the double (no per-frame chasing); only the first second
-    // after a cut is a smoothstep blend from where the camera was
+    z.camCur = shot
+    if (z.stage > 0 && z.blendT === 0) {
+      // the wide shot of the pod: a hard cut, then the camera does not move at all
+      const tr = Transform.getMutable(camera)
+      tr.position = shot.cam
+      tr.rotation = Quaternion.fromLookAt(shot.cam, shot.look)
+    }
     z.blendT += dt
-    const b = Math.min(1, z.blendT / BLEND_T)
-    const k = b * b * (3 - 2 * b)
-    z.camCur = { cam: Vector3.lerp(z.camFrom.cam, shot.cam, k), look: Vector3.lerp(z.camFrom.look, shot.look, k) }
-    const tr = Transform.getMutable(camera)
-    tr.position = z.camCur.cam
-    tr.rotation = Quaternion.fromLookAt(z.camCur.cam, z.camCur.look)
     zoomUi.white = 0
   } else if (z.phase === 'porch') {
     // dropped off on the lawn: beam down, walk up to the window, then the flight carries on inside
