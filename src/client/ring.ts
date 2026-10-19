@@ -132,8 +132,9 @@ function createAltar(): Entity {
 
 const WINDOW_BOTTOM = DOME_WALL * 0.2
 const WINDOW_TOP = DOME_WALL * 0.9
-const POSTER_H = WINDOW_TOP - WINDOW_BOTTOM - 0.3
-const POSTER_W = POSTER_H * 9 / 16 // portrait art and video keep their native aspect
+const POSTER_H = WINDOW_TOP - WINDOW_BOTTOM - 0.1 // fills the pane sill to head
+const PANE_CHORD = 2 * DOME_RADIUS * Math.sin(Math.PI / 32) // mullion to mullion, ~6.7 m
+const POSTER_W = PANE_CHORD - 0.6 // clear of the mullions; the art is stretched to the pane
 const POSTER_Y = (WINDOW_BOTTOM + WINDOW_TOP) / 2
 const RING_VIDEO_SECONDS = 27.6
 const MUSIC_VOLUME = 0.8 // what dome.ts starts the music video at
