@@ -156,7 +156,7 @@ export function makeWindowBuilders(geo, mats) {
         const u0 = 1 - j / colsPerSector
         const u1 = 1 - (j + 1) / colsPerSector
         const nm = inwardN((t0 + t1) / 2)
-        const B = [at(t0, r1, yB), at(t1, r1, yB), at(t1, r1, yT), at(t0, r1, yT)]
+        const B = [at(t0, r1, yF), at(t1, r1, yF), at(t1, r1, yT), at(t0, r1, yT)]
         face(back, B[0], B[1], B[2], B[3], nm, [
           [u0, BACK_V1],
           [u1, BACK_V1],
