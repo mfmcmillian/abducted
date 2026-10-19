@@ -17,7 +17,8 @@ import {
   VideoPlayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { CENTER, DOME_RADIUS, DOME_WALL, FORMATION, RING_VIDEO_URL } from '../layout'
+import { FORMATION, RING_VIDEO_URL } from '../layout'
+import { PANE_H, PANE_W, PANE_Y, paneMount } from './pane'
 import { room } from '../shared/messages'
 import { toast } from './ui'
 import { playAt, playGlobal, SFX } from './sfx'
@@ -130,12 +131,9 @@ function createAltar(): Entity {
   return plinth
 }
 
-const WINDOW_BOTTOM = DOME_WALL * 0.2
-const WINDOW_TOP = DOME_WALL * 0.9
-const POSTER_H = WINDOW_TOP - WINDOW_BOTTOM - 0.1 // fills the pane sill to head
-const PANE_CHORD = 2 * DOME_RADIUS * Math.sin(Math.PI / 32) // mullion to mullion, ~6.7 m
-const POSTER_W = PANE_CHORD - 0.6 // clear of the mullions; the art is stretched to the pane
-const POSTER_Y = (WINDOW_BOTTOM + WINDOW_TOP) / 2
+const POSTER_H = PANE_H
+const POSTER_W = PANE_W
+const POSTER_Y = PANE_Y
 const RING_VIDEO_SECONDS = 27.6
 const MUSIC_VOLUME = 0.8 // what dome.ts starts the music video at
 const DUCKED_VOLUME = 0.12
@@ -146,23 +144,8 @@ const DUCKED_VOLUME = 0.12
  * poster comes back when the clip ends (or when clicked again).
  */
 function createPoster(domeVideo: Entity) {
-  const c = FORMATION.SW
-  const dx = c.x - CENTER.x
-  const dz = c.z - CENTER.z
-  const panelStep = (Math.PI * 2) / 32 // 128 columns, a mullion every 4 => 32 panes of 11.25 degrees
-  const formationAngle = Math.atan2(dx, dz)
-  const panelAngle = (Math.round(formationAngle / panelStep - 0.5) + 0.5) * panelStep
-  const position = Vector3.create(
-    CENTER.x + Math.sin(panelAngle) * (DOME_RADIUS - 0.12),
-    0,
-    CENTER.z + Math.cos(panelAngle) * (DOME_RADIUS - 0.12)
-  )
-  const yaw = (Math.atan2(CENTER.x - position.x, CENTER.z - position.z) * 180) / Math.PI
-  // Plane fronts face local -Z, so add 180 to look toward the centre.
-  const facing = Quaternion.fromEulerDegrees(0, yaw + 180, 0)
-
   const root = engine.addEntity()
-  Transform.create(root, { parent: ROOT, position, rotation: facing })
+  Transform.create(root, { parent: ROOT, ...paneMount(FORMATION.SW) })
 
   // Thin frame sits flush against the window panel.
   const frame = engine.addEntity()

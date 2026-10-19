@@ -41,6 +41,7 @@ import { music } from './music'
 import { toast } from './ui'
 import { moo, playGlobal, SFX } from './sfx'
 import { FLOOR_Y, ROOT } from './root'
+import { PANE_H, PANE_W, PANE_Y, paneMount } from './pane'
 
 /** Permanent night: 01:00. */
 export function createNightSky() {
@@ -189,17 +190,12 @@ function label(parent: Entity, text: string, y: number, color: Color4, fontSize 
 
 /** Illustrated gate to another World. Walk through or click it to travel. */
 function createPortal(position: Vector3, world: string, title: string, texture: string) {
+  // Mounted on the window pane behind the formation, filling it mullion to mullion.
   const portal = engine.addEntity()
-  // Plane/Text fronts face local -Z. Rotate the portal's back toward the centre so its
-  // illustrated front is what players approaching from the dome centre see.
-  const facing = facingCenter(position)
-  Transform.create(portal, { parent: ROOT,
-    position,
-    rotation: Quaternion.multiply(facing, Quaternion.fromEulerDegrees(0, 180, 0))
-  })
+  Transform.create(portal, { parent: ROOT, ...paneMount(position) })
 
   const artwork = engine.addEntity()
-  Transform.create(artwork, { parent: portal, position: Vector3.create(0, 5, 0), scale: Vector3.create(7.5, 10, 0.12) })
+  Transform.create(artwork, { parent: portal, position: Vector3.create(0, PANE_Y, 0), scale: Vector3.create(PANE_W, PANE_H, 0.12) })
   MeshRenderer.setPlane(artwork)
   MeshCollider.setBox(artwork, ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER)
   Material.setBasicMaterial(artwork, {
@@ -213,7 +209,7 @@ function createPortal(position: Vector3, world: string, title: string, texture: 
   })
 
   const glow = engine.addEntity()
-  Transform.create(glow, { parent: portal, position: Vector3.create(0, 4.5, -1) })
+  Transform.create(glow, { parent: portal, position: Vector3.create(0, PANE_Y, -1.6) })
   LightSource.create(glow, {
     active: true,
     color: Color3.create(0.6, 0.3, 1),
@@ -231,9 +227,9 @@ function createPortal(position: Vector3, world: string, title: string, texture: 
     go
   )
 
-  // Walk-through trigger in front of the illustrated portal.
+  // Walk-up trigger in front of the pane, just inside the invisible barrier (4 m in from the glass).
   const trigger = engine.addEntity()
-  Transform.create(trigger, { parent: portal, position: Vector3.create(0, 3, -1), scale: Vector3.create(5.5, 6, 2) })
+  Transform.create(trigger, { parent: portal, position: Vector3.create(0, 3, -5.5), scale: Vector3.create(PANE_W, 6, 2) })
   TriggerArea.setBox(trigger)
   let armed = true
   triggerAreaEventsSystem.onTriggerEnter(trigger, () => {

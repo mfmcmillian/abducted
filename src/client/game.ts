@@ -39,6 +39,7 @@ import { GAME, RULESET } from '../shared/gameConfig'
 import { room } from '../shared/messages'
 import { hud, toast, type BeamState } from './ui'
 import { FLOOR_Y, ROOT, sceneToWorld } from './root'
+import { PANE_H, PANE_W, PANE_Y, paneMount } from './pane'
 
 /**
  * The cow game (TheCowCatchingGame PRD v1.0, P0).
@@ -1060,13 +1061,23 @@ function gameSystem(dt: number) {
 // Leaderboard panel in the dome
 
 function createLeaderboard() {
-  // Plane/Text fronts face local -Z, so turn that side toward the launch pad.
-  const yaw = (Math.atan2(LAUNCH_PAD.x - LEADERBOARD.x, LAUNCH_PAD.z - LEADERBOARD.z) * 180) / Math.PI + 180
+  // Mounted on the window pane behind LEADERBOARD, filling it. The board was laid out at
+  // 10.5 x 13.5 m, so the whole root is scaled down to the pane and lifted so the panel's
+  // centre lands at the pane's centre.
+  const BOARD_W = 10.5
+  const BOARD_H = 13.5
+  const k = Math.min(PANE_W / BOARD_W, PANE_H / BOARD_H)
+  const mount = paneMount(LEADERBOARD)
   const root = engine.addEntity()
-  Transform.create(root, { parent: ROOT, position: Vector3.clone(LEADERBOARD), rotation: Quaternion.fromEulerDegrees(0, yaw, 0) })
+  Transform.create(root, {
+    parent: ROOT,
+    position: Vector3.create(mount.position.x, PANE_Y - (BOARD_H / 2) * k, mount.position.z),
+    rotation: mount.rotation,
+    scale: Vector3.create(k, k, k)
+  })
 
   const panel = engine.addEntity()
-  Transform.create(panel, { parent: root, position: Vector3.create(0, 6.75, 0), scale: Vector3.create(10.5, 13.5, 0.2) })
+  Transform.create(panel, { parent: root, position: Vector3.create(0, BOARD_H / 2, 0), scale: Vector3.create(BOARD_W, BOARD_H, 0.2) })
   MeshRenderer.setPlane(panel)
   MeshCollider.setBox(panel, ColliderLayer.CL_PHYSICS)
   Material.setBasicMaterial(panel, {
