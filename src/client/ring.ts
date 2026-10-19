@@ -17,8 +17,8 @@ import {
   VideoPlayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { FORMATION, RING_VIDEO_URL } from '../layout'
-import { PANE_H, PANE_W, PANE_Y, paneMount } from './pane'
+import { CENTER, FORMATION, RING_VIDEO_URL } from '../layout'
+import { PANE_H, PANE_TOP, PANE_W, PANE_Y, paneMount } from './pane'
 import { room } from '../shared/messages'
 import { toast } from './ui'
 import { playAt, playGlobal, SFX } from './sfx'
@@ -69,15 +69,19 @@ function createAltar(): Entity {
     type: LightSource.Type.Point({})
   })
 
-  const anchor = engine.addEntity()
-  Transform.create(anchor, { parent: ROOT, position: Vector3.create(c.x, 0, c.z) })
   // Giant extruded 3D letters ("FREE TO CLAIM" / "CLICK ME!", models/text-claim.glb, built by
-  // tools/build-text.mjs at em = 1, readable side -Z like TextShape) hovering above everything.
-  const CTA_SCALE = 3.2 // em -> metres; the model is ~4.7 em wide, 1.9 em tall
+  // tools/build-text.mjs at em = 1, readable side -Z like TextShape) above the poster's window
+  // pane, facing the dome centre. Set 2.5 m in from the glass so it clears the low ceiling there.
+  const CTA_SCALE = 2.2 // em -> metres; the model is ~4.7 em wide, 1.9 em tall
+  const CTA_Y = PANE_TOP + 2.6
+  const mount = paneMount(c)
+  const inward = Vector3.normalize(Vector3.create(CENTER.x - mount.position.x, 0, CENTER.z - mount.position.z))
+  const anchor = engine.addEntity()
+  Transform.create(anchor, { parent: ROOT, position: Vector3.add(mount.position, Vector3.scale(inward, 2.5)), rotation: mount.rotation })
   const cta = engine.addEntity()
   Transform.create(cta, {
     parent: anchor,
-    position: Vector3.create(0, 6.6, 0),
+    position: Vector3.create(0, CTA_Y, 0),
     scale: Vector3.create(CTA_SCALE, CTA_SCALE, CTA_SCALE)
   })
   GltfContainer.create(cta, {
@@ -85,9 +89,8 @@ function createAltar(): Entity {
     visibleMeshesCollisionMask: ColliderLayer.CL_NONE,
     invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
   })
-  Billboard.create(cta, { billboardMode: BillboardMode.BM_Y })
   const ctaLight = engine.addEntity()
-  Transform.create(ctaLight, { parent: anchor, position: Vector3.create(0, 8.5, 0) })
+  Transform.create(ctaLight, { parent: anchor, position: Vector3.create(0, CTA_Y, -2) })
   LightSource.create(ctaLight, {
     active: true,
     color: Color3.create(0.45, 1, 0.4),
@@ -105,7 +108,7 @@ function createAltar(): Entity {
     const ct = Transform.getMutable(cta)
     const s = CTA_SCALE * (1 + glow * 0.04)
     ct.scale = Vector3.create(s, s, s)
-    ct.position.y = 6.6 + Math.sin(clock * 0.9) * 0.25
+    ct.position.y = CTA_Y + Math.sin(clock * 0.9) * 0.25
     LightSource.getMutable(ctaLight).intensity = 120 + glow * 120
     const t = Transform.getMutable(ring)
     t.rotation = Quaternion.fromEulerDegrees(0, clock * 45, 0)
