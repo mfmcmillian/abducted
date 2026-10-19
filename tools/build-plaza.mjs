@@ -72,7 +72,8 @@ for (const f of FORMATIONS) {
 const materials = [
   {
     name: 'GroundDark',
-    pbrMetallicRoughness: { baseColorFactor: [0.045, 0.085, 0.045, 1], metallicFactor: 0, roughnessFactor: 1 }
+    pbrMetallicRoughness: { baseColorFactor: [0, 1, 0, 1], metallicFactor: 0, roughnessFactor: 1 },
+    emissiveFactor: [0, 0.5, 0]
   },
   {
     name: 'CropFlat',
