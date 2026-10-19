@@ -7,6 +7,7 @@ import {
   Entity,
   Font,
   GltfContainer,
+  GltfNodeModifiers,
   InputAction,
   LightSource,
   Material,
@@ -54,6 +55,34 @@ export function createGround(): Entity {
     src: 'models/plaza.glb',
     visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS,
     invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
+  })
+  const spaceTexture = Material.Texture.Common({
+    src: 'images/space-stars.jpg',
+    wrapMode: TextureWrapMode.TWM_MIRROR,
+    filterMode: TextureFilterMode.TFM_BILINEAR,
+    tiling: { x: 6, y: 6 }
+  })
+  GltfNodeModifiers.create(plaza, {
+    modifiers: [{
+      path: 'SpaceGround',
+      material: {
+        material: {
+          $case: 'pbr',
+          pbr: {
+            texture: spaceTexture,
+            emissiveTexture: spaceTexture,
+            emissiveColor: Color3.White(),
+            emissiveIntensity: 1,
+            albedoColor: Color4.White(),
+            metallic: 0,
+            roughness: 1,
+            specularIntensity: 0,
+            castShadows: false
+          }
+        }
+      },
+      castShadows: false
+    }]
   })
 
   // Solid invisible bottom under the lifted dome. The rendered plaza stays unchanged,
