@@ -170,7 +170,6 @@ export function createDome(video: Entity): Entity {
       { path: 'DomeInner', material: ceilingMaterial, castShadows: false },
       { path: 'DomeOuter', material: ceilingMaterial, castShadows: false },
       { path: 'WallMachine', material: machineMaterial, castShadows: false },
-      { path: 'SpaceStars', material: starsMaterial, castShadows: false },
       ...backdrops,
       { path: 'Floor', material: floorMaterial, castShadows: false }
     ]

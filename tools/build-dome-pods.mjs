@@ -12,16 +12,14 @@
 import { MeshBuf } from './glb.mjs'
 
 export const POD_DEPTH = 39 // back wall at RADIUS + 39 = 73 m = layout SPACE_RADIUS + 30, where space.ts puts the planets
-export const POD_TOP = 40
+export const POD_TOP = 70
 export const WINDOW_RING_LO = 2 // sill at y = 4 (2 m rings)
 export const WINDOW_RING_HI = 9 // head at y = 18
 export const BACK_SECTORS = 8
 export const BACK_PICTURES = 4 // nodes SpaceBack0..3
 const MULLION_EVERY = 4 // columns (4 => 32 panes of ~12 m)
-const POD_BOTTOM = 0.05
+const POD_BOTTOM = -50
 const STAR_TILE = 36 // metres per starfield tile on the ring top/bottom
-const BACK_V0 = 0.105 // crop the 16:9 picture to the ~2.25:1 sector instead of stretching it
-const BACK_V1 = 0.895
 
 const DEFAULT_UV = [
   [0, 0],
@@ -126,23 +124,15 @@ export function makeWindowBuilders(geo, mats) {
     return [glass, frame]
   }
 
-  /** The star ring outside the windows: picture back walls, star top/bottom, outer hull. */
+  /** A deep star cylinder outside the windows. There is deliberately no horizontal floor. */
   function buildPods() {
     const backs = []
     for (let i = 0; i < BACK_PICTURES; i++) backs.push(new MeshBuf(`SpaceBack${i}`, mats.back))
-    const stars = new MeshBuf('SpaceStars', mats.stars)
     const hull = new MeshBuf('PodHull', mats.hull)
-    const r0 = RADIUS + SHELL_GAP + 0.02
     const r1 = RADIUS + POD_DEPTH
     const yB = POD_BOTTOM
-    const yF = POD_BOTTOM - 10 // ROOT lifts the scene 10 m; keep the outer space floor at its original world height
     const yT = POD_TOP
-    const suv = (p) => [p[0] / STAR_TILE, p[2] / STAR_TILE]
     const flip = (n) => n.map((c) => -c)
-    const both = (P, n, uv) => {
-      face(stars, P[0], P[1], P[2], P[3], n, uv)
-      face(hull, P[0], P[1], P[2], P[3], flip(n))
-    }
     const colsPerSector = SEGMENTS / BACK_SECTORS
     // Sector 0 is centred on north so the pictures sit on the cardinal/diagonal directions.
     const sectorStart = -colsPerSector / 2
@@ -152,25 +142,21 @@ export function makeWindowBuilders(geo, mats) {
         const col = sectorStart + s * colsPerSector + j
         const t0 = colTheta(col)
         const t1 = colTheta(col + 1)
-        // glTF is right-handed: facing outward, increasing theta is the viewer's LEFT, so u runs down.
-        const u0 = 1 - j / colsPerSector
-        const u1 = 1 - (j + 1) / colsPerSector
+        // Tile the stars across the full-height cylinder instead of stretching one image.
+        const u0 = (t0 * r1) / STAR_TILE
+        const u1 = (t1 * r1) / STAR_TILE
         const nm = inwardN((t0 + t1) / 2)
-        const B = [at(t0, r1, yF), at(t1, r1, yF), at(t1, r1, yT), at(t0, r1, yT)]
+        const B = [at(t0, r1, yB), at(t1, r1, yB), at(t1, r1, yT), at(t0, r1, yT)]
         face(back, B[0], B[1], B[2], B[3], nm, [
-          [u0, BACK_V1],
-          [u1, BACK_V1],
-          [u1, BACK_V0],
-          [u0, BACK_V0]
+          [u0, yB / STAR_TILE],
+          [u1, yB / STAR_TILE],
+          [u1, yT / STAR_TILE],
+          [u0, yT / STAR_TILE]
         ])
         face(hull, B[0], B[1], B[2], B[3], flip(nm))
-        const T = [at(t0, r0, yT), at(t1, r0, yT), at(t1, r1, yT), at(t0, r1, yT)]
-        both(T, [0, -1, 0], T.map(suv))
-        const F = [at(t0, r0, yF), at(t1, r0, yF), at(t1, r1, yF), at(t0, r1, yF)]
-        both(F, [0, 1, 0], F.map(suv))
       }
     }
-    return [...backs, stars, hull]
+    return [...backs, hull]
   }
 
   return { isHole, buildWall, buildWindows, buildPods }
