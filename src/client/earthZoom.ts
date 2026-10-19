@@ -58,7 +58,7 @@ import { authorPath, Frame, Path, toWorld, townFrames } from './zoomPath'
 const STATIC_HOLD = 0.6
 /** The dome music drops to this while the TV plays its copy of the video (dome.ts starts it at 0.8). */
 const MUSIC_VOLUME = 0.8
-const DUCKED_VOLUME = 0.1
+const DUCKED_VOLUME = 0 // the room's music is cut while the TV plays; back on when we return to the dome
 /** How long we will sit on the screen waiting for the video to finish before giving up (s). */
 const MAX_HOLD = 15 * 60
 

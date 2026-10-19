@@ -18,7 +18,8 @@ export const WINDOW_RING_HI = 9 // head at y = 18
 export const BACK_SECTORS = 8
 export const BACK_PICTURES = 4 // nodes SpaceBack0..3
 const MULLION_EVERY = 4 // columns (4 => 32 panes of ~12 m)
-const POD_BOTTOM = 0.05
+const POD_BOTTOM = 0.05 // the picture back wall starts here
+const POD_PIT = 30 // the star floor sits this far below the deck, so no "ground" shows through the glass
 const STAR_TILE = 36 // metres per starfield tile on the ring top/bottom
 const BACK_V0 = 0.105 // crop the 16:9 picture to the ~2.25:1 sector instead of stretching it
 const BACK_V1 = 0.895
@@ -136,7 +137,9 @@ export function makeWindowBuilders(geo, mats) {
     const r1 = RADIUS + POD_DEPTH
     const yB = POD_BOTTOM
     const yT = POD_TOP
+    const yF = -POD_PIT
     const suv = (p) => [p[0] / STAR_TILE, p[2] / STAR_TILE]
+    const wuv = (theta, y) => [(theta * r1) / STAR_TILE, y / STAR_TILE] // starfield on the lower back wall
     const flip = (n) => n.map((c) => -c)
     const both = (P, n, uv) => {
       face(stars, P[0], P[1], P[2], P[3], n, uv)
@@ -165,8 +168,14 @@ export function makeWindowBuilders(geo, mats) {
         face(hull, B[0], B[1], B[2], B[3], flip(nm))
         const T = [at(t0, r0, yT), at(t1, r0, yT), at(t1, r1, yT), at(t0, r1, yT)]
         both(T, [0, -1, 0], T.map(suv))
-        const F = [at(t0, r0, yB), at(t1, r0, yB), at(t1, r1, yB), at(t0, r1, yB)]
+        // below the picture: a plain starfield wall down to the pit floor, then the floor itself
+        const L = [at(t0, r1, yF), at(t1, r1, yF), at(t1, r1, yB), at(t0, r1, yB)]
+        both(L, nm, [wuv(t0, yF), wuv(t1, yF), wuv(t1, yB), wuv(t0, yB)])
+        const F = [at(t0, r0, yF), at(t1, r0, yF), at(t1, r1, yF), at(t0, r1, yF)]
         both(F, [0, 1, 0], F.map(suv))
+        // the deck side of the pit: the hull's inner skin from the deck down to the floor (starfield)
+        const I = [at(t0, r0, yF), at(t1, r0, yF), at(t1, r0, yB), at(t0, r0, yB)]
+        both(I, flip(nm), [wuv(t0, yF), wuv(t1, yF), wuv(t1, yB), wuv(t0, yB)])
       }
     }
     return [...backs, stars, hull]
