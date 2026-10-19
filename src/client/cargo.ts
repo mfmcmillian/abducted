@@ -25,6 +25,7 @@ import { KUDOS } from '../shared/gameConfig'
 import { room } from '../shared/messages'
 import { attachLoop, moo, playAt, playGlobal, SFX } from './sfx'
 import { kudosHud, toast } from './ui'
+import { burstExplosion, PALETTES, puffTrail } from './fx'
 
 /**
  * The kudos loop, dome side.
@@ -238,13 +239,74 @@ const PAD_DECK = 0.26 * PAD_SCALE // the cannon stands on the deck
 /** Where the disc's bottom centre sits in model space; the pad is placed so this lands on the floor at LAUNCHER. */
 const PAD_MODEL_CENTRE = Vector3.create(0.08, -0.33, -0.08)
 
+/**
+ * The cannon is three Meshy pieces (models/cannon-mount.glb, cannon-barrel.glb, cow-hopper.glb) on a
+ * little rig so they can move: the mount stands on the deck facing `out`, the barrel hangs off a
+ * pivot in the mount's yoke and tilts/recoils, the hopper sits behind the breech. Each `Fit` maps
+ * the raw Meshy model into rig space (barrel: tube along +Z with the muzzle at +Z, pivot at the
+ * origin; mount: bottom centre at the origin, yoke opening towards +Z; hopper: bottom centre at the
+ * origin, chute towards +Z). Measured in Blender on the raw Meshy output:
+ *   barrel 1.9 long along its +X (muzzle, the wider red ring, at +X), 0.7 thick, centred on its origin
+ *   mount 1.9 x 1.57 x 1.6, origin mid-height (bottom y -0.8), trunnion axle along X at y 0.16, pink disc facing +Z
+ *   hopper 1.9 x 1.56 x 1.79, origin mid-height (bottom y -0.89), bin opening at about y 0.5, lid hinged on the -Z side
+ */
+interface Fit {
+  rotation: Quaternion
+  scale: number
+  offset: Vector3 // rig-space translation applied after rotate+scale
+}
+const MOUNT_SCALE = 2.6
+const MOUNT_FIT: Fit = { rotation: Quaternion.fromEulerDegrees(0, 0, 0), scale: MOUNT_SCALE, offset: Vector3.create(0, 0.8 * MOUNT_SCALE, 0) }
+const PIVOT_H = (0.8 + 0.16) * MOUNT_SCALE // trunnion axle above the deck (rig m)
+const BARREL_SCALE = 3.6
+const BARREL_LEN = 1.9 * BARREL_SCALE // rig m, breech at -0.38 L, muzzle at +0.62 L
+// model +X -> rig +Z; the tube's centre sits 0.12 L ahead of the pivot and rests on top of the axle
+const BARREL_FIT: Fit = { rotation: Quaternion.fromEulerDegrees(0, -90, 0), scale: BARREL_SCALE, offset: Vector3.create(0, 0.5, 0.12 * BARREL_LEN) }
+const MUZZLE_AT = 0.62 * BARREL_LEN
+const REST_TILT = 38
+const FIRE_TILT = 52
+const HOPPER_SCALE = 1.6
+const HOPPER_FIT: Fit = { rotation: Quaternion.fromEulerDegrees(0, 0, 0), scale: HOPPER_SCALE, offset: Vector3.create(0, 0.89 * HOPPER_SCALE, 0) }
+const HOPPER_BACK = 4.0 // hopper centre behind the pivot, along -out (its front edge meets the breech)
+const HOPPER_TOP = (0.89 + 0.5) * HOPPER_SCALE // rig m above the deck, where the cow drops in
+
+let barrelRoot: Entity
+let pivot = Vector3.Zero()
+let out = Vector3.Forward()
+let hopperTop = Vector3.Zero()
+let cannonLight: Entity
+let hopperLight: Entity
+
+function fitted(parent: Entity, model: string, fit: Fit, clickable: boolean): Entity {
+  const e = engine.addEntity()
+  Transform.create(e, { parent, position: fit.offset, rotation: fit.rotation, scale: Vector3.create(fit.scale, fit.scale, fit.scale) })
+  GltfContainer.create(e, {
+    src: model,
+    visibleMeshesCollisionMask: clickable ? ColliderLayer.CL_PHYSICS | ColliderLayer.CL_POINTER : ColliderLayer.CL_PHYSICS,
+    invisibleMeshesCollisionMask: ColliderLayer.CL_NONE
+  })
+  return e
+}
+
+function dirAtTilt(tiltDeg: number) {
+  const t = (tiltDeg * Math.PI) / 180
+  return Vector3.create(out.x * Math.cos(t), Math.sin(t), out.z * Math.cos(t))
+}
+
+/** Points the barrel rig along `dir` (its +Z) and moves the muzzle with it. */
+function aimBarrel(dir: Vector3, recoil = 0) {
+  launchDir = dir
+  const t = Transform.getMutable(barrelRoot)
+  t.rotation = Quaternion.lookRotation(dir, Vector3.Up())
+  t.position = Vector3.subtract(pivot, Vector3.scale(dir, recoil))
+  muzzle = Vector3.add(t.position, Vector3.scale(dir, MUZZLE_AT))
+}
+
 function createLauncher() {
-  const out = Vector3.normalize(Vector3.create(LAUNCHER.x - CENTER.x, 0, LAUNCHER.z - CENTER.z))
-  const tilt = (38 * Math.PI) / 180
-  launchDir = Vector3.create(out.x * Math.cos(tilt), Math.sin(tilt), out.z * Math.cos(tilt))
-  const pivot = Vector3.create(LAUNCHER.x, PAD_DECK + 2.2, LAUNCHER.z)
-  const BARREL = 7.5
-  muzzle = Vector3.add(pivot, Vector3.scale(launchDir, BARREL / 2))
+  out = Vector3.normalize(Vector3.create(LAUNCHER.x - CENTER.x, 0, LAUNCHER.z - CENTER.z))
+  const deck = Vector3.create(LAUNCHER.x, PAD_DECK, LAUNCHER.z)
+  pivot = Vector3.create(LAUNCHER.x, PAD_DECK + PIVOT_H, LAUNCHER.z)
+  const facing = Quaternion.lookRotation(out, Vector3.Up())
 
   // the pad, ramp towards the middle of the dome (where you walk in from with a cow)
   const padRot = Quaternion.lookRotation(Vector3.scale(out, -1), Vector3.Up())
@@ -256,45 +318,29 @@ function createLauncher() {
   })
   GltfContainer.create(pad, { src: 'models/launch-pad.glb', visibleMeshesCollisionMask: ColliderLayer.CL_PHYSICS, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
 
-  const metal = { albedoColor: Color4.create(0.3, 0.32, 0.36, 1), emissiveColor: Color3.create(0.5, 0.2, 0.45), emissiveIntensity: 0.25, metallic: 0.7, roughness: 0.45 }
+  const mountRoot = engine.addEntity()
+  Transform.create(mountRoot, { position: deck, rotation: facing })
+  const mount = fitted(mountRoot, 'models/cannon-mount.glb', MOUNT_FIT, true)
 
-  const base = engine.addEntity()
-  Transform.create(base, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 0.6, LAUNCHER.z), scale: Vector3.create(4.4, 1.2, 4.4) })
-  MeshRenderer.setBox(base)
-  MeshCollider.setBox(base)
-  Material.setPbrMaterial(base, metal)
+  barrelRoot = engine.addEntity()
+  Transform.create(barrelRoot, { position: pivot })
+  const barrel = fitted(barrelRoot, 'models/cannon-barrel.glb', BARREL_FIT, true)
+  aimBarrel(dirAtTilt(REST_TILT))
 
-  const hopper = engine.addEntity()
-  Transform.create(hopper, { position: Vector3.subtract(Vector3.create(LAUNCHER.x, PAD_DECK + 2.0, LAUNCHER.z), Vector3.scale(out, 1.6)), scale: Vector3.create(2.4, 1.6, 2.4) })
-  MeshRenderer.setBox(hopper)
-  MeshCollider.setBox(hopper)
-  Material.setPbrMaterial(hopper, { albedoColor: Color4.create(0.06, 0.1, 0.08, 1), emissiveColor: Color3.create(0.35, 1, 0.45), emissiveIntensity: 0.5, metallic: 0.5, roughness: 0.5 })
+  const hopperRoot = engine.addEntity()
+  Transform.create(hopperRoot, { position: Vector3.subtract(deck, Vector3.scale(out, HOPPER_BACK)), rotation: facing })
+  const hopper = fitted(hopperRoot, 'models/cow-hopper.glb', HOPPER_FIT, true)
+  hopperTop = Vector3.add(Transform.get(hopperRoot).position, Vector3.create(0, HOPPER_TOP, 0))
 
-  const barrel = engine.addEntity()
-  Transform.create(barrel, { position: Vector3.add(pivot, Vector3.scale(launchDir, BARREL / 2 - 0.6)), rotation: alignY(launchDir), scale: Vector3.create(2.2, BARREL, 2.2) })
-  MeshRenderer.setCylinder(barrel, 1, 0.8)
-  MeshCollider.setCylinder(barrel, 1, 0.8)
-  Material.setPbrMaterial(barrel, metal)
-
-  const ringMuzzle = engine.addEntity()
-  Transform.create(ringMuzzle, { position: muzzle, rotation: alignY(launchDir), scale: Vector3.create(2.5, 0.35, 2.5) })
-  MeshRenderer.setCylinder(ringMuzzle)
-  Material.setPbrMaterial(ringMuzzle, { albedoColor: Color4.create(0.1, 0.02, 0.08, 1), emissiveColor: PINK, emissiveIntensity: 2, roughness: 0.3 })
-
-  const bands = [0.25, 0.55]
-  for (const f of bands) {
-    const band = engine.addEntity()
-    Transform.create(band, { position: Vector3.add(pivot, Vector3.scale(launchDir, BARREL * f - 0.6)), rotation: alignY(launchDir), scale: Vector3.create(2.4, 0.25, 2.4) })
-    MeshRenderer.setCylinder(band)
-    Material.setPbrMaterial(band, { albedoColor: Color4.create(0.1, 0.02, 0.08, 1), emissiveColor: PINK, emissiveIntensity: 1.2, roughness: 0.3 })
-  }
-
-  const light = engine.addEntity()
-  Transform.create(light, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 6, LAUNCHER.z) })
-  LightSource.create(light, { active: true, color: PINK, intensity: 900, range: 22, shadow: false, type: LightSource.Type.Point({}) })
+  cannonLight = engine.addEntity()
+  Transform.create(cannonLight, { position: Vector3.create(LAUNCHER.x, PAD_DECK + 6, LAUNCHER.z) })
+  LightSource.create(cannonLight, { active: true, color: PINK, intensity: 900, range: 22, shadow: false, type: LightSource.Type.Point({}) })
+  hopperLight = engine.addEntity()
+  Transform.create(hopperLight, { position: Vector3.add(hopperTop, Vector3.create(0, 1.5, 0)) })
+  LightSource.create(hopperLight, { active: true, color: Color3.create(0.4, 1, 0.55), intensity: 300, range: 10, shadow: false, type: LightSource.Type.Point({}) })
   // a low warm light so the deck, stripes and cannon read against the dark floor
   const deckLight = engine.addEntity()
-  Transform.create(deckLight, { position: Vector3.subtract(Vector3.create(LAUNCHER.x, PAD_DECK + 3, LAUNCHER.z), Vector3.scale(out, 4)) })
+  Transform.create(deckLight, { position: Vector3.subtract(Vector3.create(LAUNCHER.x, PAD_DECK + 3, LAUNCHER.z), Vector3.scale(out, 5)) })
   LightSource.create(deckLight, { active: true, color: Color3.create(1, 0.85, 0.7), intensity: 700, range: 16, shadow: false, type: LightSource.Type.Point({}) })
 
   // Giant pink 3D "DROP COWS / HERE" over the cannon (models/text-drop.glb from tools/build-text.mjs,
@@ -334,10 +380,24 @@ function createLauncher() {
     textAlign: TextAlignMode.TAM_MIDDLE_CENTER
   })
 
-  for (const target of [barrel, hopper, base]) {
-    pointerEventsSystem.onPointerDown({ entity: target, opts: { button: InputAction.IA_PRIMARY, hoverText: 'Load cow', maxDistance: 10 } }, onLaunchClick)
+  for (const target of [barrel, hopper, mount]) {
+    pointerEventsSystem.onPointerDown({ entity: target, opts: { button: InputAction.IA_PRIMARY, hoverText: 'Load cow', maxDistance: 12 } }, onLaunchClick)
   }
+  engine.addSystem(launchSequenceSystem)
 }
+
+// ---- load, charge, fire ---------------------------------------------------------------------
+//
+// Only the player who clicks sees the loading: their carried cow hops into the hopper, the barrel
+// lifts and shakes while it charges, then the shot is sent to the server; everyone sees the
+// flight (cowLaunched) leave the muzzle.
+
+const LOAD_T = 0.9
+const CHARGE_T = 1.5
+const RECOIL_T = 1.3
+const SEQ_T = LOAD_T + CHARGE_T + RECOIL_T
+
+let seq: { t: number; cow: Entity | null; from: Vector3; fired: boolean } | null = null
 
 function onLaunchClick() {
   if (!state.carrying) {
@@ -345,11 +405,81 @@ function onLaunchClick() {
     playGlobal(SFX.uiClick, 0.6)
     return
   }
+  if (seq) return // one at a time
+  const player = Transform.getOrNull(engine.PlayerEntity)?.position ?? hopperTop
   dropCarried()
-  playAt(SFX.launch, muzzle, 1)
-  room.send('cowLaunch', { v: 1 })
+  const cow = engine.addEntity()
+  Transform.create(cow, { position: Vector3.add(player, Vector3.create(0, 2.2, 0)), scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
+  cowModel(cow, false)
+  moo(hopperTop, 0.8)
+  seq = { t: 0, cow, from: Vector3.add(player, Vector3.create(0, 2.2, 0)), fired: false }
   refreshPen()
   pushHud()
+}
+
+const easeInOut = (x: number) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2)
+
+function launchSequenceSystem(dt: number) {
+  if (!seq) return
+  seq.t += dt
+  const t = seq.t
+  const light = LightSource.getMutable(cannonLight)
+  const hl = LightSource.getMutable(hopperLight)
+
+  if (t < LOAD_T) {
+    // the cow hops in an arc from your hands into the hopper and shrinks away into it
+    const u = t / LOAD_T
+    const p = lerp(seq.from, hopperTop, u)
+    p.y += Math.sin(u * Math.PI) * 2.5
+    const tr = Transform.getMutable(seq.cow!)
+    tr.position = p
+    tr.rotation = Quaternion.fromEulerDegrees(u * 360, 0, u * 180)
+    const k = CARRY_SCALE * (u < 0.8 ? 1 : 1 - (u - 0.8) / 0.2)
+    tr.scale = Vector3.create(k, k, k)
+    hl.intensity = 300 + u * 900
+    return
+  }
+  if (seq.cow) {
+    engine.removeEntity(seq.cow)
+    seq.cow = null
+    puffTrail(hopperTop, Color3.create(0.5, 1, 0.6), 1.2)
+    playAt(SFX.beamCharge, pivot, 0.9)
+  }
+  const c = t - LOAD_T
+  if (c < CHARGE_T) {
+    // barrel lifts to firing angle and shakes harder as it charges
+    const u = easeInOut(Math.min(1, c / CHARGE_T))
+    const dir = dirAtTilt(REST_TILT + (FIRE_TILT - REST_TILT) * u)
+    aimBarrel(dir)
+    const jitter = 0.08 * u
+    const bt = Transform.getMutable(barrelRoot)
+    bt.position = Vector3.add(bt.position, Vector3.create(rand(-jitter, jitter), rand(-jitter, jitter), rand(-jitter, jitter)))
+    light.intensity = 900 + 2600 * u
+    hl.intensity = 1200 - 900 * u
+    if (Math.random() < 0.3) puffTrail(Vector3.add(muzzle, Vector3.create(rand(-0.5, 0.5), rand(-0.5, 0.5), rand(-0.5, 0.5))), Color3.create(1, 0.5, 0.85), 0.5)
+    return
+  }
+  if (!seq.fired) {
+    seq.fired = true
+    aimBarrel(dirAtTilt(FIRE_TILT))
+    room.send('cowLaunch', { v: 1 })
+    playAt(SFX.launch, muzzle, 1)
+    burstExplosion(muzzle, 1.6, PALETTES.cow)
+  }
+  const r = c - CHARGE_T
+  if (r < RECOIL_T) {
+    // kick back along the barrel, settle, and ease back down to the rest angle
+    const u = r / RECOIL_T
+    const recoil = 1.1 * Math.exp(-u * 6) * Math.max(0, 1 - u * 2.5)
+    const settle = easeInOut(Math.min(1, Math.max(0, (u - 0.25) / 0.75)))
+    aimBarrel(dirAtTilt(FIRE_TILT + (REST_TILT - FIRE_TILT) * settle), recoil)
+    light.intensity = 3500 - 2600 * u
+    hl.intensity = 300
+    return
+  }
+  aimBarrel(dirAtTilt(REST_TILT))
+  light.intensity = 900
+  seq = null
 }
 
 function formatTime(seconds: number) {
