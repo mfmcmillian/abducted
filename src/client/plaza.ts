@@ -62,9 +62,9 @@ export function createGround(): Entity {
   Transform.create(bottom, {
     parent: ROOT,
     position: Vector3.create(CENTER.x, -0.25, CENTER.z),
-    scale: Vector3.create(DOME_RADIUS * 2, 0.5, DOME_RADIUS * 2)
+    scale: Vector3.create(DOME_RADIUS, 0.5, DOME_RADIUS)
   })
-  MeshCollider.setBox(bottom, ColliderLayer.CL_PHYSICS)
+  MeshCollider.setCylinder(bottom, 1, 1, ColliderLayer.CL_PHYSICS)
 
   // A player already below the lifted floor will not be pushed up by a collider
   // appearing above them. Rescue them to the same X/Z on the dome floor.
@@ -74,6 +74,9 @@ export function createGround(): Entity {
     if (rescueCooldown > 0) return
     const player = Transform.getOrNull(engine.PlayerEntity)
     if (!player || player.position.y >= FLOOR_Y - 1) return
+    const dx = player.position.x - CENTER.x
+    const dz = player.position.z - CENTER.z
+    if (dx * dx + dz * dz > DOME_RADIUS * DOME_RADIUS) return
     rescueCooldown = 2
     void movePlayerTo({
       newRelativePosition: Vector3.create(player.position.x, FLOOR_Y + 0.2, player.position.z)
