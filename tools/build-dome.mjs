@@ -33,7 +33,8 @@ const OUT = resolve(__dirname, '..', 'models', 'dome.glb')
 // ---- parameters -----------------------------------------------------------
 export const RADIUS = 43 // inner radius (m); centred on the 192 m plot, the star ring reaches 73 m
 const SHELL_GAP = 0.08 // outer shell = RADIUS + SHELL_GAP
-export const WALL_HEIGHT = 20 // vertical wall before the hemispherical cap (apex at 63 m)
+export const WALL_HEIGHT = 14 // vertical wall before the cap
+export const CAP_RATIO = 0.65 // cap height as a fraction of the radius (a flattened dome; apex at 14 + 0.65 * 43 = 42 m)
 const SEGMENTS = 128 // around (must be even: two video wraps)
 const WALL_RINGS = 10 // 2 m each
 const CAP_RINGS = 24
@@ -45,7 +46,7 @@ const FLOOR_Y = 0.03
 
 const TAU = Math.PI * 2
 const HALF = SEGMENTS / 2
-const CAP_ARC = (Math.PI / 2) * RADIUS
+const CAP_ARC = (Math.PI / 2) * RADIUS * CAP_RATIO
 const TOTAL_ARC = WALL_HEIGHT + CAP_ARC
 const RING_COUNT = WALL_RINGS + CAP_RINGS // number of quad rows
 
@@ -65,8 +66,8 @@ function profile(k, radius) {
   const a = t * (Math.PI / 2)
   return {
     r: radius * Math.cos(a),
-    y: WALL_HEIGHT + radius * Math.sin(a),
-    v: (WALL_HEIGHT + a * radius) / TOTAL_ARC
+    y: WALL_HEIGHT + radius * CAP_RATIO * Math.sin(a),
+    v: (WALL_HEIGHT + a * radius * CAP_RATIO) / TOTAL_ARC
   }
 }
 
@@ -98,7 +99,10 @@ function buildShell(name, radius, inward, opts = {}) {
         else {
           const t = (k - WALL_RINGS) / CAP_RINGS
           const a = t * (Math.PI / 2)
-          n = [Math.cos(a) * sx, Math.sin(a), Math.cos(a) * cz]
+          // ellipse normal: (cos a / R, sin a / H) with H = R * CAP_RATIO
+          const ny = Math.sin(a) / CAP_RATIO
+          const len = Math.hypot(Math.cos(a), ny) || 1
+          n = [(Math.cos(a) / len) * sx, ny / len, (Math.cos(a) / len) * cz]
         }
         if (inward) n = n.map((c) => -c)
         colVerts.push(m.vertex(p, n, uv ? uv({ col, k, u, v, y, theta }) : [u, 1 - v]))
@@ -249,4 +253,4 @@ const total = parts.reduce((n, p) => n + p.triCount, 0)
 console.log(`wrote ${OUT} (${(glb.length / 1024).toFixed(1)} KB)`)
 console.log(`tris: ${parts.map((p) => `${p.name} ${p.triCount}`).join(', ')} => ${total}`)
 if (!CLOSED) console.log(`door: cols ${doorStart}..${doorEnd - 1}, ${(DOOR_RINGS / WALL_RINGS) * WALL_HEIGHT} m tall`)
-console.log(`apex y=${(WALL_HEIGHT + RADIUS).toFixed(2)}`)
+console.log(`apex y=${(WALL_HEIGHT + RADIUS * CAP_RATIO).toFixed(2)}`)

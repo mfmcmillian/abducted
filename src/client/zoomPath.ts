@@ -221,8 +221,8 @@ export function authorPath(shot: Shot): Path {
   const keys: KeyIn[] = [
     { name: 'start', q: W(start), look: W(Vector3.add(start, Vector3.scale(forward, 40))), focus: earth, tension: 1 },
     { name: 'approach', q: W(Vector3.add(start, Vector3.scale(Vector3.normalize(Vector3.subtract(far, start)), Vector3.distance(start, far) * 0.55))), look: earth, minDt: 3 },
-    { name: 'inside', q: W(beside(onLine(glassD + 4, 11.5), 6)), look: earth, minDt: 1.8 }, // inside, at window height (the deck is close: not too quick)
-    { name: 'glass', q: W(beside(onLine(glassD - 3, 14), 13)), look: earth }, // through the glass (glint), beside the planet
+    { name: 'inside', q: W(beside(onLine(glassD + 4, 8), 6)), look: earth, minDt: 1.8 }, // inside, at window height (the deck is close: not too quick)
+    { name: 'glass', q: W(beside(onLine(glassD - 3, 9.5), 13)), look: earth }, // through the glass (glint), beside the planet
     { name: 'top', q: W(beside(Vector3.add(Vector3.add(E, Vector3.scale(toPlayer, 3)), Vector3.scale(up, 15.5)), 5)), look: W(Vector3.add(E, Vector3.scale(up, 2))) },
     // from here on the heading stays +Z. Out of the clouds the downtown is in view ahead; the dive
     // steepens onto the patch (the street set at 1/4) until it fills the frame.
