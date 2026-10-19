@@ -192,6 +192,11 @@ function buildSets() {
       { path: 'Path', material: pbr('images/earth-path.png'), castShadows: false }
     ]
   })
+  // backdrop: a big painted sky-and-skyline flat standing behind the houses, facing the street
+  const backdrop = engine.addEntity()
+  Transform.create(backdrop, { parent: town, position: Vector3.create(-1, GROUND_Y + 13.5, 14), scale: Vector3.create(64, 36, 1) })
+  MeshRenderer.setPlane(backdrop)
+  Material.setPbrMaterial(backdrop, { texture: Material.Texture.Common({ src: 'images/earth-backdrop.jpg' }), albedoColor: Color4.White(), emissiveTexture: Material.Texture.Common({ src: 'images/earth-backdrop.jpg' }), emissiveColor: Color3.White(), emissiveIntensity: 0.9, metallic: 0, roughness: 1, specularIntensity: 0, castShadows: false })
   // porch light: makes the picture window read as glass before we go through it
   light(town, Vector3.create(WINDOW_C.x, WINDOW_C.y + 0.6, WINDOW_C.z - 1.6), Color3.create(1, 0.85, 0.6), 220, 6, true)
   prop(town, 'house', 0, GROUND_Y, 0, HOUSE_SCALE, 180)
