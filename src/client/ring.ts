@@ -17,7 +17,7 @@ import {
   VideoPlayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { CENTER, FORMATION, RING_VIDEO_URL } from '../layout'
+import { CENTER, DOME_RADIUS, DOME_WALL, FORMATION, RING_VIDEO_URL } from '../layout'
 import { room } from '../shared/messages'
 import { toast } from './ui'
 import { playAt, playGlobal, SFX } from './sfx'
@@ -130,14 +130,17 @@ function createAltar(): Entity {
   return plinth
 }
 
-const POSTER_W = 3.6 // 9:16 portrait, same as the explainer video
-const POSTER_H = 6.4
+const WINDOW_BOTTOM = DOME_WALL * 0.2
+const WINDOW_TOP = DOME_WALL * 0.9
+const POSTER_H = WINDOW_TOP - WINDOW_BOTTOM - 0.3
+const POSTER_W = POSTER_H * 9 / 16 // portrait art and video keep their native aspect
+const POSTER_Y = (WINDOW_BOTTOM + WINDOW_TOP) / 2
 const RING_VIDEO_SECONDS = 27.6
 const MUSIC_VOLUME = 0.8 // what dome.ts starts the music video at
 const DUCKED_VOLUME = 0.12
 
 /**
- * Poster behind the altar (further from the dome centre, facing it). Click it and the
+ * Poster integrated into the window panel behind the altar. Click it and the
  * poster becomes a screen playing the ring explainer; the music ducks meanwhile and the
  * poster comes back when the clip ends (or when clicked again).
  */
@@ -146,7 +149,11 @@ function createPoster(domeVideo: Entity) {
   const dx = c.x - CENTER.x
   const dz = c.z - CENTER.z
   const len = Math.hypot(dx, dz)
-  const position = Vector3.create(c.x + (dx / len) * 7, 0, c.z + (dz / len) * 7)
+  const position = Vector3.create(
+    CENTER.x + (dx / len) * (DOME_RADIUS - 0.12),
+    0,
+    CENTER.z + (dz / len) * (DOME_RADIUS - 0.12)
+  )
   const yaw = (Math.atan2(CENTER.x - position.x, CENTER.z - position.z) * 180) / Math.PI
   // Plane fronts face local -Z, so add 180 to look toward the centre.
   const facing = Quaternion.fromEulerDegrees(0, yaw + 180, 0)
@@ -154,11 +161,11 @@ function createPoster(domeVideo: Entity) {
   const root = engine.addEntity()
   Transform.create(root, { parent: ROOT, position, rotation: facing })
 
-  // Dark frame with a soft gold rim behind the poster.
+  // Thin frame sits flush against the window panel.
   const frame = engine.addEntity()
   Transform.create(frame, {
     parent: root,
-    position: Vector3.create(0, POSTER_H / 2 + 0.3, 0.08),
+    position: Vector3.create(0, POSTER_Y, 0.08),
     scale: Vector3.create(POSTER_W + 0.5, POSTER_H + 0.5, 0.12)
   })
   MeshRenderer.setBox(frame)
@@ -174,7 +181,7 @@ function createPoster(domeVideo: Entity) {
   const screen = engine.addEntity()
   Transform.create(screen, {
     parent: root,
-    position: Vector3.create(0, POSTER_H / 2 + 0.3, 0),
+    position: Vector3.create(0, POSTER_Y, 0),
     scale: Vector3.create(POSTER_W, POSTER_H, 1)
   })
   MeshRenderer.setPlane(screen)
@@ -208,7 +215,7 @@ function createPoster(domeVideo: Entity) {
   showPoster()
 
   const light = engine.addEntity()
-  Transform.create(light, { parent: root, position: Vector3.create(0, POSTER_H / 2 + 0.3, -1.6) })
+  Transform.create(light, { parent: root, position: Vector3.create(0, POSTER_Y, -1.6) })
   LightSource.create(light, {
     active: true,
     color: Color3.create(1, 0.85, 0.55),
