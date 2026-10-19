@@ -41,7 +41,7 @@ import { burstExplosion, PALETTES, puffTrail } from './fx'
 const TAU = Math.PI * 2
 const R = DOME_RADIUS
 const PEN_COW_SCALE = 1.3
-const CARRY_SCALE = 0.45
+const CARRY_SCALE = PEN_COW_SCALE
 const FLOAT_SCALE = 1.6
 const FLOAT_SPEED = 0.35 // m/s along the ring
 const FLIGHT_SECONDS = 3.2
@@ -212,7 +212,7 @@ function pickUp(cow: PenCow) {
   carrier = engine.addEntity()
   AvatarAttach.create(carrier, { anchorPointId: AvatarAnchorPointType.AAPT_RIGHT_HAND })
   held = engine.addEntity()
-  Transform.create(held, { parent: carrier, position: Vector3.create(0, 0.05, 0.1), rotation: Quaternion.fromEulerDegrees(0, 90, 90), scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
+  Transform.create(held, { parent: carrier, position: Vector3.create(0, 0.1, 0.3), rotation: Quaternion.fromEulerDegrees(0, 90, 90), scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
   cowModel(held, false)
   refreshPen()
   pushHud()
