@@ -163,7 +163,10 @@ function buildSets() {
   const sky = engine.addEntity()
   Transform.create(sky, { parent: setRoot })
   GltfContainer.create(sky, { src: 'models/earth-sky.glb', ...NO_COLLIDE })
-  GltfNodeModifiers.create(sky, { modifiers: [{ path: 'Sky', material: pbr('images/earth-sky.png', { emissive: 0.95, emissiveOnly: true }), castShadows: false }] })
+  // unlit: the explorer ignores emissiveTexture in node modifiers, which left the sky a flat white
+  GltfNodeModifiers.create(sky, {
+    modifiers: [{ path: 'Sky', material: { material: { $case: 'unlit' as const, unlit: { texture: tex('images/earth-sky.png'), diffuseColor: Color4.White(), castShadows: false } } }, castShadows: false }]
+  })
   // daylight: a warm "sun" high on the +Z side and a cool fill (shared by every layer)
   light(setRoot, Vector3.create(5, 9, -8), Color3.create(1, 0.96, 0.85), 2600, 40)
   light(setRoot, Vector3.create(-6, 5, 6), Color3.create(0.7, 0.8, 1), 600, 26)
