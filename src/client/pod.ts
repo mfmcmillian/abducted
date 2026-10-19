@@ -78,6 +78,7 @@ export function createPod(board: () => void) {
   Transform.create(ringLight, { parent: root, position: Vector3.create(0, 0.6, 0.3 * POD_SCALE) })
   LightSource.create(ringLight, { active: true, color: GREEN, intensity: 250, range: 6, shadow: false, type: LightSource.Type.Point({}) })
   setHum = attachLoop(root, SFX.beamHum, 0.1)
+  createDressing(root, yaw)
 
   // Approach zone: the pod invites you once per visit.
   const near = engine.addEntity()
@@ -103,7 +104,119 @@ export function createPod(board: () => void) {
   triggerAreaEventsSystem.onTriggerExit(inside, () => (pod.inside = false))
 
   engine.addSystem(podSystem)
+  engine.addSystem(dressingSystem)
   return root
+}
+
+// ---- dressing: pulsing green interior + animated coolant packs on the hull ----
+const CYAN = Color3.create(0.3, 0.95, 1)
+const glowEntities: { entity: Entity; phase: number; alpha: number; color: Color3 }[] = []
+const fans: Entity[] = []
+const vents: { pos: Vector3; next: number }[] = []
+let dressClock = 0
+let dressTick = 0
+
+function glow(entity: Entity, color: Color3, alpha: number, phase: number) {
+  glowEntities.push({ entity, phase, alpha, color })
+  Material.setPbrMaterial(entity, {
+    albedoColor: Color4.create(color.r, color.g, color.b, alpha),
+    emissiveColor: color,
+    emissiveIntensity: 2,
+    transparencyMode: alpha < 1 ? MaterialTransparencyMode.MTM_ALPHA_BLEND : MaterialTransparencyMode.MTM_OPAQUE,
+    castShadows: false
+  })
+}
+
+function createDressing(root: Entity, yaw: number) {
+  const S = POD_SCALE
+  // Interior: glowing floor disc, ceiling disc and three wall strips that breathe green.
+  const floor = engine.addEntity()
+  Transform.create(floor, { parent: root, position: Vector3.create(0, 0.06, 0), scale: Vector3.create(0.56 * S, 0.08, 0.56 * S) })
+  MeshRenderer.setCylinder(floor)
+  glow(floor, GREEN, 0.85, 0)
+  const ceiling = engine.addEntity()
+  Transform.create(ceiling, { parent: root, position: Vector3.create(0, (0.474 - POD_FLOOR) * S - 0.1, 0), scale: Vector3.create(0.5 * S, 0.08, 0.5 * S) })
+  MeshRenderer.setCylinder(ceiling)
+  glow(ceiling, GREEN, 0.85, 0.5)
+  for (let i = 0; i < 3; i++) {
+    const a = Math.PI + ((i - 1) * Math.PI) / 2.2 // on the back half of the inner wall
+    const strip = engine.addEntity()
+    Transform.create(strip, {
+      parent: root,
+      position: Vector3.create(Math.sin(a) * 0.29 * S, 0.55 * S, Math.cos(a) * 0.29 * S),
+      rotation: Quaternion.fromEulerDegrees(0, (a * 180) / Math.PI, 0),
+      scale: Vector3.create(0.05 * S, 0.8 * S, 0.02 * S)
+    })
+    MeshRenderer.setBox(strip)
+    glow(strip, GREEN, 0.9, 1 + i * 0.7)
+  }
+
+  // Exterior: four coolant packs clamped to the hull, each a housing, a glowing tank, a spinning fan and a vent.
+  const rad = (deg: number) => (deg * Math.PI) / 180
+  for (const deg of [-125, -65, 65, 125]) {
+    const a = rad(deg) + Math.PI // measured from the back (door is +Z)
+    const r = 0.4 * S
+    const pack = engine.addEntity()
+    Transform.create(pack, {
+      parent: root,
+      position: Vector3.create(Math.sin(a) * r, 0.45 * S, Math.cos(a) * r),
+      rotation: Quaternion.fromEulerDegrees(0, (a * 180) / Math.PI, 0)
+    })
+    const housing = engine.addEntity()
+    Transform.create(housing, { parent: pack, position: Vector3.create(0, 0, 0.06 * S), scale: Vector3.create(0.16 * S, 0.5 * S, 0.12 * S) })
+    MeshRenderer.setBox(housing)
+    Material.setPbrMaterial(housing, { albedoColor: Color4.create(0.08, 0.1, 0.11, 1), metallic: 0.9, roughness: 0.35, castShadows: false })
+    const tank = engine.addEntity()
+    Transform.create(tank, { parent: pack, position: Vector3.create(0, 0, 0.13 * S), scale: Vector3.create(0.09 * S, 0.42 * S, 0.09 * S) })
+    MeshRenderer.setCylinder(tank)
+    glow(tank, CYAN, 0.7, deg / 40)
+    const fan = engine.addEntity()
+    Transform.create(fan, { parent: pack, position: Vector3.create(0, 0.3 * S, 0.1 * S), scale: Vector3.create(0.12 * S, 0.012 * S, 0.12 * S) })
+    MeshRenderer.setCylinder(fan)
+    Material.setPbrMaterial(fan, { albedoColor: Color4.create(0.6, 0.65, 0.7, 1), metallic: 1, roughness: 0.2, castShadows: false })
+    fans.push(fan)
+    const blade = engine.addEntity()
+    Transform.create(blade, { parent: fan, scale: Vector3.create(1.9, 1, 0.12) })
+    MeshRenderer.setBox(blade)
+    Material.setPbrMaterial(blade, { albedoColor: Color4.create(0.2, 0.22, 0.25, 1), metallic: 1, roughness: 0.3, castShadows: false })
+    const blade2 = engine.addEntity()
+    Transform.create(blade2, { parent: fan, rotation: Quaternion.fromEulerDegrees(0, 90, 0), scale: Vector3.create(1.9, 1, 0.12) })
+    MeshRenderer.setBox(blade2)
+    Material.setPbrMaterial(blade2, { albedoColor: Color4.create(0.2, 0.22, 0.25, 1), metallic: 1, roughness: 0.3, castShadows: false })
+    // vent position in scene space, for steam puffs
+    const lx = Math.sin(a) * (r + 0.1 * S), lz = Math.cos(a) * (r + 0.1 * S)
+    const wy = rad(yaw)
+    vents.push({ pos: Vector3.create(LAUNCH_PAD.x + lx * Math.cos(wy) + lz * Math.sin(wy), 0.78 * S, LAUNCH_PAD.z - lx * Math.sin(wy) + lz * Math.cos(wy)), next: Math.random() * 3 })
+  }
+}
+
+function dressingSystem(dt: number) {
+  dressClock += dt
+  const charging = pod.state === 'charging'
+  const spin = charging ? 1400 : 420
+  for (const fan of fans) {
+    const t = Transform.getMutable(fan)
+    t.rotation = Quaternion.multiply(t.rotation, Quaternion.fromEulerDegrees(0, spin * dt, 0))
+  }
+  for (const v of vents) {
+    v.next -= dt
+    if (v.next <= 0) {
+      v.next = charging ? 0.25 : 1.8 + Math.random() * 2.5
+      for (let i = 0; i < 3; i++) puffTrail(Vector3.create(v.pos.x, v.pos.y + i * 0.3, v.pos.z), Color3.create(0.85, 1, 1), 0.7)
+    }
+  }
+  dressTick += dt
+  if (dressTick < 0.08) return
+  dressTick = 0
+  const rate = charging ? 9 : 2.4
+  for (const g of glowEntities) {
+    const k = 0.5 + Math.sin(dressClock * rate + g.phase) * 0.5
+    const m = Material.getMutable(g.entity)
+    if (m.material?.$case === 'pbr') {
+      m.material.pbr.emissiveIntensity = 1 + k * (charging ? 7 : 3.5)
+      m.material.pbr.albedoColor = Color4.create(g.color.r, g.color.g, g.color.b, g.alpha * (0.7 + 0.3 * k))
+    }
+  }
 }
 
 /** World-space point above the pod floor, for spatial sounds and sparks. */
