@@ -302,10 +302,22 @@ function fitted(parent: Entity, model: string, fit: Fit, clickable: boolean): En
   return e
 }
 
-function dirAtTilt(tiltDeg: number) {
+function dirAtTilt(tiltDeg: number, yawDeg = 0) {
   const t = (tiltDeg * Math.PI) / 180
-  return Vector3.create(out.x * Math.cos(t), Math.sin(t), out.z * Math.cos(t))
+  const y = (yawDeg * Math.PI) / 180
+  // yaw swings the horizontal part of the aim about the vertical axis
+  const ox = out.x * Math.cos(y) + out.z * Math.sin(y)
+  const oz = out.z * Math.cos(y) - out.x * Math.sin(y)
+  return Vector3.create(ox * Math.cos(t), Math.sin(t), oz * Math.cos(t))
 }
+
+// Idle: the cannon slowly scans the windows, breathes in tilt, and its glow pulses, so it
+// reads as a live machine while nobody is loading it. The sweep eases out when a shot starts.
+let idleClock = 0
+const IDLE_YAW = 14
+const IDLE_TILT = 3
+const idleYaw = () => Math.sin(idleClock * 0.45) * IDLE_YAW
+const idleTilt = () => Math.sin(idleClock * 0.9 + 1) * IDLE_TILT
 
 const PORTAL_DIST = 6 // metres past the muzzle
 /** Where the launch portal opens for a shot along `dir`. */
@@ -443,7 +455,15 @@ function onLaunchClick() {
 const easeInOut = (x: number) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2)
 
 function launchSequenceSystem(dt: number) {
-  if (!seq) return
+  idleClock += dt
+  if (!seq) {
+    if (!barrelRoot) return
+    aimBarrel(dirAtTilt(REST_TILT + idleTilt(), idleYaw()))
+    LightSource.getMutable(cannonLight).intensity = 900 + Math.sin(idleClock * 1.7) * 250
+    LightSource.getMutable(hopperLight).intensity = 300 + Math.sin(idleClock * 2.3 + 2) * 120
+    if (Math.random() < dt * 0.35) puffTrail(hopperTop, Color3.create(0.5, 1, 0.6), 0.5)
+    return
+  }
   seq.t += dt
   const t = seq.t
   const light = LightSource.getMutable(cannonLight)
@@ -475,7 +495,7 @@ function launchSequenceSystem(dt: number) {
   if (c < CHARGE_T) {
     // barrel lifts to firing angle and shakes harder as it charges
     const u = easeInOut(Math.min(1, c / CHARGE_T))
-    const dir = dirAtTilt(REST_TILT + (FIRE_TILT - REST_TILT) * u)
+    const dir = dirAtTilt(REST_TILT + idleTilt() * (1 - u) + (FIRE_TILT - REST_TILT) * u, idleYaw() * (1 - u))
     aimBarrel(dir)
     const jitter = 0.08 * u
     const bt = Transform.getMutable(barrelRoot)
