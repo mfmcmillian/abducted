@@ -63,7 +63,7 @@ function initClient() {
   createCowGame()
   createCargoLoop()
   createCosmos()
-  createRadio()
+  createRadio(video)
   createSpaceBattles()
   createEarthZoom(video)
 }

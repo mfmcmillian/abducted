@@ -15,7 +15,8 @@ import {
   pointerEventsSystem,
   TextAlignMode,
   TextShape,
-  Transform
+  Transform,
+  VideoPlayer
 } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { CENTER, SPAWN } from '../layout'
@@ -39,8 +40,12 @@ const RADIO_SCALE = 1.2
 const RADIO_H = 1.161 * RADIO_SCALE
 const AMBER = Color3.create(1, 0.7, 0.25)
 const NAME: Record<'dale' | 'tammy', string> = { dale: 'Dale', tammy: 'Tammy' }
+const MUSIC_VOLUME = 0.8 // what dome.ts starts the music video at
+const DUCKED_VOLUME = 0.08 // the room's music while an episode plays
 
 let radio: Entity
+let speaker: Entity // dedicated emitter: the episode plays from here, spatial, at the set
+let domeVideo: Entity
 let label: Entity
 let light: Entity
 // t runs from -LEAD_IN: the 'volume up' card shows first, the audio starts when t crosses 0
@@ -65,7 +70,8 @@ function refreshLabel() {
 function stop() {
   if (!playing) return
   playing = null
-  AudioSource.getMutableOrNull(radio) && (AudioSource.getMutable(radio).playing = false)
+  if (AudioSource.has(speaker)) AudioSource.getMutable(speaker).playing = false
+  VideoPlayer.getMutable(domeVideo).volume = MUSIC_VOLUME
   refreshLabel()
 }
 
@@ -73,6 +79,7 @@ function play(index: number) {
   const ep = RADIO_EPISODES[index]
   lastPlayed = index
   playing = { ep, t: -LEAD_IN, next: 0, started: false }
+  VideoPlayer.getMutable(domeVideo).volume = DUCKED_VOLUME
   refreshLabel()
   toast(t('VOLUME UP  ·  Episode {0}: {1}', index + 1, t(ep.title)), LEAD_IN + 0.4)
 }
@@ -98,7 +105,7 @@ function radioSystem(dt: number) {
   if (!playing.started) {
     if (playing.t < 0) return
     playing.started = true
-    AudioSource.createOrReplace(radio, { audioClipUrl: ep.src, playing: true, loop: false, volume: 1 })
+    AudioSource.createOrReplace(speaker, { audioClipUrl: ep.src, playing: true, loop: false, volume: 1 })
   }
   while (playing.next < ep.cues.length && ep.cues[playing.next].at <= playing.t) {
     const cue = ep.cues[playing.next++]
@@ -107,7 +114,8 @@ function radioSystem(dt: number) {
   if (playing.t >= ep.seconds + 0.5) stop()
 }
 
-export function createRadio() {
+export function createRadio(video: Entity) {
+  domeVideo = video
   const yaw = (Math.atan2(CENTER.x - SPOT.x, CENTER.z - SPOT.z) * 180) / Math.PI // model front is +Z
   const table = engine.addEntity()
   Transform.create(table, { parent: ROOT, position: Vector3.create(SPOT.x, TABLE_H / 2, SPOT.z), rotation: Quaternion.fromEulerDegrees(0, yaw, 0), scale: Vector3.create(2.4, TABLE_H, 1.1) })
@@ -118,6 +126,9 @@ export function createRadio() {
   radio = engine.addEntity()
   Transform.create(radio, { parent: ROOT, position: Vector3.create(SPOT.x, TABLE_H + RADIO_H / 2, SPOT.z), rotation: Quaternion.fromEulerDegrees(0, yaw, 0), scale: Vector3.create(RADIO_SCALE, RADIO_SCALE, RADIO_SCALE) })
   GltfContainer.create(radio, { src: 'models/alien-radio.glb', visibleMeshesCollisionMask: ColliderLayer.CL_POINTER, invisibleMeshesCollisionMask: ColliderLayer.CL_NONE })
+
+  speaker = engine.addEntity()
+  Transform.create(speaker, { parent: ROOT, position: Vector3.create(SPOT.x, TABLE_H + RADIO_H / 2, SPOT.z) })
 
   light = engine.addEntity()
   Transform.create(light, { parent: ROOT, position: Vector3.create(SPOT.x, TABLE_H + RADIO_H + 0.6, SPOT.z) })
