@@ -248,7 +248,7 @@ function buildSets() {
   VideoPlayer.create(tvPlayer, { src: VIDEO_URL, playing: false, loop: false, volume: 1 })
   staticPlayer = engine.addEntity()
   Transform.create(staticPlayer, { parent: roomRoot, position: TV_SCREEN })
-  VideoPlayer.create(staticPlayer, { src: 'videos/tv-static.mp4', playing: true, loop: true, volume: 0.35 }) // the clip carries a quiet hiss
+  VideoPlayer.create(staticPlayer, { src: 'videos/tv-static.mp4', playing: true, loop: true, volume: 0 }) // picture only; the hiss track is muted
   tune(staticPlayer)
   light(roomRoot, Vector3.add(TV_SCREEN, Vector3.create(0, 0.2, -0.8)), Color3.create(0.6, 0.75, 1), 110, 3.5, true)
 
