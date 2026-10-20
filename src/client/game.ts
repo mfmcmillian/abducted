@@ -760,6 +760,7 @@ function beginCountdown(px: number, pz: number) {
   run.successes = 0
   run.multiplier = 1
   run.left = GAME.roundSeconds
+  banked = false
   phase = 'countdown'
   phaseTime = 0
   practiced = true
@@ -814,9 +815,23 @@ function showResults() {
   hud.countdown = ''
   Transform.getMutable(playerBeam).scale = Vector3.Zero()
   VisibilityComponent.createOrReplace(aimMarker, { visible: false })
-  if (run.cows > 0) {
-    room.send('scoreSubmit', { score: run.score, cows: run.cows, attempts: run.attempts, ruleset: RULESET, name: getPlayer()?.name || 'Visitor' })
-  }
+  bankCows()
+}
+
+let banked = false
+/** Send the round to the server once: every caught cow lands in the cargo bay, even if we leave early. */
+function bankCows() {
+  if (banked || run.cows <= 0) return
+  banked = true
+  room.send('scoreSubmit', { score: run.score, cows: run.cows, attempts: run.attempts, ruleset: RULESET, name: getPlayer()?.name || 'Visitor' })
+}
+
+/** The line for leaving mid-round: what made it to the cargo bay. */
+function leaveMessage(fallback: string) {
+  if (run.cows <= 0 || banked) return fallback
+  return run.cows === 1
+    ? t('1 cow beamed into the CARGO BAY. Carry it to the COW LAUNCHER for kudos.')
+    : t('{0} cows beamed into the CARGO BAY. Carry them to the COW LAUNCHER for kudos.', run.cows)
 }
 
 function scoreMessage() {
@@ -878,7 +893,9 @@ function gameSystem(dt: number) {
 
   // Left the pasture (fell, teleported, walked out): the run is abandoned, nothing is submitted.
   if (player.position.y - FLOOR_Y < ARENA_Y - 2) {
-    returnToDome(t('You slipped out of the saucer. The round does not count.'))
+    const msg = leaveMessage(t('You slipped out of the saucer. The round does not count.'))
+    bankCows()
+    returnToDome(msg)
     return
   }
 
@@ -1068,7 +1085,9 @@ export function createCowGame() {
   hud.onLeave = () => {
     if (phase !== 'practice' && phase !== 'countdown' && phase !== 'playing' && phase !== 'finalizing') return
     playGlobal(SFX.uiClick, 0.8)
-    returnToDome(t('Back on the ground. The cows will be waiting.'))
+    const msg = leaveMessage(t('Back on the ground. The cows will be waiting.'))
+    bankCows()
+    returnToDome(msg)
   }
   createLaunchPad()
   createArena()

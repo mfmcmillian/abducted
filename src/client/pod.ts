@@ -93,24 +93,30 @@ export function createPod(board: () => void) {
   const near = engine.addEntity()
   Transform.create(near, { parent: root, position: Vector3.create(0, 1.5, 0.7 * POD_SCALE), scale: Vector3.create(12, 3, 12) })
   TriggerArea.setBox(near)
-  triggerAreaEventsSystem.onTriggerEnter(near, () => {
+  triggerAreaEventsSystem.onTriggerEnter(near, (r) => {
+    if (r.trigger?.entity !== engine.PlayerEntity) return // other players walk through too; only react to ourselves
     pod.nearby = true
     if (pod.state === 'open' && pod.welcomeCooldown <= 0) {
       pod.welcomeCooldown = 30
       playAt(SFX.podWelcome, podPoint(2), 1)
     }
   })
-  triggerAreaEventsSystem.onTriggerExit(near, () => (pod.nearby = false))
+  triggerAreaEventsSystem.onTriggerExit(near, (r) => {
+    if (r.trigger?.entity === engine.PlayerEntity) pod.nearby = false
+  })
 
   // Inside the capsule.
   const inside = engine.addEntity()
   Transform.create(inside, { parent: root, position: Vector3.create(0, 0.5 * POD_SCALE, 0), scale: Vector3.create(0.4 * POD_SCALE, POD_SCALE, 0.4 * POD_SCALE) })
   TriggerArea.setBox(inside)
-  triggerAreaEventsSystem.onTriggerEnter(inside, () => {
+  triggerAreaEventsSystem.onTriggerEnter(inside, (r) => {
+    if (r.trigger?.entity !== engine.PlayerEntity) return // other players walk through too; only react to ourselves
     pod.inside = true
     if (pod.state === 'open') onBoard()
   })
-  triggerAreaEventsSystem.onTriggerExit(inside, () => (pod.inside = false))
+  triggerAreaEventsSystem.onTriggerExit(inside, (r) => {
+    if (r.trigger?.entity === engine.PlayerEntity) pod.inside = false
+  })
 
   engine.addSystem(podSystem)
   engine.addSystem(dressingSystem)

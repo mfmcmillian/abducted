@@ -233,13 +233,14 @@ function createPortal(position: Vector3, world: string, title: string, texture: 
   Transform.create(trigger, { parent: portal, position: Vector3.create(0, 3, -5.5), scale: Vector3.create(PANE_W, 6, 2) })
   TriggerArea.setBox(trigger)
   let armed = true
-  triggerAreaEventsSystem.onTriggerEnter(trigger, () => {
+  triggerAreaEventsSystem.onTriggerEnter(trigger, (r) => {
+    if (r.trigger?.entity !== engine.PlayerEntity) return // only our own avatar opens the portal
     if (!armed) return
     armed = false
     go()
   })
-  triggerAreaEventsSystem.onTriggerExit(trigger, () => {
-    armed = true
+  triggerAreaEventsSystem.onTriggerExit(trigger, (r) => {
+    if (r.trigger?.entity === engine.PlayerEntity) armed = true
   })
 
   return portal
