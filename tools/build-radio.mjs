@@ -11,7 +11,7 @@ import { join } from 'node:path'
 const here = new URL('.', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')
 const root = join(here, '..')
 const script = JSON.parse(readFileSync(join(here, 'radio-script.json'), 'utf8'))
-const tmp = join(process.env.LOCALAPPDATA ?? process.env.TEMP, 'Temp', 'radio-lines')
+const tmp = join(process.env.LOCALAPPDATA ?? process.env.TEMP, 'Temp', 'radio-lines-v2')
 mkdirSync(tmp, { recursive: true })
 const outDir = join(root, 'sounds', 'radio')
 mkdirSync(outDir, { recursive: true })
@@ -20,7 +20,7 @@ mkdirSync(outDir, { recursive: true })
 const lines = []
 for (const ep of script.episodes) {
   ep.lines.forEach(([who, text], i) => {
-    lines.push({ name: `${ep.id}-${String(i).padStart(2, '0')}`, text, voice: script.voices[who], stability: 0.4, style: 0.45 })
+    lines.push({ name: `${ep.id}-${String(i).padStart(2, '0')}`, text, voice: script.voices[who], stability: 0.5, style: 0.25 })
   })
 }
 const linesFile = join(tmp, 'lines.json')
@@ -29,7 +29,7 @@ execFileSync('node', [join(here, 'elevenlabs.mjs'), linesFile, tmp], { stdio: 'i
 
 const duration = (file) => Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]).toString().trim())
 
-// 2. stitch each episode: gap between lines, mild radio voicing, soft limiter
+// 2. stitch each episode: gap between lines, a touch of radio EQ, loudness-normalised hot
 const GAP = 0.45
 const LEAD = 0.6
 const episodes = []
@@ -45,10 +45,10 @@ for (const ep of script.episodes) {
   const total = at + 0.8
   const out = join(outDir, `${ep.id}.mp3`)
   const inputs = files.flatMap((f) => ['-i', f])
-  // delay each input to its cue, mix, then radio colour: band-pass-ish EQ, light compression, a touch of hiss
+  // delay each input to its cue, mix, light radio EQ, then normalise loud (no noise bed: it read as static)
   const delays = files.map((_, i) => `[${i}:a]adelay=${Math.round(cues[i].at * 1000)}|${Math.round(cues[i].at * 1000)}[d${i}]`).join(';')
   const mixIn = files.map((_, i) => `[d${i}]`).join('')
-  const filter = `${delays};${mixIn}amix=inputs=${files.length}:normalize=0[mix];anoisesrc=color=pink:amplitude=0.012:duration=${total.toFixed(2)}[hiss];[mix][hiss]amix=inputs=2:normalize=0,highpass=f=220,lowpass=f=4800,acompressor=threshold=-18dB:ratio=3:attack=10:release=120,alimiter=limit=0.92,volume=1.4,atrim=0:${total.toFixed(2)}`
+  const filter = `${delays};${mixIn}amix=inputs=${files.length}:normalize=0,highpass=f=140,lowpass=f=7000,acompressor=threshold=-20dB:ratio=3:attack=8:release=150:makeup=4,loudnorm=I=-12:TP=-1:LRA=9,alimiter=limit=0.95,atrim=0:${total.toFixed(2)}`
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', ...inputs, '-filter_complex', filter, '-ac', '1', '-b:a', '96k', out], { stdio: 'inherit' })
   episodes.push({ id: ep.id, title: ep.title, tier: ep.tier, src: `sounds/radio/${ep.id}.mp3`, seconds: Math.round(total * 100) / 100, cues })
   console.log(ep.id, ep.title, total.toFixed(1) + 's')

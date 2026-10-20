@@ -1,30 +1,31 @@
 {
-  "voices": { "dale": "iP95p4xoKVk53GoZ742B", "tammy": "FGY2WhTYpPnrIDTdsKH5" },
+  "voices": { "dale": "HIGUfNOdjuWQwwapnTRW", "tammy": "EXAVITQu4vr4xnSDxMaL" },
   "episodes": [
     {
       "id": "ep1",
-      "title": "Day One",
+      "title": "The Pickup",
       "tier": 0,
       "lines": [
-        ["tammy", "Good evening from somewhere above Nebraska, this is Dale and Tammy, live from the cow ship."],
-        ["dale", "We were arguing about the air filter in the truck and then the sky went green."],
-        ["tammy", "He was arguing. I was correct."],
-        ["dale", "Anyway. The aliens said sorry, we are not cows, would we like to go back."],
-        ["tammy", "And we looked at each other, and we looked at the truck, and we said, you know what, we're good."],
-        ["dale", "Honestly, best vacation we have ever had. The beds hum."]
+        ["tammy", "This is Tammy Pruitt, and that's my husband Dale, and we are broadcasting from inside the thing that took us."],
+        ["dale", "We were on Route 14 outside Harlan. The radio quit mid-song. Then every cow in Erwin's field turned its head at once. Same direction. Up."],
+        ["tammy", "Dale said it was the weather. Dale says a lot of things are the weather."],
+        ["dale", "The light came down white and quiet, like snow falling the wrong way. The truck came with us. The dog did not."],
+        ["tammy", "They apologised. Very polite. They said we weren't on the list, and would we like to go home."],
+        ["dale", "And here is the part I can't explain to you. We looked at each other, and neither one of us said yes."],
+        ["tammy", "The beds hum here. All night. You get used to it. You get used to it faster than you'd think."]
       ]
     },
     {
       "id": "ep2",
-      "title": "Ten Cows",
+      "title": "Ten",
       "tier": 1,
       "lines": [
-        ["dale", "Big news on the ship today. The black hole out the window ate its tenth cow."],
-        ["tammy", "He named them. All ten. We did not know them."],
-        ["dale", "Number seven was a Gerald. You could tell."],
-        ["tammy", "The crew says the hole purrs when it eats. I say that is a stomach noise."],
-        ["dale", "Either way, the lights in the hallway stopped flickering. So, thank you Gerald."],
-        ["tammy", "Keep sending cows, folks. The hallway appreciates it."]
+        ["dale", "The hole out the window ate ten cows today. The crew calls that a good start. I call it a number I keep hearing in my sleep."],
+        ["tammy", "He named them. Every one. He says you have to, or they just become a count."],
+        ["dale", "Number seven was a Gerald. Red collar, white blaze, looked right at me before it went in. Didn't look scared. That's the thing."],
+        ["tammy", "Nothing here looks scared. Not the cows. Not us. I've started wondering if that's something they do to you, or something you do to yourself."],
+        ["dale", "After the tenth one, the lights in the long hallway stopped flickering. Steadied right out, like a held breath let go."],
+        ["tammy", "Keep sending them, folks. I say that like a joke. Listen to me. It isn't coming out like a joke."]
       ]
     },
     {
@@ -32,25 +33,26 @@
       "title": "Thirty",
       "tier": 2,
       "lines": [
-        ["tammy", "Thirty cows in, and the black hole has, and I am quoting the captain here, filled out."],
-        ["dale", "It is bigger. It is noticeably bigger. I measured it with my thumb."],
-        ["tammy", "He held his thumb up to a window. That is not measuring."],
-        ["dale", "Also the whole ship feels warmer. Tammy has started redecorating the pod bay."],
-        ["tammy", "Somebody has to. Teal and chrome everywhere. It is like living inside a toaster."],
-        ["dale", "A very comfortable toaster. We are not leaving."]
+        ["tammy", "Thirty. The captain said the hole has filled out. He said it the way you'd talk about a boy after a summer of farm work."],
+        ["dale", "It's bigger. I held my thumb up to the glass the way my dad taught me for deer, and it doesn't cover it anymore."],
+        ["tammy", "The ship runs warmer now. The walls tick at night, the way a stove ticks cooling. Except they're not cooling."],
+        ["dale", "Tammy's been redecorating the pod bay. Curtains. She found fabric somewhere. I didn't ask where."],
+        ["tammy", "Somebody has to make it a home. You make it a home, and then it is one, and then you stop asking how you got there."],
+        ["dale", "We are not leaving. I want to be clear that nobody has told us we can't."]
       ]
     },
     {
       "id": "ep4",
-      "title": "Seventy-Five",
+      "title": "Mauve",
       "tier": 3,
       "lines": [
-        ["dale", "Folks, the sky outside changed colour overnight. Seventy-five cows will do that, apparently."],
-        ["tammy", "It is mauve."],
-        ["dale", "It is purple."],
-        ["tammy", "Dale, I sold curtains for eleven years. It is mauve."],
-        ["dale", "The captain says the hole is bending light now. I say it is bending my marriage."],
-        ["tammy", "Nothing is bending your marriage, honey. Send more cows, people. He needs a hobby."]
+        ["dale", "The sky outside changed colour in the night. Seventy-five cows, the crew says, like it's a weather report."],
+        ["tammy", "It's mauve."],
+        ["dale", "It's purple."],
+        ["tammy", "I sold curtains at Ferguson's for eleven years, Dale. It's mauve. It's the exact mauve of a bruise on the third day."],
+        ["dale", "The captain says the hole is bending light now. Things out the window arrive a half second after they happen. Including, I think, us."],
+        ["tammy", "He stood at that glass four hours yesterday. When I said his name, he answered before I finished saying it."],
+        ["dale", "Send more cows. It likes them. And I have started to want what it wants, and I'd be lying if I said I minded."]
       ]
     },
     {
@@ -58,12 +60,12 @@
       "title": "Company",
       "tier": 4,
       "lines": [
-        ["tammy", "Okay, so, a second ship just warped in next to us. Hundred and fifty cows and we have neighbours."],
-        ["dale", "I think it is the in-laws."],
-        ["tammy", "It is not my mother, Dale. It is a different species."],
-        ["dale", "That is what I said."],
-        ["tammy", "The crew is thrilled. Apparently a hole this size draws a crowd. We are famous out here."],
-        ["dale", "Wave at the new ship if you see it. And if it waves back with a tentacle, that is Carol."]
+        ["tammy", "A second ship came out of nothing last night, right beside us. No sound. Just there, the way a thought is suddenly there."],
+        ["dale", "I said it's the in-laws. Tammy didn't laugh. Tammy always laughs at that one."],
+        ["tammy", "It isn't my mother, Dale. My mother never sat that still."],
+        ["dale", "The crew's excited. A hole this size draws visitors, they say. A hundred and fifty cows, and we're a destination."],
+        ["tammy", "I watched it a long time. It never moved. But around three in the morning every light on it came on at once, and I swear to you they were facing us."],
+        ["dale", "If you see it from the windows, wave. If something waves back, don't tell me how many arms. I've decided I'd rather not know."]
       ]
     },
     {
@@ -71,12 +73,12 @@
       "title": "Three Hundred",
       "tier": 5,
       "lines": [
-        ["dale", "Three hundred cows. The black hole is enormous. You can see it from the bathroom."],
-        ["tammy", "It has a glow now. Like a nightlight. I have grown very fond of it."],
-        ["dale", "The captain gave us a plaque. It says, honorary cargo. We are very proud."],
-        ["tammy", "We talked about going home. For about a minute."],
-        ["dale", "Then the beds started humming again, and, well."],
-        ["tammy", "This is Dale and Tammy, live from the cow ship. We are enjoying it. Good night, Earth."]
+        ["dale", "Three hundred. The hole takes up half the glass now. You can see it from the bathroom. You can see it with your eyes closed."],
+        ["tammy", "It glows. Soft, like a nightlight in a hallway. I've grown fond of it. That's the word I keep using. Fond."],
+        ["dale", "The captain gave us a plaque. Honorary cargo. We hung it over the bed. The bed hums under it, and now the plaque hums too."],
+        ["tammy", "We talked about home last night. Harlan. The porch. Erwin's field with no cows in it. We talked for about a minute."],
+        ["dale", "Then the beds started up, and the hum got into the talking, and the talking stopped, and that was all right."],
+        ["tammy", "This is Dale and Tammy Pruitt, live from the ship. We are enjoying it. We are. Good night, Earth. Leave a light on. Or don't. It finds you either way."]
       ]
     }
   ]

@@ -4,91 +4,97 @@ export interface RadioEpisode { id: string; title: string; tier: number; src: st
 export const RADIO_EPISODES: RadioEpisode[] = [
   {
     "id": "ep1",
-    "title": "Day One",
+    "title": "The Pickup",
     "tier": 0,
     "src": "sounds/radio/ep1.mp3",
-    "seconds": 27.13,
+    "seconds": 55.36,
     "cues": [
       {
         "who": "tammy",
-        "text": "Good evening from somewhere above Nebraska, this is Dale and Tammy, live from the cow ship.",
+        "text": "This is Tammy Pruitt, and that's my husband Dale, and we are broadcasting from inside the thing that took us.",
         "at": 0.6,
-        "seconds": 5.2
+        "seconds": 6.5
       },
       {
         "who": "dale",
-        "text": "We were arguing about the air filter in the truck and then the sky went green.",
-        "at": 6.25,
-        "seconds": 3.62
+        "text": "We were on Route 14 outside Harlan. The radio quit mid-song. Then every cow in Erwin's field turned its head at once. Same direction. Up.",
+        "at": 7.55,
+        "seconds": 13.1
       },
       {
         "who": "tammy",
-        "text": "He was arguing. I was correct.",
-        "at": 10.32,
-        "seconds": 2.09
+        "text": "Dale said it was the weather. Dale says a lot of things are the weather.",
+        "at": 21.1,
+        "seconds": 4.5
       },
       {
         "who": "dale",
-        "text": "Anyway. The aliens said sorry, we are not cows, would we like to go back.",
-        "at": 12.86,
-        "seconds": 4.04
+        "text": "The light came down white and quiet, like snow falling the wrong way. The truck came with us. The dog did not.",
+        "at": 26.05,
+        "seconds": 8.41
       },
       {
         "who": "tammy",
-        "text": "And we looked at each other, and we looked at the truck, and we said, you know what, we're good.",
-        "at": 17.35,
-        "seconds": 4.78
+        "text": "They apologised. Very polite. They said we weren't on the list, and would we like to go home.",
+        "at": 34.91,
+        "seconds": 5.99
       },
       {
         "who": "dale",
-        "text": "Honestly, best vacation we have ever had. The beds hum.",
-        "at": 22.59,
-        "seconds": 3.3
+        "text": "And here is the part I can't explain to you. We looked at each other, and neither one of us said yes.",
+        "at": 41.35,
+        "seconds": 6.59
+      },
+      {
+        "who": "tammy",
+        "text": "The beds hum here. All night. You get used to it. You get used to it faster than you'd think.",
+        "at": 48.39,
+        "seconds": 5.71
       }
     ]
   },
   {
     "id": "ep2",
-    "title": "Ten Cows",
+    "title": "Ten",
     "tier": 1,
     "src": "sounds/radio/ep2.mp3",
-    "seconds": 25,
+    "seconds": 50.49,
     "cues": [
       {
         "who": "dale",
-        "text": "Big news on the ship today. The black hole out the window ate its tenth cow.",
+        "text": "The hole out the window ate ten cows today. The crew calls that a good start. I call it a number I keep hearing in my sleep.",
         "at": 0.6,
-        "seconds": 4.37
+        "seconds": 8.54
       },
       {
         "who": "tammy",
-        "text": "He named them. All ten. We did not know them.",
-        "at": 5.42,
-        "seconds": 2.69
+        "text": "He named them. Every one. He says you have to, or they just become a count.",
+        "at": 9.59,
+        "seconds": 5.48
       },
       {
         "who": "dale",
-        "text": "Number seven was a Gerald. You could tell.",
-        "at": 8.56,
-        "seconds": 2.23
+        "text": "Number seven was a Gerald. Red collar, white blaze, looked right at me before it went in. Didn't look scared. That's the thing.",
+        "at": 15.52,
+        "seconds": 9.94
       },
       {
         "who": "tammy",
-        "text": "The crew says the hole purrs when it eats. I say that is a stomach noise.",
-        "at": 11.24,
-        "seconds": 4.32
+        "text": "Nothing here looks scared. Not the cows. Not us. I've started wondering if that's something they do to you, or something you do to yourself.",
+        "at": 25.91,
+        "seconds": 8.64
       },
       {
         "who": "dale",
-        "text": "Either way, the lights in the hallway stopped flickering. So, thank you Gerald.",
-        "at": 16.01,
-        "seconds": 4.27
+        "text": "After the tenth one, the lights in the long hallway stopped flickering. Steadied right out, like a held breath let go.",
+        "at": 35,
+        "seconds": 7.8
       },
       {
         "who": "tammy",
-        "text": "Keep sending cows, folks. The hallway appreciates it.",
-        "at": 20.73,
-        "seconds": 3.02
+        "text": "Keep sending them, folks. I say that like a joke. Listen to me. It isn't coming out like a joke.",
+        "at": 43.25,
+        "seconds": 5.99
       }
     ]
   },
@@ -97,88 +103,94 @@ export const RADIO_EPISODES: RadioEpisode[] = [
     "title": "Thirty",
     "tier": 2,
     "src": "sounds/radio/ep3.mp3",
-    "seconds": 27.88,
+    "seconds": 44.92,
     "cues": [
       {
         "who": "tammy",
-        "text": "Thirty cows in, and the black hole has, and I am quoting the captain here, filled out.",
+        "text": "Thirty. The captain said the hole has filled out. He said it the way you'd talk about a boy after a summer of farm work.",
         "at": 0.6,
-        "seconds": 4.74
+        "seconds": 6.59
       },
       {
         "who": "dale",
-        "text": "It is bigger. It is noticeably bigger. I measured it with my thumb.",
-        "at": 5.79,
-        "seconds": 3.95
+        "text": "It's bigger. I held my thumb up to the glass the way my dad taught me for deer, and it doesn't cover it anymore.",
+        "at": 7.64,
+        "seconds": 6.83
       },
       {
         "who": "tammy",
-        "text": "He held his thumb up to a window. That is not measuring.",
-        "at": 10.18,
-        "seconds": 3.39
+        "text": "The ship runs warmer now. The walls tick at night, the way a stove ticks cooling. Except they're not cooling.",
+        "at": 14.92,
+        "seconds": 7.06
       },
       {
         "who": "dale",
-        "text": "Also the whole ship feels warmer. Tammy has started redecorating the pod bay.",
-        "at": 14.02,
-        "seconds": 4.41
+        "text": "Tammy's been redecorating the pod bay. Curtains. She found fabric somewhere. I didn't ask where.",
+        "at": 22.43,
+        "seconds": 8.31
       },
       {
         "who": "tammy",
-        "text": "Somebody has to. Teal and chrome everywhere. It is like living inside a toaster.",
-        "at": 18.89,
-        "seconds": 4.97
+        "text": "Somebody has to make it a home. You make it a home, and then it is one, and then you stop asking how you got there.",
+        "at": 31.19,
+        "seconds": 6.69
       },
       {
         "who": "dale",
-        "text": "A very comfortable toaster. We are not leaving.",
-        "at": 24.31,
-        "seconds": 2.32
+        "text": "We are not leaving. I want to be clear that nobody has told us we can't.",
+        "at": 38.33,
+        "seconds": 5.34
       }
     ]
   },
   {
     "id": "ep4",
-    "title": "Seventy-Five",
+    "title": "Mauve",
     "tier": 3,
     "src": "sounds/radio/ep4.mp3",
-    "seconds": 22.77,
+    "seconds": 45.18,
     "cues": [
       {
         "who": "dale",
-        "text": "Folks, the sky outside changed colour overnight. Seventy-five cows will do that, apparently.",
+        "text": "The sky outside changed colour in the night. Seventy-five cows, the crew says, like it's a weather report.",
         "at": 0.6,
-        "seconds": 5.06
+        "seconds": 7.15
       },
       {
         "who": "tammy",
-        "text": "It is mauve.",
-        "at": 6.11,
+        "text": "It's mauve.",
+        "at": 8.2,
         "seconds": 0.93
       },
       {
         "who": "dale",
-        "text": "It is purple.",
-        "at": 7.49,
-        "seconds": 0.84
+        "text": "It's purple.",
+        "at": 9.58,
+        "seconds": 1.02
       },
       {
         "who": "tammy",
-        "text": "Dale, I sold curtains for eleven years. It is mauve.",
-        "at": 8.78,
-        "seconds": 3.25
+        "text": "I sold curtains at Ferguson's for eleven years, Dale. It's mauve. It's the exact mauve of a bruise on the third day.",
+        "at": 11.05,
+        "seconds": 7.2
       },
       {
         "who": "dale",
-        "text": "The captain says the hole is bending light now. I say it is bending my marriage.",
-        "at": 12.48,
-        "seconds": 3.85
+        "text": "The captain says the hole is bending light now. Things out the window arrive a half second after they happen. Including, I think, us.",
+        "at": 18.7,
+        "seconds": 10.03
       },
       {
         "who": "tammy",
-        "text": "Nothing is bending your marriage, honey. Send more cows, people. He needs a hobby.",
-        "at": 16.78,
-        "seconds": 4.74
+        "text": "He stood at that glass four hours yesterday. When I said his name, he answered before I finished saying it.",
+        "at": 29.18,
+        "seconds": 6.64
+      },
+      {
+        "who": "dale",
+        "text": "Send more cows. It likes them. And I have started to want what it wants, and I'd be lying if I said I minded.",
+        "at": 36.27,
+        "seconds": 7.66
       }
     ]
   },
@@ -187,43 +199,43 @@ export const RADIO_EPISODES: RadioEpisode[] = [
     "title": "Company",
     "tier": 4,
     "src": "sounds/radio/ep5.mp3",
-    "seconds": 25.37,
+    "seconds": 46.87,
     "cues": [
       {
         "who": "tammy",
-        "text": "Okay, so, a second ship just warped in next to us. Hundred and fifty cows and we have neighbours.",
+        "text": "A second ship came out of nothing last night, right beside us. No sound. Just there, the way a thought is suddenly there.",
         "at": 0.6,
-        "seconds": 5.94
+        "seconds": 7.48
       },
       {
         "who": "dale",
-        "text": "I think it is the in-laws.",
-        "at": 6.99,
-        "seconds": 1.35
+        "text": "I said it's the in-laws. Tammy didn't laugh. Tammy always laughs at that one.",
+        "at": 8.53,
+        "seconds": 5.62
       },
       {
         "who": "tammy",
-        "text": "It is not my mother, Dale. It is a different species.",
-        "at": 8.79,
-        "seconds": 3.11
+        "text": "It isn't my mother, Dale. My mother never sat that still.",
+        "at": 14.6,
+        "seconds": 3.95
       },
       {
         "who": "dale",
-        "text": "That is what I said.",
-        "at": 12.35,
-        "seconds": 1.07
+        "text": "The crew's excited. A hole this size draws visitors, they say. A hundred and fifty cows, and we're a destination.",
+        "at": 18.99,
+        "seconds": 8.03
       },
       {
         "who": "tammy",
-        "text": "The crew is thrilled. Apparently a hole this size draws a crowd. We are famous out here.",
-        "at": 13.87,
-        "seconds": 5.06
+        "text": "I watched it a long time. It never moved. But around three in the morning every light on it came on at once, and I swear to you they were facing us.",
+        "at": 27.48,
+        "seconds": 8.73
       },
       {
         "who": "dale",
-        "text": "Wave at the new ship if you see it. And if it waves back with a tentacle, that is Carol.",
-        "at": 19.38,
-        "seconds": 4.74
+        "text": "If you see it from the windows, wave. If something waves back, don't tell me how many arms. I've decided I'd rather not know.",
+        "at": 36.66,
+        "seconds": 8.96
       }
     ]
   },
@@ -232,43 +244,43 @@ export const RADIO_EPISODES: RadioEpisode[] = [
     "title": "Three Hundred",
     "tier": 5,
     "src": "sounds/radio/ep6.mp3",
-    "seconds": 25.79,
+    "seconds": 55.83,
     "cues": [
       {
         "who": "dale",
-        "text": "Three hundred cows. The black hole is enormous. You can see it from the bathroom.",
+        "text": "Three hundred. The hole takes up half the glass now. You can see it from the bathroom. You can see it with your eyes closed.",
         "at": 0.6,
-        "seconds": 3.95
+        "seconds": 9.29
       },
       {
         "who": "tammy",
-        "text": "It has a glow now. Like a nightlight. I have grown very fond of it.",
-        "at": 5,
-        "seconds": 4.27
+        "text": "It glows. Soft, like a nightlight in a hallway. I've grown fond of it. That's the word I keep using. Fond.",
+        "at": 10.34,
+        "seconds": 7.89
       },
       {
         "who": "dale",
-        "text": "The captain gave us a plaque. It says, honorary cargo. We are very proud.",
-        "at": 9.72,
-        "seconds": 4.27
+        "text": "The captain gave us a plaque. Honorary cargo. We hung it over the bed. The bed hums under it, and now the plaque hums too.",
+        "at": 18.68,
+        "seconds": 9.8
       },
       {
         "who": "tammy",
-        "text": "We talked about going home. For about a minute.",
-        "at": 14.44,
-        "seconds": 2.55
+        "text": "We talked about home last night. Harlan. The porch. Erwin's field with no cows in it. We talked for about a minute.",
+        "at": 28.93,
+        "seconds": 7.15
       },
       {
         "who": "dale",
-        "text": "Then the beds started humming again, and, well.",
-        "at": 17.45,
-        "seconds": 2.14
+        "text": "Then the beds started up, and the hum got into the talking, and the talking stopped, and that was all right.",
+        "at": 36.53,
+        "seconds": 7.89
       },
       {
         "who": "tammy",
-        "text": "This is Dale and Tammy, live from the cow ship. We are enjoying it. Good night, Earth.",
-        "at": 20.03,
-        "seconds": 4.5
+        "text": "This is Dale and Tammy Pruitt, live from the ship. We are enjoying it. We are. Good night, Earth. Leave a light on. Or don't. It finds you either way.",
+        "at": 44.88,
+        "seconds": 9.71
       }
     ]
   }

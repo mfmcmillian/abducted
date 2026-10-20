@@ -105,7 +105,8 @@ function radioSystem(dt: number) {
   if (!playing.started) {
     if (playing.t < 0) return
     playing.started = true
-    AudioSource.createOrReplace(speaker, { audioClipUrl: ep.src, playing: true, loop: false, volume: 1 })
+    // global: full volume for the listener wherever they stand; the episode is local to whoever clicked
+    AudioSource.createOrReplace(speaker, { audioClipUrl: ep.src, playing: true, loop: false, volume: 1, global: true })
   }
   while (playing.next < ep.cues.length && ep.cues[playing.next].at <= playing.t) {
     const cue = ep.cues[playing.next++]
