@@ -43,7 +43,9 @@ const NAME: Record<'dale' | 'tammy', string> = { dale: 'Dale', tammy: 'Tammy' }
 let radio: Entity
 let label: Entity
 let light: Entity
-let playing: { ep: RadioEpisode; t: number; next: number } | null = null
+// t runs from -LEAD_IN: the 'volume up' card shows first, the audio starts when t crosses 0
+let playing: { ep: RadioEpisode; t: number; next: number; started: boolean } | null = null
+const LEAD_IN = 2.6
 let lastPlayed = -1 // index into RADIO_EPISODES
 let clock = 0
 
@@ -70,9 +72,9 @@ function stop() {
 function play(index: number) {
   const ep = RADIO_EPISODES[index]
   lastPlayed = index
-  playing = { ep, t: 0, next: 0 }
-  AudioSource.createOrReplace(radio, { audioClipUrl: ep.src, playing: true, loop: false, volume: 1 })
+  playing = { ep, t: -LEAD_IN, next: 0, started: false }
   refreshLabel()
+  toast(t('VOLUME UP  ·  Episode {0}: {1}', index + 1, t(ep.title)), LEAD_IN + 0.4)
 }
 
 function onClick() {
@@ -93,6 +95,11 @@ function radioSystem(dt: number) {
   if (!playing) return
   playing.t += dt
   const { ep } = playing
+  if (!playing.started) {
+    if (playing.t < 0) return
+    playing.started = true
+    AudioSource.createOrReplace(radio, { audioClipUrl: ep.src, playing: true, loop: false, volume: 1 })
+  }
   while (playing.next < ep.cues.length && ep.cues[playing.next].at <= playing.t) {
     const cue = ep.cues[playing.next++]
     toast(`${NAME[cue.who]}:  ${t(cue.text)}`, cue.seconds + 0.6)

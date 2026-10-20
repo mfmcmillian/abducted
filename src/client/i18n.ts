@@ -299,6 +299,7 @@ const ROWS: ReadonlyArray<readonly [string, string, string, string]> = [
   ['the hole is as big as it gets', 'le trou est au maximum', 'el agujero ya no crece más', '黑洞已达到最大'],
   // --- radio ---
   ['Listen to the radio', 'Écouter la radio', 'Escuchar la radio', '收听广播'],
+  ['VOLUME UP  ·  Episode {0}: {1}', 'MONTEZ LE SON  ·  Épisode {0} : {1}', 'SUBE EL VOLUMEN  ·  Episodio {0}: {1}', '请调高音量  ·  第 {0} 集：{1}'],
   ['DALE & TAMMY  ·  LIVE FROM THE COW SHIP', 'DALE & TAMMY  ·  EN DIRECT DU VAISSEAU À VACHES', 'DALE Y TAMMY  ·  EN VIVO DESDE LA NAVE DE LAS VACAS', 'DALE 和 TAMMY  ·  奶牛飞船现场直播'],
   ['ON AIR  ·  Episode {0}: {1}', 'À L’ANTENNE  ·  Épisode {0} : {1}', 'AL AIRE  ·  Episodio {0}: {1}', '直播中  ·  第 {0} 集：{1}'],
   ['{0} episodes on the dial  ·  click to listen', '{0} épisodes sur le cadran  ·  cliquez pour écouter', '{0} episodios en el dial  ·  haz clic para escuchar', '频道里有 {0} 集  ·  点击收听'],
