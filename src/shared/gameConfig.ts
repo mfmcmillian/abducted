@@ -55,8 +55,10 @@ export const KUDOS = {
   holePassSeconds: 26,
   /** floating cows the ring will hold; beyond this the oldest are swallowed early */
   maxFloating: 60,
-  /** cows shown in the cargo bay pen at once (the rest are 'more in the hold') */
-  penCapacity: 20,
+  /** cows shown in the shared cargo bay pen at once (the rest are 'more in the hold') */
+  penCapacity: 10,
+  /** a picked-up cow that is not launched within this long wanders back to the pen */
+  carrySeconds: 180,
   /** a raider saucer shoots one floating cow about this often (seconds, jittered); owner still gets perCow */
   raidPeriodSeconds: 70,
   /** an empty cargo bay gets this many free cows, at most once per freeCowsEverySeconds per player */

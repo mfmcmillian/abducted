@@ -39,6 +39,10 @@ export const Messages = {
     nextHoleIn: Schemas.Int,
     text: Schemas.String
   }),
+  /** client -> server: I clicked a cow in the shared pen; let me carry it */
+  cowPickup: Schemas.Map({ v: Schemas.Int }),
+  /** server -> all clients: the shared herd (cows in pen + hold) and who is carrying one right now */
+  penState: Schemas.Map({ cows: Schemas.Int, carriers: Schemas.Array(Schemas.String) }),
   /** client -> server -> all clients: someone put a cow in the launcher at (x, y, z); play the loading show */
   cowLoading: Schemas.Map({ from: Schemas.String, x: Schemas.Float, y: Schemas.Float, z: Schemas.Float }),
   /** server -> all clients: a cow left the launcher, fly it to (rho, phi, y) in the star ring */

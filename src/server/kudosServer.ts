@@ -6,17 +6,19 @@ import { room } from '../shared/messages'
 /**
  * The kudos loop, server side.
  *
- *   pasture round (validated by the leaderboard server) -> cows land in the wallet's CARGO
- *   cowLaunch                                           -> one cargo cow becomes a FLOATING cow in the star ring
+ *   pasture round (validated by the leaderboard server) -> cows join the SHARED HERD in the cargo bay
+ *   cowPickup                                           -> one herd cow is carried by that player (everyone sees it)
+ *   cowLaunch                                           -> the carried cow becomes a FLOATING cow owned by the launcher
  *   black hole every holePeriodSeconds                   -> every floating cow is swallowed, owner gets perCow KUDOS
  *
- * Per-wallet numbers live in player storage, the floating list in scene storage, so both
- * survive a server restart. Kudos can only be minted by the black hole, cows can only enter
- * the cargo bay from a plausible round, and a launch is refused when the cargo bay is empty.
+ * Per-wallet numbers live in player storage, the herd and the floating list in scene storage,
+ * so all survive a server restart. Kudos can only be minted by the black hole, cows can only
+ * enter the herd from a plausible round, and a launch is refused unless you are carrying one.
  */
 const PLAYER_KEY = 'kudos'
 const FLOATING_KEY = 'floatingCows'
 const COSMOS_KEY = 'cosmos'
+const HERD_KEY = 'herd'
 const TAU = Math.PI * 2
 const RING_INNER = 43 // layout.ts SPACE_RADIUS; keep in sync
 const LAUNCHER_AZ = Math.atan2(14, -22) // layout.ts LAUNCHER relative to CENTER; cows fly roughly that way
@@ -43,6 +45,74 @@ let floating: Floating[] = []
 let nextId = 1
 let holeIn = KUDOS.holePeriodSeconds
 let loaded = false
+
+/** The shared herd: cows waiting in the cargo bay (pen + hold), and who is carrying one. */
+let herd = 0
+let herdFreeAt = 0
+const carriers = new Map<string, number>() // address -> ms epoch when picked up
+
+async function loadHerd() {
+  try {
+    const saved = await Storage.get<string>(HERD_KEY)
+    if (saved) herd = (JSON.parse(saved) as { herd?: number }).herd ?? 0
+  } catch (error) {
+    console.log(`[Kudos] herd load failed: ${String(error)}`)
+  }
+  console.log(`[Kudos] herd ${herd}`)
+}
+
+async function saveHerd() {
+  try {
+    await Storage.set(HERD_KEY, JSON.stringify({ herd }))
+  } catch (error) {
+    console.log(`[Kudos] herd save failed: ${String(error)}`)
+  }
+}
+
+function sendPen(to?: string) {
+  const data = { cows: herd, carriers: [...carriers.keys()] }
+  if (to) room.send('penState', data, { to: [to] })
+  else room.send('penState', data)
+}
+
+/** An empty bay (nobody carrying either) gets a couple of free cows, at most once per freeCowsEverySeconds. */
+async function topUpFreeCows(): Promise<boolean> {
+  if (herd > 0 || carriers.size > 0) return false
+  const now = Date.now()
+  if (now - herdFreeAt < KUDOS.freeCowsEverySeconds * 1000) return false
+  herd += KUDOS.freeCows
+  herdFreeAt = now
+  await saveHerd()
+  sendPen()
+  return true
+}
+
+async function pickUp(address: string) {
+  const w = await wallet(address)
+  if (carriers.has(address)) return sendPen(address)
+  if (herd <= 0) return sendState(address, w, 'The cargo bay is empty. Play the cow game to catch more cows.')
+  herd -= 1
+  carriers.set(address, Date.now())
+  void saveHerd()
+  sendPen()
+}
+
+/** Carried too long: the cow wanders back to the pen. */
+function expireCarriers() {
+  const now = Date.now()
+  let changed = false
+  for (const [address, at] of carriers) {
+    if (now - at < KUDOS.carrySeconds * 1000) continue
+    carriers.delete(address)
+    herd += 1
+    changed = true
+    void wallet(address).then((w) => sendState(address, w, 'Your cow wandered back to the pen.'))
+  }
+  if (changed) {
+    void saveHerd()
+    sendPen()
+  }
+}
 
 /** The shared cosmos (src/shared/cosmos.ts): every cow anyone has ever fed to the hole. */
 let mass = 0
@@ -102,6 +172,14 @@ async function wallet(address: string): Promise<Wallet> {
     console.log(`[Kudos] wallet load failed for ${address}: ${String(error)}`)
   }
   wallets.set(address, w)
+  // cows saved under the old per-player cargo join the shared herd once
+  if (w.cargo > 0) {
+    herd += w.cargo
+    w.cargo = 0
+    await saveWallet(address, w)
+    void saveHerd()
+    sendPen()
+  }
   return w
 }
 
@@ -113,38 +191,26 @@ async function saveWallet(address: string, w: Wallet) {
   }
 }
 
-/**
- * A newcomer, or anyone who has run dry, finds a couple of free cows waiting in the pen so the
- * launcher can be tried right away. Rate-limited per player so it is not a kudos faucet.
- */
-async function topUpFreeCows(address: string, w: Wallet): Promise<boolean> {
-  if (w.cargo > 0) return false
-  const now = Date.now()
-  if (w.freeAt && now - w.freeAt < KUDOS.freeCowsEverySeconds * 1000) return false
-  w.cargo += KUDOS.freeCows
-  w.freeAt = now
-  await saveWallet(address, w)
-  return true
-}
-
 function sendState(address: string, w: Wallet, text = '') {
-  room.send('cargoState', { cargo: w.cargo, kudos: w.kudos, launched: w.launched, nextHoleIn: Math.ceil(holeIn), text }, { to: [address] })
+  room.send('cargoState', { cargo: herd, kudos: w.kudos, launched: w.launched, nextHoleIn: Math.ceil(holeIn), text }, { to: [address] })
 }
 
 /** Called by the leaderboard server for every plausible round. */
 export async function addCargo(address: string, cows: number) {
   if (cows <= 0) return
   const w = await wallet(address)
-  w.cargo += cows
   w.lifetime += cows
+  herd += cows
   await saveWallet(address, w)
+  void saveHerd()
+  sendPen()
   sendState(address, w, `${cows} cow${cows === 1 ? '' : 's'} beamed into the cargo bay. Carry them to the launcher.`)
 }
 
 async function launch(address: string) {
   const w = await wallet(address)
-  if (w.cargo <= 0) return sendState(address, w, 'The cargo bay is empty. Play the cow game to catch more cows.')
-  w.cargo -= 1
+  if (!carriers.has(address)) return sendState(address, w, 'You are not carrying a cow. Pick one up in the CARGO BAY first.')
+  carriers.delete(address)
   w.launched += 1
   const cow: Floating = {
     id: nextId++,
@@ -164,7 +230,8 @@ async function launch(address: string) {
   await saveWallet(address, w)
   void saveFloating()
   room.send('cowLaunched', cow)
-  const gifted = await topUpFreeCows(address, w)
+  sendPen()
+  const gifted = await topUpFreeCows()
   sendState(address, w, gifted ? `Last one! ${KUDOS.freeCows} more free cows beamed into the CARGO BAY.` : '')
 }
 
@@ -209,16 +276,23 @@ let raidIn = KUDOS.raidPeriodSeconds
 export function initKudosServer() {
   void loadFloating()
   void loadCosmos()
+  void loadHerd()
 
   room.onMessage('cargoGet', (_data, context) => {
     if (!context || !loaded) return
     const address = context.from.toLowerCase()
     room.send('cowsFloating', { cows: floating }, { to: [context.from] })
     room.send('cosmos', { mass }, { to: [context.from] })
+    sendPen(context.from)
     void wallet(address).then(async (w) => {
-      const gifted = await topUpFreeCows(address, w)
+      const gifted = await topUpFreeCows()
       sendState(address, w, gifted ? `${KUDOS.freeCows} free cows are waiting in the CARGO BAY. Carry one to the launcher.` : '')
     })
+  })
+
+  room.onMessage('cowPickup', (_data, context) => {
+    if (!context || !loaded) return
+    void pickUp(context.from.toLowerCase())
   })
 
   room.onMessage('cowLoading', (data, context) => {
@@ -232,6 +306,7 @@ export function initKudosServer() {
   })
 
   engine.addSystem((dt) => {
+    expireCarriers()
     raidIn -= dt
     if (raidIn <= 0) {
       raidIn = KUDOS.raidPeriodSeconds * (0.7 + Math.random() * 0.6)

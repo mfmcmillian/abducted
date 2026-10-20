@@ -181,7 +181,7 @@ function createCargoBay() {
 }
 
 function refreshPen() {
-  const visible = Math.max(0, state.cargo - (state.carrying ? 1 : 0))
+  const visible = Math.max(0, state.cargo) // the server already took out any carried cows
   for (let i = 0; i < pen.length; i++) {
     const cow = pen[i]
     const show = i < visible
@@ -206,32 +206,76 @@ function refreshPen() {
 
 // ---- carrying ---------------------------------------------------------------------------
 
-let carrier: Entity | null = null
+// The herd is shared: a click asks the server for a cow, and the server's penState says who is
+// carrying one. Our own cow hangs from our hand; everyone else's hangs from theirs.
+
 let held: Entity | null = null
+let pickupPending = 0 // seconds left waiting for the server to hand us the cow
+const remoteCarriers = new Map<string, Entity>()
+
+function cowInHand(avatarId?: string): Entity {
+  const anchor = engine.addEntity()
+  AvatarAttach.create(anchor, { avatarId, anchorPointId: AvatarAnchorPointType.AAPT_RIGHT_HAND })
+  const cow = engine.addEntity()
+  Transform.create(cow, { parent: anchor, position: Vector3.create(0, 0.1, 0.3), rotation: Quaternion.fromEulerDegrees(0, 90, 90), scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
+  cowModel(cow, false)
+  return anchor
+}
+
+function removeInHand(anchor: Entity) {
+  for (const [child] of engine.getEntitiesWith(Transform)) if (Transform.get(child).parent === anchor) engine.removeEntity(child)
+  engine.removeEntity(anchor)
+}
 
 function pickUp(cow: PenCow) {
   if (state.carrying) {
     toast(t('You are already carrying a cow. Drop it in the launcher.'), 4)
     return
   }
-  state.carrying = true
+  if (pickupPending > 0) return
+  pickupPending = 3
   moo(Vector3.create(cow.home.x, 1, cow.home.z), 0.8)
-  carrier = engine.addEntity()
-  AvatarAttach.create(carrier, { anchorPointId: AvatarAnchorPointType.AAPT_RIGHT_HAND })
-  held = engine.addEntity()
-  Transform.create(held, { parent: carrier, position: Vector3.create(0, 0.1, 0.3), rotation: Quaternion.fromEulerDegrees(0, 90, 90), scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
-  cowModel(held, false)
-  refreshPen()
+  room.send('cowPickup', { v: 1 })
+}
+
+function takeCarried() {
+  if (held) return
+  pickupPending = 0
+  state.carrying = true
+  held = cowInHand()
   pushHud()
   toast(t('Got one. Walk it to the COW LAUNCHER by the windows and click the barrel.'), 6)
 }
 
 function dropCarried() {
-  if (held) engine.removeEntity(held)
-  if (carrier) engine.removeEntity(carrier)
+  if (held) removeInHand(held)
   held = null
-  carrier = null
   state.carrying = false
+}
+
+function onPenState(data: { cows: number; carriers: string[] }) {
+  state.cargo = data.cows
+  const me = (getPlayer()?.userId || '').toLowerCase()
+  const carriers = data.carriers.map((a) => a.toLowerCase())
+  const mine = carriers.includes(me)
+  // while our own shot is loading, the server still lists us until cowLaunch lands: ignore that
+  const loadingOurs = seq !== null && !seq.remote
+  if (mine && !state.carrying && !loadingOurs) takeCarried()
+  else if (!mine && state.carrying) {
+    dropCarried()
+    pushHud()
+  }
+  for (const address of carriers) {
+    if (address === me || remoteCarriers.has(address)) continue
+    remoteCarriers.set(address, cowInHand(address))
+  }
+  for (const [address, anchor] of remoteCarriers) {
+    if (carriers.includes(address)) continue
+    removeInHand(anchor)
+    remoteCarriers.delete(address)
+  }
+  refreshPen()
+  pushHud()
 }
 
 // ---- launcher ---------------------------------------------------------------------------
@@ -474,6 +518,7 @@ const easeInOut = (x: number) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2,
 
 function launchSequenceSystem(dt: number) {
   idleClock += dt
+  if (pickupPending > 0) pickupPending -= dt
   if (!seq) {
     if (!barrelRoot) return
     aimBarrel(dirAtTilt(REST_TILT + idleTilt(), idleYaw()))
@@ -826,6 +871,7 @@ export function createCargoLoop() {
   room.onMessage('cowsFloating', (data) => {
     for (const c of data.cows) if (!floating.has(c.id)) makeFloating(c)
   })
+  room.onMessage('penState', (data) => onPenState({ cows: data.cows, carriers: [...data.carriers] }))
   room.onMessage('cowLoading', (data) => onCowLoading(data))
   room.onMessage('cowLaunched', (data) => onCowLaunched(data))
   room.onMessage('blackHole', (data) => {
