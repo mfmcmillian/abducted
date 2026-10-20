@@ -221,6 +221,11 @@ export function initKudosServer() {
     })
   })
 
+  room.onMessage('cowLoading', (data, context) => {
+    if (!context) return
+    room.send('cowLoading', { from: context.from.toLowerCase(), x: data.x, y: data.y, z: data.z })
+  })
+
   room.onMessage('cowLaunch', (_data, context) => {
     if (!context || !loaded) return
     void launch(context.from.toLowerCase())

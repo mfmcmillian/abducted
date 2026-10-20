@@ -39,6 +39,8 @@ export const Messages = {
     nextHoleIn: Schemas.Int,
     text: Schemas.String
   }),
+  /** client -> server -> all clients: someone put a cow in the launcher at (x, y, z); play the loading show */
+  cowLoading: Schemas.Map({ from: Schemas.String, x: Schemas.Float, y: Schemas.Float, z: Schemas.Float }),
   /** server -> all clients: a cow left the launcher, fly it to (rho, phi, y) in the star ring */
   cowLaunched: Schemas.Map({ id: Schemas.Int, owner: Schemas.String, rho: Schemas.Float, phi: Schemas.Float, y: Schemas.Float }),
   /** server -> one client: everything currently floating (on join) */

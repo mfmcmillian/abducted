@@ -22,6 +22,7 @@ import {
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { CARGO_BAY, CARGO_BAY_RADIUS, CENTER, LAUNCHER, SPACE_RADIUS } from '../layout'
 import { KUDOS } from '../shared/gameConfig'
+import { getPlayer } from '@dcl/sdk/players'
 import { room } from '../shared/messages'
 import { attachLoop, moo, playAt, playGlobal, SFX } from './sfx'
 import { kudosHud, toast } from './ui'
@@ -433,7 +434,17 @@ const CHARGE_T = 1.5
 const RECOIL_T = 1.3
 const SEQ_T = LOAD_T + CHARGE_T + RECOIL_T
 
-let seq: { t: number; cow: Entity | null; from: Vector3; fired: boolean } | null = null
+/** remote: another player's shot, replayed here for show; it never sends cowLaunch */
+let seq: { t: number; cow: Entity | null; from: Vector3; fired: boolean; remote: boolean } | null = null
+
+function beginSequence(from: Vector3, remote: boolean) {
+  if (seq?.cow) engine.removeEntity(seq.cow)
+  const cow = engine.addEntity()
+  Transform.create(cow, { parent: ROOT, position: from, scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
+  cowModel(cow, false)
+  moo(hopperTop, 0.8)
+  seq = { t: 0, cow, from, fired: false, remote }
+}
 
 function onLaunchClick() {
   if (!state.carrying) {
@@ -441,18 +452,22 @@ function onLaunchClick() {
     playGlobal(SFX.uiClick, 0.6)
     return
   }
-  if (seq) return // one at a time
+  if (seq && !seq.remote) return // one at a time; a remote replay yields to the local shooter
   const p = Transform.getOrNull(engine.PlayerEntity)?.position
   const player = p ? toScene(p) : hopperTop
   dropCarried()
   const from = Vector3.add(player, Vector3.create(0, 1.0, 0))
-  const cow = engine.addEntity()
-  Transform.create(cow, { parent: ROOT, position: from, scale: Vector3.create(CARRY_SCALE, CARRY_SCALE, CARRY_SCALE) })
-  cowModel(cow, false)
-  moo(hopperTop, 0.8)
-  seq = { t: 0, cow, from, fired: false }
+  beginSequence(from, false)
+  room.send('cowLoading', { from: '', x: from.x, y: from.y, z: from.z })
   refreshPen()
   pushHud()
+}
+
+/** Someone else dropped a cow in the launcher: play the loading, charge and recoil for them too. */
+function onCowLoading(data: { from: string; x: number; y: number; z: number }) {
+  if (data.from === (getPlayer()?.userId || '').toLowerCase()) return
+  if (seq) return // the cannon is already busy here; their flight will still show
+  beginSequence(Vector3.create(data.x, data.y, data.z), true)
 }
 
 const easeInOut = (x: number) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2)
@@ -511,7 +526,7 @@ function launchSequenceSystem(dt: number) {
   if (!seq.fired) {
     seq.fired = true
     aimBarrel(dirAtTilt(FIRE_TILT))
-    room.send('cowLaunch', { v: 1 })
+    if (!seq.remote) room.send('cowLaunch', { v: 1 })
     playAt(SFX.launch, muzzle, 1)
     burstExplosion(muzzle, 1.6, PALETTES.cow)
   }
@@ -811,6 +826,7 @@ export function createCargoLoop() {
   room.onMessage('cowsFloating', (data) => {
     for (const c of data.cows) if (!floating.has(c.id)) makeFloating(c)
   })
+  room.onMessage('cowLoading', (data) => onCowLoading(data))
   room.onMessage('cowLaunched', (data) => onCowLaunched(data))
   room.onMessage('blackHole', (data) => {
     if (hole) {
