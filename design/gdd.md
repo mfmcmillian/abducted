@@ -8,7 +8,7 @@
 | Deployment target | World `abducted.dcl.eth` |
 | Studio / team name | Knights of Antrom |
 | Date | 2026-10-22 |
-| Contact (Discord + email) | `TBD:` |
+| Contact (Discord + email) | koa_matt · matthew.mcmillian@ymail.com |
 
 ---
 
