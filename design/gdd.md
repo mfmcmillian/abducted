@@ -6,7 +6,7 @@
 |---|---|
 | Public experience title | Abducted! — They appear to be enjoying it — IP & [Content Policy](https://decentraland.org/content/) status: owner declaration: original world by Knights of Antrom; the music video, emotes and wearables are the team's own collection / name screening: not searched; unresolved: title screening `TBD:` |
 | Deployment target | World `abducted.dcl.eth` |
-| Studio / team name | Knights of Antrom |
+| Studio / team name | KOA |
 | Date | 2026-10-22 |
 | Contact (Discord + email) | koa_matt · matthew.mcmillian@ymail.com |
 
@@ -145,7 +145,7 @@ Almost no HUD for the loop. The pink PLAY sign, the pen label and the cannon are
 
 **Performance.**
 
-Target: 60fps on recommended desktop hardware and 30fps on a mid-range phone in the mobile client, at 20 players. Not profiled yet. `TBD:` device, to be named in the first V0 week.
+Target: 60fps on recommended desktop hardware and 30fps on a **Samsung Galaxy Z Fold 8** (the developer's phone) in the mobile client, at 20 players. Not profiled yet.
 
 **Desktop-only dependencies.**
 
