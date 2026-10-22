@@ -1,22 +1,15 @@
-# Abducted! - They appear to be enjoying it (abducted.dcl.eth)
+# Abducted! - They appear to be enjoying it
 
-Decentraland SDK7 World for the Knights of Antrom alien collection. A 4x4 parcel (64 m) night field with
-a 44 m video dome in the middle: inner and outer surfaces play the "They appear to be enjoying it" music
-video on a loop, the Abducted! emote props animate at 2.5x in the centre, and four NPCs in the alien
-costumes dance around them (one gets abducted on repeat).
+Live World: [abducted.dcl.eth](https://decentraland.org/jump/?realm=abducted.dcl.eth)
 
-Outside, on the crop circles:
+A Decentraland SDK7 night exhibit for the Knights of Antrom collection. You fly a saucer, beam cows,
+and fire them from a shared cannon into a black hole the whole World is feeding. The hole only grows,
+and a radio by the door unlocks a new episode each time it has eaten enough.
 
-- **NW / NE**: portals to `dungeons.dcl.eth` (Dungeons of Antrom) and `KoA.dcl.eth` (Kingdom of Antrom).
-  Walk through the disc or click it; the explorer asks before travelling.
-- **SW**: the Antrom Guildstone Ring altar. One ring per wallet, granted through the Rewards dispenser
-  used by the Dungeons of Antrom chest drop (see below).
-- **SE**: Marketplace kiosk for the Abducted! emotes and the alien costumes.
-- A herd of ten cows wanders the field. Click one and the saucer flies over, beams it up and returns it
-  later, dropped from the sky somewhere else.
-- 24 pylons around the dome and the lights inside follow the music (`AudioAnalysis` on the video; a
-  synthetic groove takes over on clients that do not fill it).
-- Permanent night (`SkyboxTime` 01:00).
+Design notes for the loop are in [design/gdd.md](design/gdd.md).
+
+The field around the video dome also has portals to `dungeons.dcl.eth` and `KoA.dcl.eth`, the Antrom
+Guildstone Ring altar, and a Marketplace kiosk for the Abducted! emotes.
 
 Video: `https://storage.googleapis.com/koa-db-media/alien-dome/enjoying-720p.mp4` (720p30, ~90 MB, GCS
 bucket `koa-db-media` on the `koa-db` Firebase project, public, CORS enabled).
